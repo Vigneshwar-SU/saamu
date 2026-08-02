@@ -1,0 +1,47 @@
+# Root .gitignore for Saamu Tailors
+
+# Environment Variables
+.env
+.env.*
+!.env.example
+.env.local
+.env.*.local
+*.env
+
+# Dependencies & Build Output
+node_modules/
+dist/
+dist-ssr/
+*.local
+build/
+
+# Python / Django
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# Django static, media, logs, database
+backend/static/*
+!backend/static/.gitkeep
+backend/media/*
+!backend/media/.gitkeep
+backend/logs/*
+!backend/logs/.gitkeep
+*.log
+*.sqlite3
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

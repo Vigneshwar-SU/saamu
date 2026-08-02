@@ -1,0 +1,13 @@
+# Backend .gitignore
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+static/*
+!static/.gitkeep
+media/*
+!media/.gitkeep
+logs/*
+!logs/.gitkeep
+*.log
+*.sqlite3
