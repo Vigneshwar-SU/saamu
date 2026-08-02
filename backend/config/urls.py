@@ -13,5 +13,7 @@ handler500 = custom_500
 urlpatterns = [
     path("admin/", admin.site.urls),
     # API v1 Namespace
+    path("api/v1/auth/", include("apps.authentication.urls")),
     path("api/v1/", include("apps.common.urls")),
+    path("api/v1/", include("apps.customers.urls")),
 ]

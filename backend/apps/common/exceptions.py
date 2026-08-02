@@ -16,6 +16,7 @@ Sensitive implementation details are never exposed to clients.
 
 import logging
 
+from django.http import Http404
 from rest_framework import status as http_status
 from rest_framework.exceptions import (
     APIException,
@@ -48,8 +49,26 @@ EXCEPTION_CODE_MAP = {
 def _extract_message(detail):
     if isinstance(detail, str):
         return detail
+    if isinstance(detail, dict):
+        if "detail" in detail:
+            return _extract_message(detail["detail"])
+        parts = [
+            part
+            for value in detail.values()
+            if (part := _extract_message(value)) != "The submitted data is invalid."
+        ]
+        if parts:
+            return "; ".join(parts)
+        return "The submitted data is invalid."
     if isinstance(detail, (list, tuple)):
-        return "; ".join(str(item) for item in detail)
+        parts = [
+            part
+            for item in detail
+            if (part := _extract_message(item)) != "The submitted data is invalid."
+        ]
+        if parts:
+            return "; ".join(parts)
+        return "The submitted data is invalid."
     return "The submitted data is invalid."
 
 
@@ -75,6 +94,11 @@ def api_exception_handler(exc, context):
             type(exc), getattr(exc, "default_code", None) or "api_error"
         )
         message = _extract_message(getattr(exc, "detail", None))
+    elif isinstance(exc, Http404):
+        # DRF converts Django's Http404 (e.g. get_object_or_404) into a 404
+        # response, but the original exception is not an APIException.
+        code = "not_found"
+        message = "The requested resource was not found."
     else:
         code = DEFAULT_ERROR_CODE
         message = "An unexpected error occurred."

@@ -22,7 +22,7 @@ def test_pagination_is_configured():
 
 
 def test_exception_handler_is_configured():
-    handler = settings.REST_FRAMEWORK["DEFAULT_EXCEPTION_HANDLER"]
+    handler = settings.REST_FRAMEWORK["EXCEPTION_HANDLER"]
     assert handler == "apps.common.exceptions.api_exception_handler"
 
 
@@ -38,6 +38,8 @@ def test_auth_user_model_configured():
 
 def test_cors_allowed_origins_configured():
     assert "http://localhost:5173" in settings.CORS_ALLOWED_ORIGINS
+    assert "http://localhost:5175" in settings.CORS_ALLOWED_ORIGINS
+    assert "http://127.0.0.1:5175" in settings.CORS_ALLOWED_ORIGINS
 
 
 def test_api_namespace_is_versioned():

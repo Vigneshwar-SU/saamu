@@ -4,7 +4,7 @@ A custom tailoring management system for **Saamu Tailors**, a family tailoring b
 
 The application digitizes the shop's operations: customer records, orders, measurements, tailoring workflow, tailor workload, payments, income, expenses, digital bills, and delivery/collection tracking.
 
-**Current stage:** Phase 1 (Project Foundation). Business modules are implemented in later phases.
+**Current stage:** Phase 3 (Customers & Tailoring Measurements). Business modules beyond measurements are implemented in later phases.
 
 ---
 
@@ -121,7 +121,100 @@ Expected response:
 
 ---
 
-## 6. Verification Commands
+## 6. Authentication & Roles
+
+### Application roles
+
+Exactly two application roles exist. These are application roles and are independent of Django's `is_staff` / `is_superuser` flags.
+
+| Role | Description |
+|---|---|
+| `OWNER` | View-only for business operations. Can log in and view permitted information but must not create, edit, or delete business records. |
+| `STAFF` | Operational management user. Will create/edit/delete business records when business APIs exist. |
+
+Django superusers keep `is_superuser`/`is_staff` for Django admin access; the application role is still exactly `OWNER` or `STAFF` (never a third role). Backend authorization reads the authenticated database user's `role` — a role supplied by the frontend is never trusted.
+
+### Authentication endpoints
+
+All under the versioned API:
+
+| Method | Endpoint | Access | Purpose |
+|---|---|---|---|
+| POST | `/api/v1/auth/login/` | public | Validate credentials, return access + refresh tokens and user info |
+| POST | `/api/v1/auth/refresh/` | public (needs refresh token) | Exchange a valid refresh token for a new access token |
+| GET | `/api/v1/auth/me/` | authenticated | Return the current user (`id`, `username`, `role`, `is_active`) |
+| POST | `/api/v1/auth/logout/` | authenticated | Blacklist the supplied refresh token |
+
+Login request:
+
+```json
+{ "username": "owner", "password": "..." }
+```
+
+Login response (passwords/hashes are never returned):
+
+```json
+{
+  "access": "...",
+  "refresh": "...",
+  "user": { "id": 1, "username": "owner", "role": "OWNER", "is_active": true }
+}
+```
+
+### JWT behavior
+
+- Access tokens: 60 minutes (default). Sent as `Authorization: Bearer <access-token>`.
+- Refresh tokens: 1 day (default). Not rotated.
+- On a `401`, the frontend attempts a single refresh via `/auth/refresh/` and retries the original request. If refresh fails, tokens are cleared and the user is redirected to login.
+- Logout blacklists the refresh token server-side, so a logged-out refresh token cannot be reused.
+
+### Local development authentication setup
+
+There is no public registration. Create the initial owner and staff accounts:
+
+```powershell
+cd backend
+# Initial OWNER (reads OWNER_USERNAME/OWNER_PASSWORD env vars, defaults: owner)
+python manage.py create_owner --username owner --password "Owner@12345" --superuser
+
+# A STAFF operational user (via Django shell)
+python manage.py shell -c "from apps.authentication.models import User, Role; User.objects.create_user(username='staff', password='Staff@12345', role=Role.STAFF)"
+```
+
+`create_owner` promotes an existing account to `OWNER` if it already exists and sets `--superuser` only when requested.
+
+### Token storage (frontend)
+
+Tokens are stored in browser storage via the centralized `authToken` service:
+- **Remember Me checked** → `localStorage` (persists across browser restarts).
+- **Remember Me unchecked** → `sessionStorage` (cleared when the browser session ends).
+
+Tokens are never rendered as raw HTML or logged. The access token is short-lived; the refresh token is blacklisted on logout. Browser storage is readable by same-origin scripts (an XSS risk) — this is accepted for the single-PC local deployment and mitigated by the points above.
+
+---
+
+## 7. Customers & Measurements
+
+### Customers
+
+- List: `GET /api/v1/customers/?search=&status=active|archived|all&page=` (20 per page). Detail: `GET /api/v1/customers/{id}/`.
+- **STAFF** can `POST /api/v1/customers/` (create), `PATCH /api/v1/customers/{id}/` (edit), and `POST /api/v1/customers/{id}/archive/` / `.../restore/`. **OWNER is view-only** — enforced by the backend.
+- Search matches name / primary mobile / alternate mobile (case-insensitive) and a numeric search also matches the customer ID.
+- Archived customers are retained and restorable; there is no physical delete. `is_active` is read-only via PATCH and only changed by the explicit archive/restore actions.
+- Mobile numbers: 10–15 digits with an optional leading `+`. The alternate mobile must differ from the primary (shared/family numbers are allowed, so mobiles are not globally unique).
+- There is no human-friendly customer code; the stable internal `id` is the identifier (documented decision).
+
+### Measurements
+
+- Recorded per customer and garment type (`SHIRT` / `PANT`); every numeric value is in **inches**.
+- `GET/POST /api/v1/customers/{customer_id}/measurements/` (`?current=true` returns only the current rows) and `GET/PATCH /api/v1/measurements/{id}/` (PATCH reads any version and creates a new current one).
+- Every save creates an immutable new version and marks it current; previous versions are preserved as history. `version` and `is_current` are read-only, and a garment type cannot be changed after creation.
+- Shirt required: neck / chest / waist rounds, shoulder width, sleeve length, shirt length (sleeve & cuff rounds optional). Pant required: waist / hip rounds, length (thigh / knee / bottom rounds optional). Values must be 0.1–300.0; fields that do not belong to the selected garment are rejected.
+- Frontend UI: `Customers` list (search / status filter / pagination, STAFF create/edit/archive/restore) and a detail page with the current measurement, version history, and per-garment entry forms.
+
+---
+
+## 8. Verification Commands
 
 ### Backend
 
@@ -146,7 +239,7 @@ npm run format   # prettier --write
 
 ---
 
-## 7. Environment Configuration
+## 9. Environment Configuration
 
 Backend (`backend/.env.example`):
 
@@ -172,15 +265,16 @@ Never commit the real `.env` files. `.env.example` templates are committed; `.en
 
 ---
 
-## 8. Repository Layout
+## 10. Repository Layout
 
 ```text
 saamu/
 ├── backend/
 │   ├── .venv/
 │   ├── apps/
-│   │   ├── authentication/   # custom User model
-│   │   └── common/           # health check, error handling, shared utilities
+│   │   ├── authentication/   # custom User model, roles, JWT auth, RBAC permissions
+│   │   ├── common/           # health check, error handling, shared utilities
+│   │   └── customers/        # customers + tailoring measurements (Phase 3)
 │   ├── config/               # Django project settings
 │   ├── logs/  media/  static/
 │   ├── manage.py
@@ -200,7 +294,7 @@ saamu/
 
 ---
 
-## 9. API Conventions
+## 11. API Conventions
 
 - All application APIs are versioned under `/api/v1/`.
 - API errors use a consistent shape:
@@ -216,14 +310,17 @@ saamu/
 ```
 
 - List endpoints use pagination (20 items per page by default).
-- Authentication will be enforced in Phase 2 (JWT, role-based access).
+- Authentication is enforced via JWT (SimpleJWT). Public endpoints opt out explicitly (health check, login, refresh).
+- Role-based authorization is enforced at the backend using the authenticated user's application role.
 
 ---
 
-## 10. Phase Status
+## 12. Phase Status
 
 - **Phase 0 — Product & Architecture Validation:** complete
 - **Phase 1 — Project Foundation:** complete
-- **Phase 2+ — Authentication, business modules:** pending
+- **Phase 2 — Authentication & Role-Based Access:** complete
+- **Phase 3 — Customers & Tailoring Measurements:** complete
+- **Phase 4+ — Business modules (orders, etc.):** pending
 
 Do not treat this document as a feature guide; business functionality is implemented incrementally in later phases and documented in `docs/`.

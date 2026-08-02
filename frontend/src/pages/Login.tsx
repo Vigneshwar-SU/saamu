@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   CardContent,
@@ -14,6 +14,7 @@ import {
   Stack,
   Container,
   Paper,
+  CircularProgress,
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
@@ -23,7 +24,9 @@ import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/useAuth';
+import { getApiErrorMessage } from '../utils/apiErrors';
 
 // Zod Validation Schema
 const loginSchema = z.object({
@@ -36,8 +39,10 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login, isAuthenticated } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
-  const [submittedInfo, setSubmittedInfo] = useState<string | null>(null);
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   const {
     control,
@@ -52,13 +57,25 @@ export const Login: React.FC = () => {
     },
   });
 
-  const onSubmit = (data: LoginFormData) => {
-    // DO NOT connect authentication yet per specification.
-    // Display feedback message and redirect to dashboard.
-    setSubmittedInfo(`Welcome back, ${data.username}! Redirecting to ERP Dashboard...`);
-    setTimeout(() => {
-      navigate('/dashboard');
-    }, 1200);
+  // Already authenticated (e.g. visited /login directly) -> ERP dashboard.
+  useEffect(() => {
+    if (isAuthenticated) {
+      const from = (location.state as { from?: string } | null)?.from;
+      navigate(from && from !== '/login' ? from : '/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, location.state, navigate]);
+
+  const onSubmit = async (data: LoginFormData) => {
+    setLoginError(null);
+    try {
+      await login(
+        { username: data.username.trim(), password: data.password },
+        Boolean(data.rememberMe)
+      );
+      // Redirect happens via the isAuthenticated effect above.
+    } catch (error) {
+      setLoginError(getApiErrorMessage(error));
+    }
   };
 
   return (
@@ -129,9 +146,9 @@ export const Login: React.FC = () => {
               Enter your credentials to access the tailoring operations dashboard.
             </Typography>
 
-            {submittedInfo && (
-              <Alert severity="success" sx={{ mb: 3, borderRadius: '10px' }}>
-                {submittedInfo}
+            {loginError && (
+              <Alert severity="error" sx={{ mb: 3, borderRadius: '10px' }}>
+                {loginError}
               </Alert>
             )}
 
@@ -147,6 +164,7 @@ export const Login: React.FC = () => {
                       label="Username or Email"
                       fullWidth
                       variant="outlined"
+                      autoComplete="username"
                       error={!!errors.username}
                       helperText={errors.username?.message}
                       InputProps={{
@@ -171,6 +189,7 @@ export const Login: React.FC = () => {
                       type={showPassword ? 'text' : 'password'}
                       fullWidth
                       variant="outlined"
+                      autoComplete="current-password"
                       error={!!errors.password}
                       helperText={errors.password?.message}
                       InputProps={{
@@ -234,6 +253,7 @@ export const Login: React.FC = () => {
                   fullWidth
                   size="large"
                   disabled={isSubmitting}
+                  startIcon={isSubmitting ? <CircularProgress size={18} color="inherit" /> : undefined}
                   sx={{
                     py: 1.5,
                     fontSize: '1rem',
@@ -244,7 +264,7 @@ export const Login: React.FC = () => {
                     },
                   }}
                 >
-                  Sign In
+                  {isSubmitting ? 'Signing In...' : 'Sign In'}
                 </Button>
               </Stack>
             </form>

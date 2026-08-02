@@ -6,5 +6,10 @@ from .models import User
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ("username", "email", "first_name", "last_name", "is_staff")
+    list_display = ("username", "email", "first_name", "last_name", "role", "is_staff")
+    list_filter = ("role", "is_staff", "is_superuser", "is_active")
     search_fields = ("username", "email", "first_name", "last_name")
+    fieldsets = BaseUserAdmin.fieldsets + (("Application Role", {"fields": ("role",)}),)
+    add_fieldsets = BaseUserAdmin.add_fieldsets + (
+        ("Application Role", {"fields": ("role",)}),
+    )

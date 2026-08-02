@@ -16,13 +16,22 @@ import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import ContentCutIcon from '@mui/icons-material/ContentCut';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/useAuth';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
 }
 
+function getInitials(username: string | undefined): string {
+  if (!username) return 'ST';
+  const name = username.trim();
+  if (name.length === 0) return 'ST';
+  return name.slice(0, 2).toUpperCase();
+}
+
 export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const navigate = useNavigate();
+  const { user, role, logout } = useAuth();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -33,9 +42,10 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
     setAnchorEl(null);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     handleMenuClose();
-    navigate('/login');
+    await logout();
+    navigate('/login', { replace: true });
   };
 
   return (
@@ -99,6 +109,22 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
 
         {/* Right Side: Status Badge, Notifications, User Profile */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {role && (
+            <Chip
+              label={role}
+              size="small"
+              variant="outlined"
+              sx={{
+                fontWeight: 700,
+                fontSize: '0.72rem',
+                borderColor: '#2563EB',
+                color: '#1D4ED8',
+                backgroundColor: '#EFF6FF',
+                display: { xs: 'none', sm: 'inline-flex' },
+              }}
+            />
+          )}
+
           <Chip
             label="Local Server"
             size="small"
@@ -109,7 +135,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
               fontSize: '0.75rem',
               borderColor: '#22C55E',
               color: '#15803D',
-              display: { xs: 'none', sm: 'inline-flex' },
+              display: { xs: 'none', md: 'inline-flex' },
             }}
           />
 
@@ -131,16 +157,16 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
                     fontWeight: 600,
                   }}
                 >
-                  ST
+                  {getInitials(user?.username)}
                 </Avatar>
               </IconButton>
             </Tooltip>
             <Box sx={{ display: { xs: 'none', md: 'block' } }}>
               <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
-                Admin User
+                {user?.username ?? 'Not signed in'}
               </Typography>
               <Typography variant="caption" sx={{ color: '#64748B' }}>
-                System Administrator
+                {role ? `${role} Account` : 'Unauthenticated'}
               </Typography>
             </Box>
           </Box>

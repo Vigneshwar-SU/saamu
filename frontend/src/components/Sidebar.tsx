@@ -9,9 +9,12 @@ import {
   Box,
   Typography,
   Divider,
+  useMediaQuery,
 } from '@mui/material';
+import type { Theme } from '@mui/material/styles';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { SIDEBAR_ITEMS } from '../constants/navigation';
+import { useAuth } from '../context/useAuth';
 
 interface SidebarProps {
   open: boolean;
@@ -22,6 +25,12 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ open, onClose, drawerWidth = 260 }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { role } = useAuth();
+  const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('md'));
+
+  const visibleItems = SIDEBAR_ITEMS.filter(
+    (item) => !item.roles || (role != null && item.roles.includes(role))
+  );
 
   const handleNavigate = (path: string) => {
     navigate(path);
@@ -45,7 +54,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ open, onClose, drawerWidth = 2
       </Box>
 
       <List sx={{ flexGrow: 1, px: 1.5, py: 0 }}>
-        {SIDEBAR_ITEMS.map((item) => {
+        {visibleItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
             <ListItem key={item.id} disablePadding sx={{ mb: 0.5 }}>
@@ -110,7 +119,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ open, onClose, drawerWidth = 2
       {/* Mobile Drawer */}
       <Drawer
         variant="temporary"
-        open={open}
+        open={isMobile && open}
         onClose={onClose}
         ModalProps={{ keepMounted: true }}
         sx={{

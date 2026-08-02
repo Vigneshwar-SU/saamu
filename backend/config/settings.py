@@ -50,10 +50,12 @@ INSTALLED_APPS = [
     # Third-party packages
     "rest_framework",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     # Local apps
     "apps.authentication.apps.AuthenticationConfig",
     "apps.common.apps.CommonConfig",
+    "apps.customers.apps.CustomersConfig",
 ]
 
 MIDDLEWARE = [
@@ -164,7 +166,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
-    "DEFAULT_EXCEPTION_HANDLER": "apps.common.exceptions.api_exception_handler",
+    "EXCEPTION_HANDLER": "apps.common.exceptions.api_exception_handler",
     "DEFAULT_RENDERER_CLASSES": (
         "rest_framework.renderers.JSONRenderer",
         "rest_framework.renderers.BrowsableAPIRenderer",
@@ -174,6 +176,9 @@ REST_FRAMEWORK = {
         "rest_framework.parsers.FormParser",
         "rest_framework.parsers.MultiPartParser",
     ),
+    # Return numeric JSON values for DecimalFields (measurements) instead of
+    # strings, so the frontend works with plain numbers.
+    "COERCE_DECIMAL_TO_STRING": False,
 }
 
 # SimpleJWT Settings
@@ -189,10 +194,14 @@ SIMPLE_JWT = {
 }
 
 # CORS Configuration
+# Origins are environment-driven. Local development defaults cover the Vite
+# dev server origins (the Vite port may drift from 5173 when that port is
+# already in use, so both 5173 and 5175 are included here and in .env.example).
 CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
-        "CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5175,http://127.0.0.1:5175",
     ).split(",")
     if origin.strip()
 ]

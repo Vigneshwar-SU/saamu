@@ -3,7 +3,6 @@ import { Box, Card, CardContent, Typography, Breadcrumbs, Link, Chip, Stack } fr
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import ConstructionIcon from '@mui/icons-material/Construction';
 import DashboardIcon from '@mui/icons-material/Dashboard';
-import PeopleIcon from '@mui/icons-material/People';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import ContentCutIcon from '@mui/icons-material/ContentCut';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
@@ -112,14 +111,6 @@ export const Dashboard: React.FC = () => (
     title="Dashboard"
     description="Overview of tailoring performance metrics, active orders, and daily income."
     icon={<DashboardIcon fontSize="large" />}
-  />
-);
-
-export const Customers: React.FC = () => (
-  <GenericPlaceholder
-    title="Customers"
-    description="Manage customer profiles, measurement charts, and fitting history."
-    icon={<PeopleIcon fontSize="large" />}
   />
 );
 
