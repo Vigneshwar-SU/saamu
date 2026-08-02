@@ -7,9 +7,10 @@ import { Customers } from '../pages/Customers';
 import { CustomerDetail } from '../pages/CustomerDetail';
 import { Orders } from '../pages/Orders';
 import { OrderDetail } from '../pages/OrderDetail';
+import { Tailors } from '../pages/Tailors';
+import { TailorDetail } from '../pages/TailorDetail';
 import {
   Dashboard,
-  Tailors,
   Income,
   Expenses,
   Payments,
@@ -33,6 +34,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="/orders" element={<Orders />} />
           <Route path="/orders/:id" element={<OrderDetail />} />
           <Route path="/tailors" element={<Tailors />} />
+          <Route path="/tailors/:id" element={<TailorDetail />} />
           <Route path="/income" element={<Income />} />
           <Route path="/expenses" element={<Expenses />} />
           <Route path="/payments" element={<Payments />} />

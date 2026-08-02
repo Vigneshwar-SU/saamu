@@ -41,6 +41,8 @@ class OrderItemSerializer(serializers.ModelSerializer):
     garment_code = serializers.CharField(source="garment_type", read_only=True)
     measurement_id = serializers.IntegerField(read_only=True)
     line_total = serializers.SerializerMethodField()
+    assigned_quantity = serializers.SerializerMethodField()
+    remaining_quantity = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderItem
@@ -49,6 +51,8 @@ class OrderItemSerializer(serializers.ModelSerializer):
             "garment_type",
             "garment_code",
             "quantity",
+            "assigned_quantity",
+            "remaining_quantity",
             "measurement_id",
             "measurement_version",
             "measurement_snapshot",
@@ -62,6 +66,18 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     def get_line_total(self, obj):
         return obj.amount
+
+    def get_assigned_quantity(self, obj):
+        total = Decimal("0")
+        for assignment in obj.work_assignments.all():
+            total += assignment.assigned_quantity
+        return total
+
+    def get_remaining_quantity(self, obj):
+        total = Decimal("0")
+        for assignment in obj.work_assignments.all():
+            total += assignment.assigned_quantity
+        return obj.quantity - total
 
 
 class OrderStatusHistorySerializer(serializers.ModelSerializer):

@@ -48,6 +48,8 @@ export interface OrderItem {
   garment_type: string;
   garment_code: GarmentType;
   quantity: number;
+  assigned_quantity: number;
+  remaining_quantity: number;
   measurement_id: number | null;
   measurement_version: number | null;
   measurement_snapshot: MeasurementSnapshot | null;

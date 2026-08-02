@@ -54,6 +54,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             .prefetch_related(
                 "items",
                 "items__measurement",
+                "items__work_assignments",
                 "status_history",
                 "status_history__changed_by",
             )

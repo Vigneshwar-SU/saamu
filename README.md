@@ -4,7 +4,7 @@ A custom tailoring management system for **Saamu Tailors**, a family tailoring b
 
 The application digitizes the shop's operations: customer records, orders, measurements, tailoring workflow, tailor workload, payments, income, expenses, digital bills, and delivery/collection tracking.
 
-**Current stage:** Phase 4 (Orders & Tailoring Workflow). Business modules beyond orders are implemented in later phases.
+**Current stage:** Phase 5 (Tailors, Workload & Piece-Rate Salary). Business modules beyond tailors are implemented in later phases.
 
 ---
 
@@ -214,7 +214,32 @@ Tokens are never rendered as raw HTML or logged. The access token is short-lived
 
 ---
 
-## 8. Verification Commands
+## 8. Tailors, Workload & Piece-Rate Salary
+
+### Tailors
+
+- List: `GET /api/v1/tailors/?search=&scope=active|archived|all&page=` (20 per page). Detail: `GET /api/v1/tailors/{id}/`.
+- **STAFF** can `POST /api/v1/tailors/` (create), `PATCH /api/v1/tailors/{id}/` (edit), and `POST /api/v1/tailors/{id}/archive/` / `.../restore/`. **OWNER is view-only** — enforced by the backend.
+- Search matches name and mobile (case-insensitive). Archived tailors are retained and restorable; there is no physical delete. `is_active` is read-only via PATCH and only changed by the explicit archive/restore actions.
+- Tailor `name` is required; `mobile_number` (10–15 digits, optional leading `+`) and `notes` are optional.
+
+### Piece rates
+
+- `GET/POST /api/v1/piece-rates/` and `PATCH /api/v1/piece-rates/{id}/` (rate or active flag only — no delete). `garment_type` is unique; `rate_per_piece` is a non-negative decimal.
+- `STAFF` only for mutations; OWNER can view. Inactive rates cannot be used for new assignments.
+
+### Work assignments & earnings
+
+- `GET/POST /api/v1/work-assignments/`, detail `GET/PATCH /api/v1/work-assignments/{id}/` (PATCH updates `completed_quantity` only), and `POST /api/v1/work-assignments/{id}/status/` for status transitions.
+- Lifecycle `ASSIGNED → IN_PROGRESS → COMPLETED` is backend-enforced; `COMPLETED` is terminal. `earned_amount = completed_quantity × rate_per_piece_snapshot`; the rate is snapshotted at assignment time and never altered by later rate edits.
+- An assignment requires an active tailor and an order item with enough remaining quantity (validated under a row lock); the item's `assigned_quantity` / `remaining_quantity` are exposed on orders.
+- Filters: `tailor`, `order`, `garment_type`, `status`, `date_from`, `date_to`.
+- Earnings: `GET /api/v1/tailors/{id}/earnings/` (per-garment breakdown) and `GET /api/v1/tailor-earnings/summary/` (aggregate across tailors, incl. `outstanding_quantity`).
+- Frontend: Tailors list (search / scope filter / pagination / earnings summary + piece-rate manager), Tailor detail (profile, earnings by garment, work assignments with progress + status actions, assign-work dialog).
+
+---
+
+## 9. Verification Commands
 
 ### Backend
 
@@ -239,7 +264,7 @@ npm run format   # prettier --write
 
 ---
 
-## 9. Environment Configuration
+## 10. Environment Configuration
 
 Backend (`backend/.env.example`):
 
@@ -265,7 +290,7 @@ Never commit the real `.env` files. `.env.example` templates are committed; `.en
 
 ---
 
-## 10. Repository Layout
+## 11. Repository Layout
 
 ```text
 saamu/
@@ -275,7 +300,8 @@ saamu/
 │   │   ├── authentication/   # custom User model, roles, JWT auth, RBAC permissions
 │   │   ├── common/           # health check, error handling, shared utilities
 │   │   ├── customers/        # customers + tailoring measurements (Phase 3)
-│   │   └── orders/           # orders, order items, status workflow (Phase 4)
+│   │   ├── orders/           # orders, order items, status workflow (Phase 4)
+│   │   └── tailors/          # tailors, piece rates, work assignments (Phase 5)
 │   ├── config/               # Django project settings
 │   ├── logs/  media/  static/
 │   ├── manage.py
@@ -295,7 +321,7 @@ saamu/
 
 ---
 
-## 11. API Conventions
+## 12. API Conventions
 
 - All application APIs are versioned under `/api/v1/`.
 - API errors use a consistent shape:
@@ -316,13 +342,14 @@ saamu/
 
 ---
 
-## 12. Phase Status
+## 13. Phase Status
 
 - **Phase 0 — Product & Architecture Validation:** complete
 - **Phase 1 — Project Foundation:** complete
 - **Phase 2 — Authentication & Role-Based Access:** complete
 - **Phase 3 — Customers & Tailoring Measurements:** complete
 - **Phase 4 — Orders & Tailoring Workflow:** complete
-- **Phase 5+ — Business modules (payments, billing, tailors workload, dashboard):** pending
+- **Phase 5 — Tailors, Workload & Piece-Rate Salary:** complete
+- **Phase 6+ — Business modules (payments, billing, dashboard):** pending
 
 Do not treat this document as a feature guide; business functionality is implemented incrementally in later phases and documented in `docs/`.
