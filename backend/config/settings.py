@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "apps.authentication.apps.AuthenticationConfig",
     "apps.common.apps.CommonConfig",
     "apps.customers.apps.CustomersConfig",
+    "apps.orders.apps.OrdersConfig",
 ]
 
 MIDDLEWARE = [

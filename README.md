@@ -4,7 +4,7 @@ A custom tailoring management system for **Saamu Tailors**, a family tailoring b
 
 The application digitizes the shop's operations: customer records, orders, measurements, tailoring workflow, tailor workload, payments, income, expenses, digital bills, and delivery/collection tracking.
 
-**Current stage:** Phase 3 (Customers & Tailoring Measurements). Business modules beyond measurements are implemented in later phases.
+**Current stage:** Phase 4 (Orders & Tailoring Workflow). Business modules beyond orders are implemented in later phases.
 
 ---
 
@@ -274,7 +274,8 @@ saamu/
 │   ├── apps/
 │   │   ├── authentication/   # custom User model, roles, JWT auth, RBAC permissions
 │   │   ├── common/           # health check, error handling, shared utilities
-│   │   └── customers/        # customers + tailoring measurements (Phase 3)
+│   │   ├── customers/        # customers + tailoring measurements (Phase 3)
+│   │   └── orders/           # orders, order items, status workflow (Phase 4)
 │   ├── config/               # Django project settings
 │   ├── logs/  media/  static/
 │   ├── manage.py
@@ -321,6 +322,7 @@ saamu/
 - **Phase 1 — Project Foundation:** complete
 - **Phase 2 — Authentication & Role-Based Access:** complete
 - **Phase 3 — Customers & Tailoring Measurements:** complete
-- **Phase 4+ — Business modules (orders, etc.):** pending
+- **Phase 4 — Orders & Tailoring Workflow:** complete
+- **Phase 5+ — Business modules (payments, billing, tailors workload, dashboard):** pending
 
 Do not treat this document as a feature guide; business functionality is implemented incrementally in later phases and documented in `docs/`.
