@@ -71,7 +71,9 @@ def api_exception_handler(exc, context):
         )
 
     if isinstance(exc, APIException):
-        code = EXCEPTION_CODE_MAP.get(type(exc), getattr(exc, "default_code", None) or "api_error")
+        code = EXCEPTION_CODE_MAP.get(
+            type(exc), getattr(exc, "default_code", None) or "api_error"
+        )
         message = _extract_message(getattr(exc, "detail", None))
     else:
         code = DEFAULT_ERROR_CODE

@@ -7,6 +7,7 @@ class User(AbstractUser):
     Custom User Model for Saamu Tailors.
     Provides extensible foundation for future role-based access control and profile fields.
     """
+
     phone_number = models.CharField(max_length=20, blank=True, null=True)
 
     class Meta:

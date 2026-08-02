@@ -4,6 +4,7 @@ Django settings for Saamu Tailors project.
 
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -14,6 +15,7 @@ load_dotenv(BASE_DIR / ".env")
 
 # Ensure `apps` directory is in sys.path
 import sys
+
 sys.path.insert(0, str(BASE_DIR / "apps"))
 
 # Quick-start development settings - unsuitable for production
@@ -26,7 +28,9 @@ SECRET_KEY = os.getenv(
 DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes", "t")
 
 ALLOWED_HOSTS = [
-    host.strip() for host in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if host.strip()
+    host.strip()
+    for host in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    if host.strip()
 ]
 
 # Logging configuration
@@ -43,12 +47,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     # Third-party packages
     "rest_framework",
     "rest_framework_simplejwt",
     "corsheaders",
-
     # Local apps
     "apps.authentication.apps.AuthenticationConfig",
     "apps.common.apps.CommonConfig",
@@ -159,9 +161,7 @@ REST_FRAMEWORK = {
     ),
     # Secure by default: every API endpoint requires authentication unless
     # it explicitly opts out (e.g. health check, token endpoints).
-    "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.IsAuthenticated",
-    ),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
     "DEFAULT_EXCEPTION_HANDLER": "apps.common.exceptions.api_exception_handler",

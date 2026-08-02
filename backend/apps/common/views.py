@@ -14,6 +14,7 @@ class HealthCheckView(APIView):
     Health check API endpoint.
     GET /api/v1/health/
     """
+
     permission_classes = []
     authentication_classes = []
 
