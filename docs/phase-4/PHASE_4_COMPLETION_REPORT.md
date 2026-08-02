@@ -269,7 +269,7 @@ Branch `master`; clean except the Phase 4 changes listed in §13 plus the untrac
 
 Commit message: `feat(orders): implement phase 4 order management`
 
-Commit hash: _(filled in after commit)_
+Commit hash: `8b1d2cca199b5a581750ff76b5757f4691967f10`
 
 ### Push
 
