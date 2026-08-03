@@ -323,9 +323,7 @@ class TailorEarningsSummaryView(APIView):
         if tailor_id:
             workload_qs = workload_qs.filter(tailor_id=tailor_id)
         workload_totals, workload_by_tailor = _workload_for_queryset(workload_qs)
-        totals["total_active_tailors"] = Tailor.objects.filter(
-            is_active=True
-        ).count()
+        totals["total_active_tailors"] = Tailor.objects.filter(is_active=True).count()
         totals["workload"] = {
             "total_assigned": workload_totals["assigned_quantity"],
             "total_completed": workload_totals["completed_quantity"],

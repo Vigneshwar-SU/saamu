@@ -4,7 +4,7 @@ A custom tailoring management system for **Saamu Tailors**, a family tailoring b
 
 The application digitizes the shop's operations: customer records, orders, measurements, tailoring workflow, tailor workload, payments, income, expenses, digital bills, and delivery/collection tracking.
 
-**Current stage:** Phase 5 (Tailors, Workload & Piece-Rate Salary). Business modules beyond tailors are implemented in later phases.
+**Current stage:** Phase 6 (Attendance & Payroll Foundation). Business modules beyond payroll are implemented in later phases.
 
 ---
 
@@ -237,6 +237,15 @@ Tokens are never rendered as raw HTML or logged. The access token is short-lived
 - Earnings: `GET /api/v1/tailors/{id}/earnings/` (per-garment breakdown) and `GET /api/v1/tailor-earnings/summary/` (aggregate across tailors, incl. `outstanding_quantity`).
 - Frontend: Tailors list (search / scope filter / pagination / earnings summary + piece-rate manager), Tailor detail (profile, earnings by garment, work assignments with progress + status actions, assign-work dialog).
 
+## 8.1 Attendance & Payroll
+
+- Attendance: `GET/POST /api/v1/attendance/`, detail `GET/PATCH /api/v1/attendance/{id}/`; statuses `PRESENT` / `ABSENT` / `HALF_DAY`, unique per `(tailor, attendance_date)`, filters `tailor`, `date_from`, `date_to`, `status`. Mutations are STAFF-only; records are never deleted.
+- Payroll periods: `GET/POST /api/v1/payroll/periods/`, detail `GET /api/v1/payroll/periods/{id}/`, with aggregates (`total_completed_pieces`, `total_piece_rate_earnings`, `total_attendance_amount`, `total_payable`, `entry_count`).
+- Lifecycle `DRAFT → CALCULATED → FINALIZED`: `POST .../calculate/` generates per-tailor entries from completed assignments (inclusive `completed_at` boundaries) using the immutable `rate_per_piece_snapshot` (`earnings = completed_quantity × snapshot`); in-progress/outstanding pieces contribute zero. `POST .../finalize/` locks the period (immutable; recalculation rejected).
+- Attendance days are aggregated per tailor (`present_days` / `half_days` / `absent_days`); missing attendance is never counted as PRESENT. `attendance_amount` remains `0` until a monetary attendance rule is configured.
+- Entries: `GET /api/v1/payroll/entries/` (`period`, `tailor` filters); per-tailor breakdown `GET /api/v1/payroll/periods/{id}/tailors/{tailor_id}/` (order, garment, assigned/completed/remaining, rate snapshot, earned).
+- Frontend: Attendance page (filters + mark/edit), Payroll page (period list + calculate/finalize), Payroll detail (summary, tailor entries, per-tailor assignment breakdown). Mutation controls are hidden for OWNER.
+
 ---
 
 ## 9. Verification Commands
@@ -301,7 +310,9 @@ saamu/
 │   │   ├── common/           # health check, error handling, shared utilities
 │   │   ├── customers/        # customers + tailoring measurements (Phase 3)
 │   │   ├── orders/           # orders, order items, status workflow (Phase 4)
-│   │   └── tailors/          # tailors, piece rates, work assignments (Phase 5)
+│   │   ├── tailors/          # tailors, piece rates, work assignments (Phase 5)
+│   │   ├── attendance/       # daily tailor attendance records (Phase 6)
+│   │   └── payroll/          # payroll periods + per-tailor entries (Phase 6)
 │   ├── config/               # Django project settings
 │   ├── logs/  media/  static/
 │   ├── manage.py
@@ -350,6 +361,7 @@ saamu/
 - **Phase 3 — Customers & Tailoring Measurements:** complete
 - **Phase 4 — Orders & Tailoring Workflow:** complete
 - **Phase 5 — Tailors, Workload & Piece-Rate Salary:** complete
-- **Phase 6+ — Business modules (payments, billing, dashboard):** pending
+- **Phase 6 — Attendance & Payroll Foundation:** complete
+- **Phase 7+ — Business modules (payments, billing, dashboard):** pending
 
 Do not treat this document as a feature guide; business functionality is implemented incrementally in later phases and documented in `docs/`.

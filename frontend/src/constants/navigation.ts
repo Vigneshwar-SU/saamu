@@ -3,6 +3,8 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import ContentCutIcon from '@mui/icons-material/ContentCut';
+import FactCheckIcon from '@mui/icons-material/FactCheck';
+import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import PaymentIcon from '@mui/icons-material/Payment';
@@ -34,6 +36,18 @@ export const SIDEBAR_ITEMS: NavItem[] = [
     title: 'Tailors',
     path: '/tailors',
     icon: React.createElement(ContentCutIcon),
+  },
+  {
+    id: 'attendance',
+    title: 'Attendance',
+    path: '/attendance',
+    icon: React.createElement(FactCheckIcon),
+  },
+  {
+    id: 'payroll',
+    title: 'Payroll',
+    path: '/payroll',
+    icon: React.createElement(PointOfSaleIcon),
   },
   {
     id: 'income',
