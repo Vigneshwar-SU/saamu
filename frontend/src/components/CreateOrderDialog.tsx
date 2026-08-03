@@ -25,6 +25,7 @@ import { useMeasurements } from '../hooks/useMeasurements';
 import { useCreateOrder } from '../hooks/useOrders';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { MEASUREMENT_REQUIRED_FIELDS } from '../types/customers';
+import type { AutocompleteInputChangeReason } from '@mui/material/Autocomplete';
 import type { Customer, GarmentType, Measurement } from '../types/customers';
 import type { Order, OrderCreatePayload, OrderItemPayload } from '../types/orders';
 
@@ -67,9 +68,11 @@ const emptyItem = (): ItemDraft => ({
 export const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onClose, onCreated }) => {
   const createMutation = useCreateOrder();
 
-  const [customerId, setCustomerId] = useState<number | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [customerInput, setCustomerInput] = useState('');
+  const [customerSearch, setCustomerSearch] = useState('');
   const [customerDebounced, setCustomerDebounced] = useState('');
+  const customerId = selectedCustomer?.id ?? null;
   const [items, setItems] = useState<ItemDraft[]>([emptyItem()]);
   const [notes, setNotes] = useState('');
   const [expectedDelivery, setExpectedDelivery] = useState('');
@@ -83,14 +86,15 @@ export const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onCl
   const { data: measurements, isLoading: measurementsLoading } = useMeasurements(customerId ?? 0);
 
   useEffect(() => {
-    const timer = setTimeout(() => setCustomerDebounced(customerInput.trim()), 300);
+    const timer = setTimeout(() => setCustomerDebounced(customerSearch.trim()), 300);
     return () => clearTimeout(timer);
-  }, [customerInput]);
+  }, [customerSearch]);
 
   useEffect(() => {
     if (open) {
-      setCustomerId(null);
+      setSelectedCustomer(null);
       setCustomerInput('');
+      setCustomerSearch('');
       setCustomerDebounced('');
       setItems([emptyItem()]);
       setNotes('');
@@ -119,10 +123,21 @@ export const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onCl
   };
 
   const handleCustomerChange = (customer: Customer | null) => {
-    setCustomerId(customer ? customer.id : null);
+    setSelectedCustomer(customer);
     setItems((current) =>
       current.map((item) => ({ ...item, measurement_id: null }))
     );
+  };
+
+  const handleCustomerInputChange = (
+    _event: React.SyntheticEvent,
+    value: string,
+    reason: AutocompleteInputChangeReason
+  ) => {
+    setCustomerInput(value);
+    if (reason === 'input' || reason === 'clear') {
+      setCustomerSearch(value);
+    }
   };
 
   const handleGarmentChange = (key: number, garment: GarmentType) => {
@@ -219,10 +234,10 @@ export const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onCl
               Order Details
             </Typography>
             <Autocomplete
-              value={options.find((customer) => customer.id === customerId) ?? null}
+              value={selectedCustomer}
               onChange={(_event, value) => handleCustomerChange(value)}
               inputValue={customerInput}
-              onInputChange={(_event, value) => setCustomerInput(value)}
+              onInputChange={handleCustomerInputChange}
               options={options}
               getOptionLabel={(customer) => `${customer.full_name} · ${customer.mobile_number}`}
               isOptionEqualToValue={(option, value) => option.id === value.id}
