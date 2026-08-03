@@ -4,7 +4,7 @@ A custom tailoring management system for **Saamu Tailors**, a family tailoring b
 
 The application digitizes the shop's operations: customer records, orders, measurements, tailoring workflow, tailor workload, payments, income, expenses, digital bills, and delivery/collection tracking.
 
-**Current stage:** Phase 7 (Salary Payments, Advances & Payroll Settlement). Business modules beyond payroll settlement are implemented in later phases.
+**Current stage:** Phase 8 (Income, Expenses & Financial Dashboard). Business modules beyond the dashboard are implemented in later phases.
 
 ---
 
@@ -257,6 +257,13 @@ Tokens are never rendered as raw HTML or logged. The access token is short-lived
 - **Concurrency safety**: every settlement mutation runs in `transaction.atomic()` with `select_for_update()` row locks, so concurrent payments/advance applications can never overpay a single entry.
 - Frontend: Advances page (tailor/status/date filters, pagination, STAFF-only Add Advance), Payroll list now shows paid / outstanding / settlement status per period, and Payroll detail gains a settlement panel per tailor (gross/advance/paid/outstanding, payment history, STAFF-only Record Payment / Apply Advance / Settle in Full). OWNER sees all information without mutation controls.
 
+## 8.3 Income, Expenses & Dashboard
+
+- **Income records**: `GET/POST /api/v1/income/`, detail `GET /api/v1/income/{id}/`; filters `date_from`, `date_to`, `category`, `page` (inclusive date boundaries). Categories are controlled: `ORDER_PAYMENT`, `OTHER_INCOME`. Create is STAFF-only and records `recorded_by` server-side; records are never updated or physically deleted.
+- **Expense records**: `GET/POST /api/v1/expenses/`, detail `GET /api/v1/expenses/{id}/`; same filters and rules. Categories: `RENT`, `ELECTRICITY`, `MATERIAL`, `MAINTENANCE`, `SHOP_SUPPLIES`, `TRANSPORT`, `OTHER_EXPENSE`. Both use `Decimal` money with `amount > 0` enforced at the database and serializer level.
+- **Dashboard** `GET /api/v1/dashboard/summary/` (OWNER + STAFF, read-only) with optional `date_from` / `date_to`. It returns a `financial` block (recorded income, recorded expenses, net recorded balance, payroll paid from actual `PayrollPayment` records, salary advances kept as a separate metric, and order revenue clearly distinguished from recorded cash income), an `operational` block (order status counts, garment quantities, tailor workload, active customer/tailor counts) and recent income/expenses. All arithmetic is derived on the fly from authoritative records — finalized payroll, payment and advance history is never rewritten.
+- Frontend: real `Dashboard` page (date-range filter, financial cards, order status, shop overview, tailor workload, recent income/expenses) plus `Income` and `Expenses` pages (date/category filters, pagination, STAFF-only Add dialogs). OWNER sees all information without mutation controls. Navigation entries are added without touching existing modules.
+
 ---
 
 ## 9. Verification Commands
@@ -324,7 +331,8 @@ saamu/
 │   │   ├── tailors/          # tailors, piece rates, work assignments (Phase 5)
 │   │   ├── attendance/       # daily tailor attendance records (Phase 6)
 │   │   ├── payroll/          # payroll periods + per-tailor entries (Phase 6)
-│   │   └── payments/         # salary advances + payroll payments/settlement (Phase 7)
+│   │   ├── payments/         # salary advances + payroll payments/settlement (Phase 7)
+│   │   └── finance/          # income, expenses + dashboard summary (Phase 8)
 │   ├── config/               # Django project settings
 │   ├── logs/  media/  static/
 │   ├── manage.py
@@ -375,6 +383,7 @@ saamu/
 - **Phase 5 — Tailors, Workload & Piece-Rate Salary:** complete
 - **Phase 6 — Attendance & Payroll Foundation:** complete
 - **Phase 7 — Salary Payments, Advances & Payroll Settlement:** complete
-- **Phase 8+ — Business modules (billing, dashboard):** pending
+- **Phase 8 — Income, Expenses & Financial Dashboard:** complete
+- **Phase 9+ — Business modules (billing, reports, exports):** pending
 
 Do not treat this document as a feature guide; business functionality is implemented incrementally in later phases and documented in `docs/`.

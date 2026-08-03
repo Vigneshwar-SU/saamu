@@ -2,9 +2,6 @@ import React from 'react';
 import { Box, Card, CardContent, Typography, Breadcrumbs, Link, Chip, Stack } from '@mui/material';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import ConstructionIcon from '@mui/icons-material/Construction';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
-import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import PaymentIcon from '@mui/icons-material/Payment';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -103,30 +100,6 @@ const GenericPlaceholder: React.FC<PlaceholderProps> = ({ title, description, ic
     </Box>
   );
 };
-
-export const Dashboard: React.FC = () => (
-  <GenericPlaceholder
-    title="Dashboard"
-    description="Overview of tailoring performance metrics, active orders, and daily income."
-    icon={<DashboardIcon fontSize="large" />}
-  />
-);
-
-export const Income: React.FC = () => (
-  <GenericPlaceholder
-    title="Income"
-    description="Record advance payments, completed order balances, and revenue streams."
-    icon={<AccountBalanceWalletIcon fontSize="large" />}
-  />
-);
-
-export const Expenses: React.FC = () => (
-  <GenericPlaceholder
-    title="Expenses"
-    description="Log material purchases, thread & zipper supplies, rent, and overheads."
-    icon={<ReceiptLongIcon fontSize="large" />}
-  />
-);
 
 export const Payments: React.FC = () => (
   <GenericPlaceholder

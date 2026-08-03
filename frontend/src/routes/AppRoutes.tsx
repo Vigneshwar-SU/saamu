@@ -13,14 +13,10 @@ import { AttendancePage } from '../pages/Attendance';
 import { Payroll } from '../pages/Payroll';
 import { PayrollDetail } from '../pages/PayrollDetail';
 import { Advances } from '../pages/Advances';
-import {
-  Dashboard,
-  Income,
-  Expenses,
-  Payments,
-  Reports,
-  Settings,
-} from '../pages/Placeholders';
+import { Dashboard } from '../pages/Dashboard';
+import { Income } from '../pages/Income';
+import { Expenses } from '../pages/Expenses';
+import { Payments, Reports, Settings } from '../pages/Placeholders';
 
 export const AppRoutes: React.FC = () => {
   return (
