@@ -40,6 +40,7 @@ import { useAuth } from '../context/useAuth';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { useChangeOrderStatus, useOrder, useUpdateOrder } from '../hooks/useOrders';
+import { useCreateOrderInvoice, useInvoiceList } from '../hooks/useInvoices';
 import { MEASUREMENT_FIELD_LABELS } from '../types/customers';
 import type { MeasurementFieldName } from '../types/customers';
 import {
@@ -230,11 +231,28 @@ export const OrderDetail: React.FC = () => {
   const updateMutation = useUpdateOrder(orderId);
   const statusMutation = useChangeOrderStatus(orderId);
 
+  const validOrderId = Number.isFinite(orderId) && orderId > 0 ? orderId : 0;
+  const { data: orderInvoicesData } = useInvoiceList({ order: validOrderId }, validOrderId > 0);
+  const createInvoiceMutation = useCreateOrderInvoice();
+
+  const existingInvoice = orderInvoicesData?.results[0];
+
   const [editOpen, setEditOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const nextStatus = order ? NEXT_STATUS[order.status] : undefined;
   const isTerminal = order ? TERMINAL_ORDER_STATUSES.has(order.status) : false;
+
+  const handleCreateInvoice = async () => {
+    if (!order) return;
+    setActionError(null);
+    try {
+      const response = await createInvoiceMutation.mutateAsync({ orderId: order.id, payload: {} });
+      navigate(`/invoices/${response.invoice.id}`);
+    } catch (invoiceError) {
+      setActionError(getApiErrorMessage(invoiceError));
+    }
+  };
 
   const statusChip = (orderStatus: OrderStatus) => {
     const colors = ORDER_STATUS_COLORS[orderStatus];
@@ -356,6 +374,25 @@ export const OrderDetail: React.FC = () => {
               Cancel
             </Button>
           </Stack>
+        )}
+        {isStaff && existingInvoice && (
+          <Button
+            variant="outlined"
+            startIcon={<ReceiptLongIcon />}
+            onClick={() => navigate(`/invoices/${existingInvoice.id}`)}
+          >
+            View Invoice
+          </Button>
+        )}
+        {isStaff && !existingInvoice && (
+          <Button
+            variant="outlined"
+            startIcon={<ReceiptLongIcon />}
+            onClick={handleCreateInvoice}
+            disabled={createInvoiceMutation.isPending}
+          >
+            Create Invoice
+          </Button>
         )}
       </Box>
 

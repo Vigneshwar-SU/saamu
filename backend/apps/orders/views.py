@@ -9,6 +9,8 @@ Status changes are only possible through the dedicated
 ``POST /api/v1/orders/{id}/status/`` action, which validates the lifecycle.
 """
 
+from datetime import date
+
 from django.db import models, transaction
 from django.utils import timezone
 from rest_framework import status as http_status
@@ -26,7 +28,7 @@ from apps.orders.serializers import (
     OrderUpdateSerializer,
 )
 
-ORDER_MUTATION_ACTIONS = {"create", "partial_update", "change_status"}
+ORDER_MUTATION_ACTIONS = {"create", "partial_update", "change_status", "create_invoice"}
 
 
 class OrderViewSet(viewsets.ModelViewSet):
@@ -168,4 +170,34 @@ class OrderViewSet(viewsets.ModelViewSet):
                 ).data,
             },
             status=http_status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["post"], url_path="invoice")
+    def create_invoice(self, request, pk=None):
+        """Create an invoice for this order (STAFF).
+
+        Convenience endpoint that delegates to the billing layer, so it shares
+        the one-invoice-per-order rule, the immutable item snapshots and the
+        server-generated invoice number with ``POST /invoices/``. The billing
+        import is deliberately local to keep the apps decoupled.
+        """
+        from apps.billing.serializers import InvoiceSerializer
+        from apps.billing.services import create_invoice_for_order
+
+        order = self.get_object()
+        invoice = create_invoice_for_order(
+            order=order,
+            invoice_date=request.data.get("invoice_date"),
+            notes=request.data.get("notes", ""),
+            created_by=request.user,
+        )
+        return Response(
+            {
+                "success": True,
+                "message": f"Invoice {invoice.invoice_number} created.",
+                "invoice": InvoiceSerializer(
+                    invoice, context=self.get_serializer_context()
+                ).data,
+            },
+            status=http_status.HTTP_201_CREATED,
         )

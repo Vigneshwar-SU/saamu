@@ -8,6 +8,7 @@ import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
 import SavingsIcon from '@mui/icons-material/Savings';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import ReceiptIcon from '@mui/icons-material/Receipt';
 import PaymentIcon from '@mui/icons-material/Payment';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -67,6 +68,12 @@ export const SIDEBAR_ITEMS: NavItem[] = [
     title: 'Expenses',
     path: '/expenses',
     icon: React.createElement(ReceiptLongIcon),
+  },
+  {
+    id: 'invoices',
+    title: 'Invoices',
+    path: '/invoices',
+    icon: React.createElement(ReceiptIcon),
   },
   {
     id: 'payments',

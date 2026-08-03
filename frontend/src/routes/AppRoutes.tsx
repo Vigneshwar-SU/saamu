@@ -16,6 +16,8 @@ import { Advances } from '../pages/Advances';
 import { Dashboard } from '../pages/Dashboard';
 import { Income } from '../pages/Income';
 import { Expenses } from '../pages/Expenses';
+import { Invoices } from '../pages/Invoices';
+import { InvoiceDetail } from '../pages/InvoiceDetail';
 import { Payments, Reports, Settings } from '../pages/Placeholders';
 
 export const AppRoutes: React.FC = () => {
@@ -41,6 +43,8 @@ export const AppRoutes: React.FC = () => {
           <Route path="/advances" element={<Advances />} />
           <Route path="/income" element={<Income />} />
           <Route path="/expenses" element={<Expenses />} />
+          <Route path="/invoices" element={<Invoices />} />
+          <Route path="/invoices/:id" element={<InvoiceDetail />} />
           <Route path="/payments" element={<Payments />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/settings" element={<Settings />} />

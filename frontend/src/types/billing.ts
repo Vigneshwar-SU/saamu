@@ -1,0 +1,138 @@
+import type { Customer } from './customers';
+
+export const INVOICE_STATUSES = ['UNPAID', 'PARTIALLY_PAID', 'PAID'] as const;
+
+export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
+
+export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
+  UNPAID: 'Unpaid',
+  PARTIALLY_PAID: 'Partially Paid',
+  PAID: 'Paid',
+};
+
+export const INVOICE_STATUS_COLORS: Record<InvoiceStatus, { bg: string; text: string }> = {
+  UNPAID: { bg: '#FEE2E2', text: '#B91C1C' },
+  PARTIALLY_PAID: { bg: '#FEF3C7', text: '#B45309' },
+  PAID: { bg: '#DCFCE7', text: '#15803D' },
+};
+
+export const PAYMENT_METHODS = ['CASH', 'UPI', 'BANK_TRANSFER', 'OTHER'] as const;
+
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  CASH: 'Cash',
+  UPI: 'UPI',
+  BANK_TRANSFER: 'Bank Transfer',
+  OTHER: 'Other',
+};
+
+export interface InvoiceItem {
+  id: number;
+  garment_type: string;
+  garment_code: string;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+}
+
+export interface InvoiceOrder {
+  id: number;
+  order_number: string;
+  order_date: string;
+  status: string;
+  total_amount: number;
+}
+
+export interface Invoice {
+  id: number;
+  invoice_number: string;
+  invoice_date: string;
+  customer: Customer;
+  order: InvoiceOrder;
+  items: InvoiceItem[];
+  subtotal: number;
+  adjustment_amount: number;
+  total_amount: number;
+  amount_paid: number;
+  balance_due: number;
+  status: InvoiceStatus;
+  payment_count: number;
+  notes: string;
+  created_by: number | null;
+  created_by_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomerPayment {
+  id: number;
+  invoice: number;
+  invoice_number: string;
+  amount: number;
+  payment_date: string;
+  payment_method: PaymentMethod;
+  payment_method_display: string;
+  reference: string;
+  notes: string;
+  recorded_by: number | null;
+  recorded_by_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BillingListResult<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
+export interface InvoiceListParams {
+  search?: string;
+  customer?: number | '';
+  order?: number | '';
+  status?: InvoiceStatus | '';
+  date_from?: string;
+  date_to?: string;
+  page?: number;
+}
+
+export interface InvoiceCreatePayload {
+  order: number;
+  invoice_date?: string;
+  notes?: string;
+}
+
+export interface CreateOrderInvoicePayload {
+  invoice_date?: string;
+  notes?: string;
+}
+
+export interface CustomerPaymentPayload {
+  amount: number;
+  payment_date?: string;
+  payment_method: PaymentMethod;
+  reference?: string;
+  notes?: string;
+}
+
+export interface PaymentListParams {
+  payment_method?: PaymentMethod | '';
+  date_from?: string;
+  date_to?: string;
+  page?: number;
+}
+
+export interface RecordPaymentResponse {
+  success: boolean;
+  message: string;
+  payment: CustomerPayment;
+  invoice: Invoice;
+}
+
+export interface CreateOrderInvoiceResponse {
+  success: boolean;
+  message: string;
+  invoice: Invoice;
+}

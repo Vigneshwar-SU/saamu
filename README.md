@@ -4,7 +4,7 @@ A custom tailoring management system for **Saamu Tailors**, a family tailoring b
 
 The application digitizes the shop's operations: customer records, orders, measurements, tailoring workflow, tailor workload, payments, income, expenses, digital bills, and delivery/collection tracking.
 
-**Current stage:** Phase 8 (Income, Expenses & Financial Dashboard). Business modules beyond the dashboard are implemented in later phases.
+**Current stage:** Phase 9 (Customer Billing & Invoice Foundation). Business modules beyond billing are implemented in later phases.
 
 ---
 
@@ -264,6 +264,16 @@ Tokens are never rendered as raw HTML or logged. The access token is short-lived
 - **Dashboard** `GET /api/v1/dashboard/summary/` (OWNER + STAFF, read-only) with optional `date_from` / `date_to`. It returns a `financial` block (recorded income, recorded expenses, net recorded balance, payroll paid from actual `PayrollPayment` records, salary advances kept as a separate metric, and order revenue clearly distinguished from recorded cash income), an `operational` block (order status counts, garment quantities, tailor workload, active customer/tailor counts) and recent income/expenses. All arithmetic is derived on the fly from authoritative records — finalized payroll, payment and advance history is never rewritten.
 - Frontend: real `Dashboard` page (date-range filter, financial cards, order status, shop overview, tailor workload, recent income/expenses) plus `Income` and `Expenses` pages (date/category filters, pagination, STAFF-only Add dialogs). OWNER sees all information without mutation controls. Navigation entries are added without touching existing modules.
 
+## 8.4 Customer Billing & Invoice Foundation
+
+- **Invoices**: `GET/POST /api/v1/invoices/`, detail `GET /api/v1/invoices/{id}/`, plus `POST /api/v1/orders/{id}/invoice/` as a convenience (creates the invoice and returns it). One invoice per order (enforced); each order gets a unique server-generated `invoice_number` of the form `INV-YYYY-NNNN`. Line items are immutable snapshots of the order garments (`garment_type`, `garment_code`, `quantity`, `unit_price`, `line_total`). `subtotal` and `total_amount` are stored; `adjustment_amount` is stored but always `0.00`; `created_by` is always the authenticated user.
+- **Derived, never stored**: `amount_paid` (sum of payments), `balance_due` (total − paid), and `status` (`UNPAID` / `PARTIALLY_PAID` / `PAID`) are recomputed on every read. Invoices are never updated or deleted (no update/delete routes).
+- **Customer payments**: `GET/POST /api/v1/invoices/{id}/payments/` — append-only history and STAFF-only recording (amount > 0, date, method `CASH` / `UPI` / `BANK_TRANSFER` / `OTHER`, reference, notes; `recorded_by` server-side). Payments are never edited or deleted.
+- **Concurrency safety**: `record_customer_payment` runs in `transaction.atomic()` with `select_for_update()` on the invoice row, so concurrent payments can never push the invoice past its balance due.
+- **Filters**: invoices by `search` (invoice/order number, customer name/mobile), `customer`, `order`, derived `status`, and inclusive `date_from` / `date_to`; payments by `payment_method` and inclusive dates.
+- **RBAC**: anonymous → 401; OWNER is view-only (creating an invoice or recording a payment → 403); STAFF creates invoices and records payments.
+- Frontend: new `Invoices` list (search / status / date filters, pagination, STAFF-only Create Invoice) and `InvoiceDetail` (summary, line items, payment history, STAFF-only Record Payment / Settle in Full), a navigation entry, and a non-invasive `View Invoice` / `Create Invoice` button on the order detail page.
+
 ---
 
 ## 9. Verification Commands
@@ -332,7 +342,8 @@ saamu/
 │   │   ├── attendance/       # daily tailor attendance records (Phase 6)
 │   │   ├── payroll/          # payroll periods + per-tailor entries (Phase 6)
 │   │   ├── payments/         # salary advances + payroll payments/settlement (Phase 7)
-│   │   └── finance/          # income, expenses + dashboard summary (Phase 8)
+│   │   ├── finance/          # income, expenses + dashboard summary (Phase 8)
+│   │   └── billing/          # customer invoices + payments (Phase 9)
 │   ├── config/               # Django project settings
 │   ├── logs/  media/  static/
 │   ├── manage.py
@@ -384,6 +395,7 @@ saamu/
 - **Phase 6 — Attendance & Payroll Foundation:** complete
 - **Phase 7 — Salary Payments, Advances & Payroll Settlement:** complete
 - **Phase 8 — Income, Expenses & Financial Dashboard:** complete
-- **Phase 9+ — Business modules (billing, reports, exports):** pending
+- **Phase 9 — Customer Billing & Invoice Foundation:** complete
+- **Phase 10+ — Business modules (reports, exports, reminders):** pending
 
 Do not treat this document as a feature guide; business functionality is implemented incrementally in later phases and documented in `docs/`.

@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "apps.payroll.apps.PayrollConfig",
     "apps.payments.apps.PaymentsConfig",
     "apps.finance.apps.FinanceConfig",
+    "apps.billing.apps.BillingConfig",
 ]
 
 MIDDLEWARE = [
