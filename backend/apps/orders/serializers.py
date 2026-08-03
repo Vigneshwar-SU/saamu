@@ -11,6 +11,7 @@ from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 
+from apps.billing.services import order_payment_summary
 from apps.customers.models import (
     GARMENT_ALLOWED_FIELDS,
     GARMENT_REQUIRED_FIELDS,
@@ -109,6 +110,7 @@ class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     status_history = OrderStatusHistorySerializer(many=True, read_only=True)
     garment_summary = serializers.SerializerMethodField()
+    payment_summary = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -123,6 +125,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "total_amount",
             "collected_at",
             "garment_summary",
+            "payment_summary",
             "items",
             "status_history",
             "created_at",
@@ -140,6 +143,17 @@ class OrderSerializer(serializers.ModelSerializer):
                 }
             )
         return summary
+
+    def get_payment_summary(self, obj):
+        """Authoritative billing totals for this order (detail views only).
+
+        Populated on the order detail endpoint where the invoice exists; the
+        backend stays authoritative for order total / paid / outstanding /
+        status. Returns ``None`` on list responses to keep them light.
+        """
+        if not self.context.get("include_payment_summary"):
+            return None
+        return order_payment_summary(obj)
 
 
 class OrderItemCreateSerializer(serializers.Serializer):

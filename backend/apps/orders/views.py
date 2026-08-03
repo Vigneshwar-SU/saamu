@@ -50,6 +50,11 @@ class OrderViewSet(viewsets.ModelViewSet):
             return OrderUpdateSerializer
         return OrderSerializer
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["include_payment_summary"] = self.action == "retrieve"
+        return context
+
     def get_queryset(self):
         qs = (
             Order.objects.select_related("customer")

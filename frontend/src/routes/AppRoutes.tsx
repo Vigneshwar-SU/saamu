@@ -19,6 +19,7 @@ import { Income } from '../pages/Income';
 import { Expenses } from '../pages/Expenses';
 import { Invoices } from '../pages/Invoices';
 import { InvoiceDetail } from '../pages/InvoiceDetail';
+import { InvoiceBill } from '../pages/InvoiceBill';
 import { Payments, Reports, Settings } from '../pages/Placeholders';
 
 export const AppRoutes: React.FC = () => {
@@ -47,6 +48,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="/expenses" element={<Expenses />} />
           <Route path="/invoices" element={<Invoices />} />
           <Route path="/invoices/:id" element={<InvoiceDetail />} />
+          <Route path="/invoices/:id/bill" element={<InvoiceBill />} />
           <Route path="/payments" element={<Payments />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/settings" element={<Settings />} />

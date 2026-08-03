@@ -4,7 +4,7 @@ A custom tailoring management system for **Saamu Tailors**, a family tailoring b
 
 The application digitizes the shop's operations: customer records, orders, measurements, tailoring workflow, tailor workload, payments, income, expenses, digital bills, and delivery/collection tracking.
 
-**Current stage:** Phase 10 (Tailor Salary & Payroll). Business modules beyond payroll are implemented in later phases.
+**Current stage:** Phase 11 (Payments & Billing). Business modules beyond billing are implemented in later phases.
 
 ---
 
@@ -343,7 +343,7 @@ saamu/
 │   │   ├── payroll/          # payroll periods, per-tailor entries + salary configurations (Phase 6/10)
 │   │   ├── payments/         # salary advances + payroll payments/settlement (Phase 7)
 │   │   ├── finance/          # income, expenses + dashboard summary (Phase 8)
-│   │   └── billing/          # customer invoices + payments (Phase 9)
+│   │   └── billing/          # customer invoices, typed payments + digital bills (Phase 9/11)
 │   ├── config/               # Django project settings
 │   ├── logs/  media/  static/
 │   ├── manage.py
@@ -397,6 +397,7 @@ saamu/
 - **Phase 8 — Income, Expenses & Financial Dashboard:** complete
 - **Phase 9 — Customer Billing & Invoice Foundation:** complete
 - **Phase 10 — Tailor Salary & Payroll:** complete
-- **Phase 11+ — Business modules (reports, exports, reminders):** pending
+- **Phase 11 — Payments & Billing:** complete
+- **Phase 12+ — Business modules (reports, exports, reminders):** pending
 
 Do not treat this document as a feature guide; business functionality is implemented incrementally in later phases and documented in `docs/`.

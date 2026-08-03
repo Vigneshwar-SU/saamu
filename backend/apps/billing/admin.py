@@ -1,6 +1,17 @@
 from django.contrib import admin
 
-from .models import CustomerPayment, Invoice, InvoiceItem
+from .models import CustomerPayment, Invoice, InvoiceItem, ShopDetails
+
+
+@admin.register(ShopDetails)
+class ShopDetailsAdmin(admin.ModelAdmin):
+    list_display = ("name", "tagline", "phone", "established_year", "updated_at")
+    readonly_fields = ("id", "created_at", "updated_at")
+
+    def has_add_permission(self, request):
+        # Enforce the singleton from the admin: creation happens via
+        # ``ShopDetails.shop_details()`` on first access.
+        return not ShopDetails.objects.exists()
 
 
 @admin.register(Invoice)
@@ -39,6 +50,7 @@ class CustomerPaymentAdmin(admin.ModelAdmin):
     list_display = (
         "id",
         "invoice",
+        "payment_type",
         "amount",
         "payment_date",
         "payment_method",
@@ -46,6 +58,6 @@ class CustomerPaymentAdmin(admin.ModelAdmin):
         "recorded_by",
         "created_at",
     )
-    list_filter = ("payment_method", "payment_date")
+    list_filter = ("payment_type", "payment_method", "payment_date")
     ordering = ("-payment_date",)
     readonly_fields = ("recorded_by", "created_at", "updated_at")

@@ -23,9 +23,20 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import dayjs from 'dayjs';
 import { getApiErrorMessage } from '../utils/apiErrors';
-import { formatCurrency } from '../utils/formatters';
-import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from '../types/billing';
-import type { CustomerPaymentPayload, Invoice, PaymentMethod } from '../types/billing';
+import { formatCurrency, formatDate } from '../utils/formatters';
+import {
+  PAYMENT_METHODS,
+  PAYMENT_METHOD_LABELS,
+  PAYMENT_TYPES,
+  PAYMENT_TYPE_LABELS,
+} from '../types/billing';
+import type {
+  CustomerPayment,
+  CustomerPaymentPayload,
+  Invoice,
+  PaymentMethod,
+  PaymentType,
+} from '../types/billing';
 
 interface RecordCustomerPaymentDialogProps {
   open: boolean;
@@ -33,12 +44,16 @@ interface RecordCustomerPaymentDialogProps {
   submit: (payload: CustomerPaymentPayload) => Promise<unknown>;
   invoice: Invoice;
   settleInFull?: boolean;
+  refundMode?: boolean;
+  payments?: CustomerPayment[];
 }
 
 type PaymentFormData = {
   amount: number;
   payment_date: string;
   payment_method: PaymentMethod;
+  payment_type: PaymentType;
+  refunded_payment: number | '';
   reference: string;
   notes: string;
 };
@@ -49,9 +64,12 @@ export const RecordCustomerPaymentDialog: React.FC<RecordCustomerPaymentDialogPr
   submit,
   invoice,
   settleInFull = false,
+  refundMode = false,
+  payments = [],
 }) => {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const balanceDue = invoice.balance_due;
+  const amountPaid = invoice.amount_paid;
 
   const paymentSchema = useMemo(
     () =>
@@ -62,11 +80,42 @@ export const RecordCustomerPaymentDialog: React.FC<RecordCustomerPaymentDialogPr
             .positive('Amount must be greater than zero'),
           payment_date: z.string().min(1, 'Payment date is required'),
           payment_method: z.enum(PAYMENT_METHODS, { required_error: 'Select a method' }),
+          payment_type: z.enum(PAYMENT_TYPES, { required_error: 'Select a type' }),
+          refunded_payment: z.union([z.number(), z.literal('')]),
           reference: z.string().max(100, 'Reference must be 100 characters or fewer'),
           notes: z.string().max(2000, 'Notes must be 2000 characters or fewer'),
         })
         .superRefine((data, ctx) => {
-          if (data.amount > balanceDue) {
+          const amount = Math.round(data.amount * 100) / 100;
+          const balance = Math.round(balanceDue * 100) / 100;
+          const paid = Math.round(amountPaid * 100) / 100;
+
+          if (refundMode) {
+            if (amount > paid) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['amount'],
+                message: `A refund cannot exceed the total paid of ${formatCurrency(amountPaid)}`,
+              });
+            }
+            return;
+          }
+
+          if (data.payment_type === 'FINAL') {
+            if (amount !== balance) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['amount'],
+                message: `A FINAL payment must equal the balance due of ${formatCurrency(balanceDue)}`,
+              });
+            }
+          } else if (data.payment_type === 'PARTIAL' && amount >= balance) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['amount'],
+              message: `A PARTIAL payment must be less than the balance due of ${formatCurrency(balanceDue)}`,
+            });
+          } else if (amount > balance) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
               path: ['amount'],
@@ -74,13 +123,14 @@ export const RecordCustomerPaymentDialog: React.FC<RecordCustomerPaymentDialogPr
             });
           }
         }),
-    [balanceDue]
+    [balanceDue, amountPaid, refundMode]
   );
 
   const {
     control,
     handleSubmit,
     reset,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<PaymentFormData>({
     resolver: zodResolver(paymentSchema),
@@ -88,10 +138,14 @@ export const RecordCustomerPaymentDialog: React.FC<RecordCustomerPaymentDialogPr
       amount: 0,
       payment_date: dayjs().format('YYYY-MM-DD'),
       payment_method: 'CASH',
+      payment_type: 'PARTIAL',
+      refunded_payment: '',
       reference: '',
       notes: '',
     },
   });
+
+  const selectedType = watch('payment_type');
 
   useEffect(() => {
     if (open) {
@@ -99,12 +153,16 @@ export const RecordCustomerPaymentDialog: React.FC<RecordCustomerPaymentDialogPr
         amount: settleInFull ? balanceDue : 0,
         payment_date: dayjs().format('YYYY-MM-DD'),
         payment_method: 'CASH',
+        payment_type: refundMode ? 'REFUND' : settleInFull ? 'FINAL' : 'PARTIAL',
+        refunded_payment: '',
         reference: '',
         notes: '',
       });
       setSubmitError(null);
     }
-  }, [open, settleInFull, balanceDue, reset]);
+  }, [open, settleInFull, refundMode, balanceDue, reset]);
+
+  const refundablePayments = payments.filter((payment) => payment.payment_type !== 'REFUND');
 
   const onSubmit = async (data: PaymentFormData) => {
     setSubmitError(null);
@@ -113,6 +171,8 @@ export const RecordCustomerPaymentDialog: React.FC<RecordCustomerPaymentDialogPr
         amount: data.amount,
         payment_date: data.payment_date,
         payment_method: data.payment_method,
+        payment_type: data.payment_type,
+        refunded_payment: data.refunded_payment === '' ? null : data.refunded_payment,
         reference: data.reference,
         notes: data.notes,
       });
@@ -125,7 +185,7 @@ export const RecordCustomerPaymentDialog: React.FC<RecordCustomerPaymentDialogPr
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle sx={{ fontWeight: 700 }}>
-        {settleInFull ? 'Settle in Full' : 'Record Payment'}
+        {refundMode ? 'Record Refund' : settleInFull ? 'Settle in Full' : 'Record Payment'}
       </DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2.5} sx={{ mt: 0.5 }}>
@@ -137,12 +197,37 @@ export const RecordCustomerPaymentDialog: React.FC<RecordCustomerPaymentDialogPr
               <InvoiceRow label="Invoice Total" value={formatCurrency(invoice.total_amount)} />
               <InvoiceRow label="Amount Paid" value={formatCurrency(invoice.amount_paid)} />
               <InvoiceRow
-                label="Balance Due"
-                value={formatCurrency(balanceDue)}
+                label={refundMode ? 'Total Paid (Refundable)' : 'Balance Due'}
+                value={formatCurrency(refundMode ? amountPaid : balanceDue)}
                 emphasis
               />
             </Stack>
           </Paper>
+
+          <Controller
+            name="payment_type"
+            control={control}
+            render={({ field }) => (
+              <FormControl fullWidth size="small" error={!!errors.payment_type} disabled={refundMode}>
+                <InputLabel>Payment Type *</InputLabel>
+                <Select
+                  {...field}
+                  label="Payment Type *"
+                  value={refundMode ? 'REFUND' : field.value}
+                  onChange={(event) => field.onChange(event.target.value as PaymentType)}
+                >
+                  {PAYMENT_TYPES.map((type) => (
+                    <MenuItem key={type} value={type}>
+                      {PAYMENT_TYPE_LABELS[type]}
+                    </MenuItem>
+                  ))}
+                </Select>
+                {errors.payment_type && (
+                  <FormHelperText>{errors.payment_type.message}</FormHelperText>
+                )}
+              </FormControl>
+            )}
+          />
 
           <Controller
             name="amount"
@@ -150,7 +235,7 @@ export const RecordCustomerPaymentDialog: React.FC<RecordCustomerPaymentDialogPr
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Amount (INR) *"
+                label={refundMode ? 'Refund Amount (INR) *' : 'Amount (INR) *'}
                 type="number"
                 inputProps={{ min: 0, step: '0.01' }}
                 fullWidth
@@ -207,6 +292,42 @@ export const RecordCustomerPaymentDialog: React.FC<RecordCustomerPaymentDialogPr
             )}
           />
 
+          {refundMode && (
+            <Controller
+              name="refunded_payment"
+              control={control}
+              render={({ field }) => (
+                <FormControl fullWidth size="small" error={!!errors.refunded_payment}>
+                  <InputLabel>Original Payment (optional)</InputLabel>
+                  <Select
+                    {...field}
+                    label="Original Payment (optional)"
+                    value={field.value}
+                    onChange={(event) =>
+                      field.onChange(
+                        event.target.value === ''
+                          ? ''
+                          : Number(event.target.value)
+                      )
+                    }
+                  >
+                    <MenuItem value="">— None —</MenuItem>
+                    {refundablePayments.map((payment) => (
+                      <MenuItem key={payment.id} value={payment.id}>
+                        {formatDate(payment.payment_date)} •{' '}
+                        {PAYMENT_TYPE_LABELS[payment.payment_type]} •{' '}
+                        {formatCurrency(payment.amount)}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <FormHelperText>
+                    {errors.refunded_payment?.message ?? 'Link the refund to the original payment.'}
+                  </FormHelperText>
+                </FormControl>
+              )}
+            />
+          )}
+
           <Controller
             name="reference"
             control={control}
@@ -240,6 +361,13 @@ export const RecordCustomerPaymentDialog: React.FC<RecordCustomerPaymentDialogPr
               />
             )}
           />
+
+          {selectedType === 'REFUND' && !refundMode && (
+            <Alert severity="info">
+              Refunds reduce the total paid on this invoice. Use the Record Refund button on the
+              invoice page.
+            </Alert>
+          )}
         </Stack>
       </DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
@@ -251,9 +379,9 @@ export const RecordCustomerPaymentDialog: React.FC<RecordCustomerPaymentDialogPr
           variant="contained"
           disabled={isSubmitting}
           startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
-          sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
+          sx={{ backgroundColor: refundMode ? '#B91C1C' : '#1E3A8A', '&:hover': { backgroundColor: refundMode ? '#DC2626' : '#1D4ED8' } }}
         >
-          {settleInFull ? 'Settle in Full' : 'Record Payment'}
+          {refundMode ? 'Record Refund' : settleInFull ? 'Settle in Full' : 'Record Payment'}
         </Button>
       </DialogActions>
     </Dialog>

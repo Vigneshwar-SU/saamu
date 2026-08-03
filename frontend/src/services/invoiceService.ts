@@ -1,5 +1,6 @@
 import { apiClient } from './apiClient';
 import type {
+  BillResponse,
   BillingListResult,
   CreateOrderInvoicePayload,
   CreateOrderInvoiceResponse,
@@ -70,6 +71,11 @@ export const invoiceService = {
       `/invoices/${invoiceId}/payments/`,
       payload
     );
+    return response.data;
+  },
+
+  async getBill(invoiceId: number): Promise<BillResponse> {
+    const response = await apiClient.get<BillResponse>(`/invoices/${invoiceId}/bill/`);
     return response.data;
   },
 };

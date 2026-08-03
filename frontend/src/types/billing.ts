@@ -27,6 +27,17 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   OTHER: 'Other',
 };
 
+export const PAYMENT_TYPES = ['ADVANCE', 'PARTIAL', 'FINAL', 'REFUND'] as const;
+
+export type PaymentType = (typeof PAYMENT_TYPES)[number];
+
+export const PAYMENT_TYPE_LABELS: Record<PaymentType, string> = {
+  ADVANCE: 'Advance',
+  PARTIAL: 'Partial',
+  FINAL: 'Final',
+  REFUND: 'Refund',
+};
+
 export interface InvoiceItem {
   id: number;
   garment_type: string;
@@ -54,6 +65,8 @@ export interface Invoice {
   subtotal: number;
   adjustment_amount: number;
   total_amount: number;
+  gross_paid: number;
+  refunded_amount: number;
   amount_paid: number;
   balance_due: number;
   status: InvoiceStatus;
@@ -69,6 +82,9 @@ export interface CustomerPayment {
   id: number;
   invoice: number;
   invoice_number: string;
+  payment_type: PaymentType;
+  payment_type_display: string;
+  refunded_payment: number | null;
   amount: number;
   payment_date: string;
   payment_method: PaymentMethod;
@@ -113,6 +129,8 @@ export interface CustomerPaymentPayload {
   amount: number;
   payment_date?: string;
   payment_method: PaymentMethod;
+  payment_type?: PaymentType;
+  refunded_payment?: number | null;
   reference?: string;
   notes?: string;
 }
@@ -135,4 +153,87 @@ export interface CreateOrderInvoiceResponse {
   success: boolean;
   message: string;
   invoice: Invoice;
+}
+
+export interface BillShop {
+  name: string;
+  tagline: string;
+  address: string;
+  phone: string;
+  established_year: number;
+}
+
+export interface BillMetadata {
+  invoice_number: string;
+  invoice_date: string;
+  generated_at: string;
+}
+
+export interface BillCustomer {
+  full_name: string;
+  mobile_number: string;
+}
+
+export interface BillOrder {
+  order_number: string;
+  order_date: string;
+  expected_delivery_date: string | null;
+  status: string;
+}
+
+export interface BillGarment {
+  garment_type: string;
+  garment_code: string;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+}
+
+export interface BillPayment {
+  id: number;
+  payment_type: PaymentType;
+  payment_type_display: string;
+  amount: number;
+  payment_date: string;
+  payment_method: PaymentMethod;
+  payment_method_display: string;
+  reference: string;
+  notes: string;
+  recorded_by: string | null;
+}
+
+export interface BillTotals {
+  subtotal: number;
+  adjustment_amount: number;
+  total_amount: number;
+  gross_paid: number;
+  refunded_amount: number;
+  amount_paid: number;
+  balance_due: number;
+  status: InvoiceStatus;
+}
+
+export interface Bill {
+  shop: BillShop;
+  bill_metadata: BillMetadata;
+  customer: BillCustomer;
+  order: BillOrder;
+  garments: BillGarment[];
+  payment_history: BillPayment[];
+  totals: BillTotals;
+}
+
+export interface BillResponse {
+  success: boolean;
+  bill: Bill;
+}
+
+export interface OrderPaymentSummary {
+  order_total: number;
+  total_paid: number;
+  outstanding_balance: number;
+  payment_status: InvoiceStatus;
+  payment_count: number;
+  refunded_amount: number;
+  has_invoice: boolean;
 }

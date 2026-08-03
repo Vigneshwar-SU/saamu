@@ -1,4 +1,5 @@
 import type { Customer, GarmentType, MeasurementFieldName } from './customers';
+import type { OrderPaymentSummary } from './billing';
 
 export const ORDER_STATUSES = [
   'NEW',
@@ -80,6 +81,7 @@ export interface Order {
   total_amount: string;
   collected_at: string | null;
   garment_summary: Array<{ garment_type: GarmentType; quantity: number }>;
+  payment_summary: OrderPaymentSummary | null;
   items: OrderItem[];
   status_history: OrderStatusHistoryEntry[];
   created_at: string;

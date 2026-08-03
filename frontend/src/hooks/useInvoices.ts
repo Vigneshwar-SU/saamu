@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { invoiceService } from '../services/invoiceService';
 import type {
+  BillResponse,
   BillingListResult,
   CreateOrderInvoicePayload,
   CustomerPayment,
@@ -13,6 +14,7 @@ import type {
 
 const INVOICES_KEY = 'invoices';
 const INVOICE_PAYMENTS_KEY = 'invoice-payments';
+const INVOICE_BILL_KEY = 'invoice-bill';
 
 export const useInvoiceList = (params: InvoiceListParams, enabled = true) => {
   return useQuery<BillingListResult<Invoice>>({
@@ -76,6 +78,15 @@ export const useCreatePayment = (invoiceId: number) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [INVOICES_KEY] });
       queryClient.invalidateQueries({ queryKey: [INVOICE_PAYMENTS_KEY, invoiceId] });
+      queryClient.invalidateQueries({ queryKey: [INVOICE_BILL_KEY, invoiceId] });
     },
+  });
+};
+
+export const useInvoiceBill = (invoiceId: number) => {
+  return useQuery<BillResponse>({
+    queryKey: [INVOICE_BILL_KEY, invoiceId],
+    queryFn: () => invoiceService.getBill(invoiceId),
+    enabled: invoiceId > 0,
   });
 };

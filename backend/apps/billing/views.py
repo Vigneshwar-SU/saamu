@@ -1,19 +1,23 @@
-"""Invoice and customer payment API views for Phase 9.
+"""Invoice, customer payment and bill API views for Phase 9 + Phase 11.
 
 Permission model (backend authoritative):
-- Reads (list/detail, payment history) -> OWNER or STAFF.
+- Reads (list/detail, payment history, bill) -> OWNER or STAFF.
 - Mutations (create invoice, record payment) -> STAFF only.
 
 Invoices are never updated or deleted (no update/delete routes) and customer
 payments are append-only. Payment recording runs through
 ``apps.billing.services.record_customer_payment``, which locks the invoice row
-so concurrent requests cannot overpay. All list filtering honours inclusive
-date boundaries and validates its inputs.
+so concurrent requests cannot overpay; payment types (ADVANCE / PARTIAL /
+FINAL / REFUND) are validated against the server-derived balance under that
+lock. The ``bill`` endpoint assembles a digital bill entirely from database
+data (``apps.billing.services.build_bill_data``). All list filtering honours
+inclusive date boundaries and validates its inputs.
 """
 
 from datetime import date
 
-from django.db.models import F, OuterRef, Q, Subquery, Sum
+from django.db.models import Case, DecimalField, F, OuterRef, Q, Sum, Value, When
+from django.db.models.functions import Coalesce
 from rest_framework import status as http_status
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -29,7 +33,7 @@ from .serializers import (
     InvoiceCreateSerializer,
     InvoiceSerializer,
 )
-from .services import record_customer_payment
+from .services import build_bill_data, record_customer_payment
 
 
 def _parse_date(value, field_name):
@@ -104,15 +108,33 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         if status_filter:
             if status_filter not in Invoice.Status.values:
                 raise ValidationError({"status": "Invalid invoice status filter."})
-            paid_subquery = (
+            net_paid = (
                 CustomerPayment.objects.filter(invoice=OuterRef("pk"))
                 .values("invoice")
-                .annotate(total=Sum("amount"))
-                .values("total")
+                .annotate(
+                    net=Sum(
+                        Case(
+                            When(
+                                payment_type=CustomerPayment.PaymentType.REFUND,
+                                then=-F("amount"),
+                            ),
+                            default=F("amount"),
+                            output_field=DecimalField(max_digits=12, decimal_places=2),
+                        )
+                    )
+                )
+                .values("net")
             )
-            qs = qs.annotate(_amount_paid=paid_subquery)
+            qs = qs.annotate(
+                _amount_paid=Coalesce(
+                    net_paid,
+                    Value(
+                        0, output_field=DecimalField(max_digits=12, decimal_places=2)
+                    ),
+                )
+            )
             if status_filter == Invoice.Status.UNPAID:
-                qs = qs.filter(Q(_amount_paid__isnull=True) | Q(_amount_paid=0))
+                qs = qs.filter(_amount_paid__lte=0)
             elif status_filter == Invoice.Status.PAID:
                 qs = qs.filter(_amount_paid__gte=F("total_amount"))
             else:
@@ -169,6 +191,8 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             amount=data["amount"],
             payment_date=data.get("payment_date"),
             payment_method=data["payment_method"],
+            payment_type=data.get("payment_type"),
+            refunded_payment=data.get("refunded_payment"),
             reference=data.get("reference", ""),
             notes=data.get("notes", ""),
             recorded_by=request.user,
@@ -189,6 +213,17 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             },
             status=http_status.HTTP_201_CREATED,
         )
+
+    @action(detail=True, methods=["get"], url_path="bill")
+    def bill(self, request, pk=None):
+        """Digital bill for printing/sharing (OWNER or STAFF).
+
+        Every value is assembled server-side from the database - shop profile,
+        customer, order, garment snapshots, payment history and totals - so the
+        rendered bill can never show mock or stale data.
+        """
+        invoice = self.get_object()
+        return Response({"success": True, "bill": build_bill_data(invoice)})
 
     def _apply_payment_filters(self, qs):
         date_from, date_to = _parse_range(self.request)

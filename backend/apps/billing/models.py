@@ -1,17 +1,23 @@
 """Customer billing and invoice models for Saamu Tailors.
 
-Phase 9 introduces a separate operational billing layer: invoices generated
-from existing orders with immutable line-item snapshots, and append-only
-customer payments. Billing is deliberately independent of payroll
-(``apps.payments``) and the Phase 8 income/expense ledger (``apps.finance``):
-recording a customer payment never touches payroll, salary history or the
-ledger.
+Phase 9 introduced the operational billing layer: invoices generated from
+existing orders with immutable line-item snapshots, and append-only customer
+payments. Phase 11 extends customer payments with explicit payment types
+(``ADVANCE`` / ``PARTIAL`` / ``FINAL`` / ``REFUND``) so every transaction is
+auditable and refunds are recorded as refunds instead of silently mutating
+history. A database-backed ``ShopDetails`` singleton supplies the shop block on
+the digital bill.
+
+Billing is deliberately independent of payroll (``apps.payments``) and the
+Phase 8 income/expense ledger (``apps.finance``): recording a customer payment
+never touches payroll, salary history or the ledger.
 
 ``Invoice`` keeps a one-to-one link to an ``Order`` (one invoice per order).
 ``InvoiceItem`` rows snapshot the order's billing information at invoice time
 so later order edits never rewrite historical invoice presentation.
 ``CustomerPayment`` rows are append-only financial history with no update or
-delete path.
+delete path; a REFUND is a normal row whose ``payment_type`` marks it and whose
+``refunded_payment`` optionally points back at the transaction it reverses.
 
 Invoice status (UNPAID / PARTIALLY_PAID / PAID) is always DERIVED from the
 payment totals at request time; it is never stored, so it cannot go stale.
@@ -28,6 +34,39 @@ from apps.orders.models import Order
 
 MAX_PRICE_DIGITS = 12
 MAX_PRICE_DECIMALS = 2
+
+
+class ShopDetails(TimeStampedModel):
+    """Singleton shop profile used on the digital bill.
+
+    The bill must render real database-backed shop information (never mock
+    data). This model holds the shop identity established by the project:
+    name (Saamu Tailors), the year the family business began (1954), plus
+    optional address / phone / tagline editable from the admin. ``shop_details``
+    returns the single row, creating it with the established defaults on first
+    access.
+    """
+
+    name = models.CharField(max_length=100, default="Saamu Tailors")
+    tagline = models.CharField(max_length=200, blank=True, default="")
+    address = models.TextField(blank=True, default="")
+    phone = models.CharField(max_length=30, blank=True, default="")
+    established_year = models.PositiveIntegerField(default=1954)
+
+    class Meta:
+        verbose_name = "Shop Details"
+        verbose_name_plural = "Shop Details"
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def shop_details(cls):
+        """Return the singleton row, creating it with defaults if missing."""
+        instance = cls.objects.first()
+        if instance is None:
+            instance = cls.objects.create()
+        return instance
 
 
 class Invoice(TimeStampedModel):
@@ -177,6 +216,14 @@ class CustomerPayment(TimeStampedModel):
     Payments are financial history: they are never updated or deleted and are
     only ever created through the concurrency-safe service that locks the
     invoice row, so an invoice can never be overpaid.
+
+    ``payment_type`` classifies each transaction: ``ADVANCE`` (a payment made
+    toward the order before the balance is cleared), ``PARTIAL`` (pays down but
+    does not clear the balance), ``FINAL`` (clears the outstanding balance
+    exactly) and ``REFUND`` (money returned to the customer, which reduces the
+    total paid). ``refunded_payment`` optionally links a REFUND back to the
+    original transaction it reverses, keeping refunds auditable without ever
+    altering the original row.
     """
 
     class Method(models.TextChoices):
@@ -185,8 +232,31 @@ class CustomerPayment(TimeStampedModel):
         BANK_TRANSFER = "BANK_TRANSFER", "Bank Transfer"
         OTHER = "OTHER", "Other"
 
+    class PaymentType(models.TextChoices):
+        ADVANCE = "ADVANCE", "Advance"
+        PARTIAL = "PARTIAL", "Partial"
+        FINAL = "FINAL", "Final"
+        REFUND = "REFUND", "Refund"
+
     invoice = models.ForeignKey(
         Invoice, on_delete=models.CASCADE, related_name="payments"
+    )
+    payment_type = models.CharField(
+        max_length=12,
+        choices=PaymentType.choices,
+        default=PaymentType.PARTIAL,
+        help_text="ADVANCE / PARTIAL / FINAL payment or a REFUND to the customer.",
+    )
+    refunded_payment = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="refunds",
+        help_text=(
+            "For REFUND transactions, the original payment being reversed "
+            "(audit trail). The original row is never modified."
+        ),
     )
     amount = models.DecimalField(
         max_digits=MAX_PRICE_DIGITS, decimal_places=MAX_PRICE_DECIMALS
@@ -217,7 +287,8 @@ class CustomerPayment(TimeStampedModel):
         indexes = [
             models.Index(fields=["invoice", "payment_date"]),
             models.Index(fields=["payment_method"]),
+            models.Index(fields=["payment_type"]),
         ]
 
     def __str__(self):
-        return f"{self.invoice.invoice_number} - {self.amount} ({self.get_payment_method_display()})"
+        return f"{self.invoice.invoice_number} - {self.amount} ({self.get_payment_type_display()})"

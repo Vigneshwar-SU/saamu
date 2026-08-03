@@ -58,6 +58,8 @@ class InvoiceSerializer(serializers.ModelSerializer):
     order = InvoiceOrderSerializer(read_only=True)
     items = InvoiceItemSerializer(many=True, read_only=True)
     amount_paid = serializers.SerializerMethodField()
+    gross_paid = serializers.SerializerMethodField()
+    refunded_amount = serializers.SerializerMethodField()
     balance_due = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
     payment_count = serializers.SerializerMethodField()
@@ -76,6 +78,8 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "subtotal",
             "adjustment_amount",
             "total_amount",
+            "gross_paid",
+            "refunded_amount",
             "amount_paid",
             "balance_due",
             "status",
@@ -87,6 +91,12 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "updated_at",
         )
         read_only_fields = fields
+
+    def get_gross_paid(self, obj):
+        return invoice_summary(obj)["gross_paid"]
+
+    def get_refunded_amount(self, obj):
+        return invoice_summary(obj)["refunded_amount"]
 
     def get_amount_paid(self, obj):
         return invoice_summary(obj)["amount_paid"]
@@ -153,6 +163,10 @@ class CustomerPaymentSerializer(serializers.ModelSerializer):
     payment_method_display = serializers.CharField(
         source="get_payment_method_display", read_only=True
     )
+    payment_type_display = serializers.CharField(
+        source="get_payment_type_display", read_only=True
+    )
+    refunded_payment = serializers.PrimaryKeyRelatedField(read_only=True)
     recorded_by = serializers.PrimaryKeyRelatedField(read_only=True)
     recorded_by_name = serializers.SerializerMethodField()
 
@@ -162,6 +176,9 @@ class CustomerPaymentSerializer(serializers.ModelSerializer):
             "id",
             "invoice",
             "invoice_number",
+            "payment_type",
+            "payment_type_display",
+            "refunded_payment",
             "amount",
             "payment_date",
             "payment_method",
@@ -182,9 +199,12 @@ class CustomerPaymentSerializer(serializers.ModelSerializer):
 class CustomerPaymentCreateSerializer(serializers.Serializer):
     """Validate a customer payment before the concurrency-safe service runs.
 
-    The invoice comes from the URL (never the client) and ``recorded_by`` comes
-    from the authenticated user. The service re-validates the amount against the
-    locked invoice balance, so the balance check is authoritative.
+    The invoice comes from the URL (never the client), ``recorded_by`` comes
+    from the authenticated user, and ``payment_type`` (ADVANCE / PARTIAL /
+    FINAL / REFUND) is optional - when omitted the service derives it from the
+    amount. ``refunded_payment`` may reference the original transaction a REFUND
+    reverses; cross-field validation happens in the service under the row lock,
+    so the balance checks are authoritative.
     """
 
     amount = serializers.DecimalField(
@@ -192,6 +212,12 @@ class CustomerPaymentCreateSerializer(serializers.Serializer):
     )
     payment_date = serializers.DateField(required=False)
     payment_method = serializers.ChoiceField(choices=CustomerPayment.Method.choices)
+    payment_type = serializers.ChoiceField(
+        choices=CustomerPayment.PaymentType.choices, required=False
+    )
+    refunded_payment = serializers.PrimaryKeyRelatedField(
+        queryset=CustomerPayment.objects.all(), required=False, allow_null=True
+    )
     reference = serializers.CharField(required=False, allow_blank=True, max_length=100)
     notes = serializers.CharField(required=False, allow_blank=True, max_length=2000)
 
@@ -200,4 +226,13 @@ class CustomerPaymentCreateSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "Payment amount must be greater than zero."
             )
+        return value
+
+    def validate_refunded_payment(self, value):
+        invoice = self.context.get("invoice")
+        if invoice is not None and value is not None:
+            if value.invoice_id != invoice.id:
+                raise serializers.ValidationError(
+                    "The refunded payment does not belong to this invoice."
+                )
         return value

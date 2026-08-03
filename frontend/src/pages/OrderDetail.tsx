@@ -32,6 +32,7 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import StraightenIcon from '@mui/icons-material/Straighten';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import PaymentsIcon from '@mui/icons-material/Payments';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HistoryIcon from '@mui/icons-material/History';
@@ -50,6 +51,7 @@ import {
   TERMINAL_ORDER_STATUSES,
 } from '../types/orders';
 import type { Order, OrderItem, OrderStatus, OrderUpdatePayload } from '../types/orders';
+import { INVOICE_STATUS_COLORS, INVOICE_STATUS_LABELS } from '../types/billing';
 
 const InfoCell: React.FC<{
   icon: React.ReactNode;
@@ -441,6 +443,72 @@ export const OrderDetail: React.FC = () => {
             </Typography>
           </Box>
         )}
+      </Paper>
+
+      <Paper sx={{ p: 3, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            Billing
+          </Typography>
+          {order.payment_summary?.has_invoice && (
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<ReceiptLongIcon />}
+              onClick={() => navigate(`/invoices/${existingInvoice?.id ?? ''}`)}
+              disabled={!existingInvoice}
+            >
+              View Invoice
+            </Button>
+          )}
+        </Box>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+            gap: 3,
+          }}
+        >
+          <InfoCell
+            icon={<ReceiptLongIcon sx={{ fontSize: 18 }} />}
+            label="Order Total"
+            value={formatCurrency(Number(order.total_amount))}
+          />
+          <InfoCell
+            icon={<PaymentsIcon sx={{ fontSize: 18 }} />}
+            label="Total Paid"
+            value={formatCurrency(Number(order.payment_summary?.total_paid ?? 0))}
+          />
+          <InfoCell
+            icon={<ReceiptLongIcon sx={{ fontSize: 18 }} />}
+            label="Outstanding Balance"
+            value={formatCurrency(Number(order.payment_summary?.outstanding_balance ?? order.total_amount))}
+          />
+          <Box>
+            <Typography
+              variant="caption"
+              sx={{ color: '#94A3B8', textTransform: 'uppercase', fontSize: '0.68rem', fontWeight: 600 }}
+            >
+              Payment Status
+            </Typography>
+            {order.payment_summary?.has_invoice ? (
+              <Chip
+                size="small"
+                label={INVOICE_STATUS_LABELS[order.payment_summary.payment_status]}
+                sx={{
+                  mt: 0.5,
+                  fontWeight: 600,
+                  backgroundColor: INVOICE_STATUS_COLORS[order.payment_summary.payment_status].bg,
+                  color: INVOICE_STATUS_COLORS[order.payment_summary.payment_status].text,
+                }}
+              />
+            ) : (
+              <Typography sx={{ fontWeight: 600, mt: 0.5, color: '#64748B' }}>
+                No invoice yet
+              </Typography>
+            )}
+          </Box>
+        </Box>
       </Paper>
 
       <Paper sx={{ borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>

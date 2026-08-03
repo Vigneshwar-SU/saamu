@@ -22,14 +22,16 @@ import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
+import LocalPrintshopIcon from '@mui/icons-material/LocalPrintshop';
+import CurrencyExchangeIcon from '@mui/icons-material/CurrencyExchange';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { RecordCustomerPaymentDialog } from '../components/RecordCustomerPaymentDialog';
 import { useCreatePayment, useInvoice, useInvoicePayments } from '../hooks/useInvoices';
-import { INVOICE_STATUS_COLORS, INVOICE_STATUS_LABELS } from '../types/billing';
-import type { CustomerPaymentPayload } from '../types/billing';
+import { INVOICE_STATUS_COLORS, INVOICE_STATUS_LABELS, PAYMENT_TYPE_LABELS } from '../types/billing';
+import type { CustomerPaymentPayload, PaymentType } from '../types/billing';
 
 const SummaryCard: React.FC<{ label: string; value: string; color?: string }> = ({
   label,
@@ -55,6 +57,7 @@ export const InvoiceDetail: React.FC = () => {
 
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [settleDialogOpen, setSettleDialogOpen] = useState(false);
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
 
   const { data: invoice, isLoading, isError, error, refetch } = useInvoice(invoiceId);
   const { data: paymentsData } = useInvoicePayments(invoiceId);
@@ -88,6 +91,14 @@ export const InvoiceDetail: React.FC = () => {
 
   const colors = INVOICE_STATUS_COLORS[invoice.status];
   const canRecord = isStaff && invoice.balance_due > 0;
+  const canRefund = isStaff && invoice.amount_paid > 0;
+
+  const PAYMENT_TYPE_COLORS: Record<PaymentType, { bg: string; text: string }> = {
+    ADVANCE: { bg: '#E0E7FF', text: '#4338CA' },
+    PARTIAL: { bg: '#DBEAFE', text: '#1D4ED8' },
+    FINAL: { bg: '#DCFCE7', text: '#15803D' },
+    REFUND: { bg: '#FEE2E2', text: '#B91C1C' },
+  };
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -140,25 +151,44 @@ export const InvoiceDetail: React.FC = () => {
             </Stack>
           </Box>
         </Box>
-        {canRecord && (
-          <Stack direction="row" spacing={1.5} flexWrap="wrap">
+        <Stack direction="row" spacing={1.5} flexWrap="wrap">
+          <Button
+            variant="outlined"
+            startIcon={<LocalPrintshopIcon />}
+            onClick={() => navigate(`/invoices/${invoice.id}/bill`)}
+          >
+            View Bill
+          </Button>
+          {canRecord && (
+            <>
+              <Button
+                variant="outlined"
+                startIcon={<PaymentsIcon />}
+                onClick={() => setPaymentDialogOpen(true)}
+              >
+                Record Payment
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<VerifiedUserIcon />}
+                onClick={() => setSettleDialogOpen(true)}
+                sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
+              >
+                Settle in Full
+              </Button>
+            </>
+          )}
+          {canRefund && (
             <Button
               variant="outlined"
-              startIcon={<PaymentsIcon />}
-              onClick={() => setPaymentDialogOpen(true)}
+              color="error"
+              startIcon={<CurrencyExchangeIcon />}
+              onClick={() => setRefundDialogOpen(true)}
             >
-              Record Payment
+              Record Refund
             </Button>
-            <Button
-              variant="contained"
-              startIcon={<VerifiedUserIcon />}
-              onClick={() => setSettleDialogOpen(true)}
-              sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
-            >
-              Settle in Full
-            </Button>
-          </Stack>
-        )}
+          )}
+        </Stack>
       </Box>
 
       <Paper sx={{ p: 2, borderRadius: '12px', border: '1px solid #E2E8F0', backgroundColor: '#F8FAFC' }}>
@@ -219,7 +249,9 @@ export const InvoiceDetail: React.FC = () => {
         <SummaryCard label="SUBTOTAL" value={formatCurrency(invoice.subtotal)} />
         <SummaryCard label="ADJUSTMENT" value={formatCurrency(invoice.adjustment_amount)} />
         <SummaryCard label="TOTAL" value={formatCurrency(invoice.total_amount)} color="#1E3A8A" />
-        <SummaryCard label="PAID" value={formatCurrency(invoice.amount_paid)} />
+        <SummaryCard label="GROSS PAID" value={formatCurrency(invoice.gross_paid)} />
+        <SummaryCard label="REFUNDED" value={formatCurrency(invoice.refunded_amount)} />
+        <SummaryCard label="PAID (NET)" value={formatCurrency(invoice.amount_paid)} />
         <SummaryCard
           label="BALANCE DUE"
           value={formatCurrency(invoice.balance_due)}
@@ -286,6 +318,7 @@ export const InvoiceDetail: React.FC = () => {
             <TableHead>
               <TableRow>
                 <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Amount</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Method</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Reference</TableCell>
@@ -296,37 +329,54 @@ export const InvoiceDetail: React.FC = () => {
             <TableBody>
               {payments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                     <Typography sx={{ color: '#64748B' }}>No payments recorded yet.</Typography>
                   </TableCell>
                 </TableRow>
               ) : (
-                payments.map((payment) => (
-                  <TableRow key={payment.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                    <TableCell>
-                      <Typography variant="body2">{formatDate(payment.payment_date)}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {formatCurrency(payment.amount)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{payment.payment_method_display}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{payment.reference || '-'}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ maxWidth: 220 }}>
-                        {payment.notes || '-'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{payment.recorded_by_name || '-'}</Typography>
-                    </TableCell>
-                  </TableRow>
-                ))
+                payments.map((payment) => {
+                  const typeColors = PAYMENT_TYPE_COLORS[payment.payment_type];
+                  return (
+                    <TableRow key={payment.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                      <TableCell>
+                        <Typography variant="body2">{formatDate(payment.payment_date)}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={PAYMENT_TYPE_LABELS[payment.payment_type]}
+                          size="small"
+                          sx={{ fontWeight: 600, backgroundColor: typeColors.bg, color: typeColors.text }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 600,
+                            color: payment.payment_type === 'REFUND' ? '#B91C1C' : 'inherit',
+                          }}
+                        >
+                          {payment.payment_type === 'REFUND' ? '− ' : ''}
+                          {formatCurrency(payment.amount)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{payment.payment_method_display}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{payment.reference || '-'}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ maxWidth: 220 }}>
+                          {payment.notes || '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{payment.recorded_by_name || '-'}</Typography>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -349,6 +399,16 @@ export const InvoiceDetail: React.FC = () => {
             settleInFull
           />
         </>
+      )}
+      {canRefund && (
+        <RecordCustomerPaymentDialog
+          open={refundDialogOpen}
+          onClose={() => setRefundDialogOpen(false)}
+          submit={handleRecordPayment}
+          invoice={invoice}
+          refundMode
+          payments={payments}
+        />
       )}
     </Box>
   );

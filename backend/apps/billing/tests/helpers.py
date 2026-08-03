@@ -21,6 +21,10 @@ def invoice_payments_url(invoice_id):
     return f"/api/v1/invoices/{invoice_id}/payments/"
 
 
+def invoice_bill_url(invoice_id):
+    return f"/api/v1/invoices/{invoice_id}/bill/"
+
+
 def order_invoice_url(order_id):
     return f"/api/v1/orders/{order_id}/invoice/"
 
