@@ -1,4 +1,5 @@
 import type { Tailor } from './tailors';
+import type { SalaryAdvance } from './advances';
 
 export const PAYROLL_PERIOD_STATUSES = ['DRAFT', 'CALCULATED', 'FINALIZED'] as const;
 
@@ -19,6 +20,45 @@ export const PAYROLL_PERIOD_STATUS_COLORS: Record<
   FINALIZED: { bg: '#DCFCE7', text: '#15803D' },
 };
 
+export const SETTLEMENT_STATUSES = ['UNPAID', 'PARTIALLY_PAID', 'SETTLED'] as const;
+
+export type SettlementStatus = (typeof SETTLEMENT_STATUSES)[number];
+
+export const SETTLEMENT_STATUS_LABELS: Record<SettlementStatus, string> = {
+  UNPAID: 'Unpaid',
+  PARTIALLY_PAID: 'Partially Paid',
+  SETTLED: 'Settled',
+};
+
+export const SETTLEMENT_STATUS_COLORS: Record<
+  SettlementStatus,
+  { bg: string; text: string }
+> = {
+  UNPAID: { bg: '#FEF3C7', text: '#B45309' },
+  PARTIALLY_PAID: { bg: '#EFF6FF', text: '#1E3A8A' },
+  SETTLED: { bg: '#DCFCE7', text: '#15803D' },
+};
+
+export const PAYMENT_METHODS = ['CASH', 'BANK_TRANSFER', 'UPI', 'OTHER'] as const;
+
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  CASH: 'Cash',
+  BANK_TRANSFER: 'Bank Transfer',
+  UPI: 'UPI',
+  OTHER: 'Other',
+};
+
+export interface PayrollSettlement {
+  gross_payable: number;
+  advance_deductions: number;
+  payments_recorded: number;
+  outstanding_payable: number;
+  settlement_status: SettlementStatus;
+  payment_count: number;
+}
+
 export interface PayrollPeriod {
   id: number;
   period_start: string;
@@ -34,6 +74,7 @@ export interface PayrollPeriod {
   total_attendance_amount: number;
   total_payable: number;
   entry_count: number;
+  settlement: PayrollSettlement;
 }
 
 export interface PayrollPeriodListResult {
@@ -60,6 +101,7 @@ export interface PayrollEntry {
   piece_rate_earnings: number;
   attendance_amount: number;
   total_payable: number;
+  settlement: PayrollSettlement;
   created_at: string;
   updated_at: string;
 }
@@ -106,4 +148,54 @@ export interface PayrollTailorDetail {
   };
   entry: PayrollEntry | null;
   assignments: PayrollAssignment[];
+}
+
+export interface PayrollPayment {
+  id: number;
+  payroll_entry: number;
+  tailor: Tailor;
+  amount: number;
+  payment_date: string;
+  payment_method: PaymentMethod;
+  payment_method_display: string;
+  reference: string;
+  notes: string;
+  recorded_by: number | null;
+  recorded_by_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaymentPayload {
+  amount: number;
+  payment_date: string;
+  payment_method: PaymentMethod;
+  reference?: string;
+  notes?: string;
+}
+
+export interface SettlementResponse {
+  success: boolean;
+  entry: PayrollEntry;
+  settlement: PayrollSettlement;
+}
+
+export interface PaymentHistoryResponse {
+  success: boolean;
+  entry_id: number;
+  payments: PayrollPayment[];
+}
+
+export interface RecordPaymentResponse {
+  success: boolean;
+  message: string;
+  payment: PayrollPayment;
+  settlement: PayrollSettlement;
+}
+
+export interface ApplyAdvanceResponse {
+  success: boolean;
+  message: string;
+  advance: SalaryAdvance;
+  settlement: PayrollSettlement;
 }

@@ -22,22 +22,38 @@ import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
 import CalculateIcon from '@mui/icons-material/Calculate';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import PaymentsIcon from '@mui/icons-material/Payments';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
 import { formatCurrency, formatDate, formatPieces } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiErrors';
+import { RecordPaymentDialog } from '../components/RecordPaymentDialog';
+import { ApplyAdvanceDialog } from '../components/ApplyAdvanceDialog';
 import {
+  useApplyAdvanceToEntry,
   useCalculatePayrollPeriod,
   useFinalizePayrollPeriod,
   usePayrollEntries,
+  usePayrollPaymentHistory,
   usePayrollPeriod,
   usePayrollTailorDetail,
+  useRecordPayment,
+  useSettleEntry,
 } from '../hooks/usePayroll';
 import {
   PAYROLL_PERIOD_STATUS_COLORS,
   PAYROLL_PERIOD_STATUS_LABELS,
+  SETTLEMENT_STATUS_COLORS,
+  SETTLEMENT_STATUS_LABELS,
 } from '../types/payroll';
-import type { PayrollEntry } from '../types/payroll';
+import type {
+  PayrollEntry,
+  PaymentHistoryResponse,
+  PaymentPayload,
+  PayrollSettlement,
+} from '../types/payroll';
 
 const SummaryCard: React.FC<{ label: string; value: string; color?: string }> = ({
   label,
@@ -62,6 +78,9 @@ export const PayrollDetail: React.FC = () => {
   const isStaff = role === 'STAFF';
 
   const [selectedTailorId, setSelectedTailorId] = useState<number | null>(null);
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [settleDialogOpen, setSettleDialogOpen] = useState(false);
+  const [advanceDialogOpen, setAdvanceDialogOpen] = useState(false);
 
   const { data: period, isLoading, isError, error, refetch } = usePayrollPeriod(periodId);
   const { data: entriesData } = usePayrollEntries({ period: periodId });
@@ -69,8 +88,17 @@ export const PayrollDetail: React.FC = () => {
 
   const calculateMutation = useCalculatePayrollPeriod();
   const finalizeMutation = useFinalizePayrollPeriod();
+  const recordMutation = useRecordPayment();
+  const settleMutation = useSettleEntry();
+  const applyMutation = useApplyAdvanceToEntry();
 
   const entries = entriesData?.results ?? [];
+  const selectedEntry = entries.find((e) => e.tailor.id === selectedTailorId) ?? null;
+  const selectedEntryId = selectedEntry?.id ?? 0;
+
+  const { data: paymentHistory } = usePayrollPaymentHistory(selectedEntryId);
+
+  const isFinalized = period?.status === 'FINALIZED';
 
   const handleCalculate = async () => {
     const confirmed = window.confirm(
@@ -94,6 +122,18 @@ export const PayrollDetail: React.FC = () => {
     } catch (finalizeError) {
       window.alert(getApiErrorMessage(finalizeError));
     }
+  };
+
+  const handleRecordPayment = async (payload: PaymentPayload) => {
+    await recordMutation.mutateAsync({ entryId: selectedEntryId, payload });
+  };
+
+  const handleSettleInFull = async (payload: PaymentPayload) => {
+    await settleMutation.mutateAsync({ entryId: selectedEntryId, payload });
+  };
+
+  const handleApplyAdvance = async (advanceId: number) => {
+    await applyMutation.mutateAsync({ entryId: selectedEntryId, advanceId });
   };
 
   if (isLoading) {
@@ -237,12 +277,16 @@ export const PayrollDetail: React.FC = () => {
                 <TableCell sx={{ fontWeight: 700 }}>Piece Rate Earnings</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Attendance Amount</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Total Payable</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Advance</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Paid</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Outstanding</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Settlement</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {entries.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
+                  <TableCell colSpan={12} align="center" sx={{ py: 6 }}>
                     <Typography sx={{ color: '#64748B' }}>
                       {period.status === 'DRAFT'
                         ? 'No entries yet. Calculate payroll to generate tailor entries.'
@@ -251,51 +295,91 @@ export const PayrollDetail: React.FC = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                entries.map((entry) => (
-                  <TableRow
-                    key={entry.id}
-                    hover
-                    sx={{
-                      cursor: 'pointer',
-                      '&:last-child td, &:last-child th': { border: 0 },
-                      backgroundColor:
-                        selectedTailorId === entry.tailor.id ? '#F8FAFC' : 'transparent',
-                    }}
-                    onClick={() =>
-                      setSelectedTailorId((current) => (current === entry.tailor.id ? null : entry.tailor.id))
-                    }
-                  >
-                    <TableCell>
-                      <Typography sx={{ fontWeight: 600 }}>{entry.tailor.name}</Typography>
-                      <Typography variant="caption" sx={{ color: '#94A3B8' }}>
-                        #{entry.tailor.id}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{entry.present_days}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{entry.half_days}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{entry.absent_days}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{formatPieces(entry.completed_pieces)}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{formatCurrency(entry.piece_rate_earnings)}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{formatCurrency(entry.attendance_amount)}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: '#15803D' }}>
-                        {formatCurrency(entry.total_payable)}
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                ))
+                entries.map((entry) => {
+                  const settlementColors = SETTLEMENT_STATUS_COLORS[entry.settlement.settlement_status];
+                  return (
+                    <TableRow
+                      key={entry.id}
+                      hover
+                      sx={{
+                        cursor: 'pointer',
+                        '&:last-child td, &:last-child th': { border: 0 },
+                        backgroundColor:
+                          selectedTailorId === entry.tailor.id ? '#F8FAFC' : 'transparent',
+                      }}
+                      onClick={() =>
+                        setSelectedTailorId((current) =>
+                          current === entry.tailor.id ? null : entry.tailor.id
+                        )
+                      }
+                    >
+                      <TableCell>
+                        <Typography sx={{ fontWeight: 600 }}>{entry.tailor.name}</Typography>
+                        <Typography variant="caption" sx={{ color: '#94A3B8' }}>
+                          #{entry.tailor.id}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{entry.present_days}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{entry.half_days}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{entry.absent_days}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{formatPieces(entry.completed_pieces)}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{formatCurrency(entry.piece_rate_earnings)}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{formatCurrency(entry.attendance_amount)}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#15803D' }}>
+                          {formatCurrency(entry.total_payable)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {entry.settlement.advance_deductions > 0
+                            ? `-${formatCurrency(entry.settlement.advance_deductions)}`
+                            : '0'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {formatCurrency(entry.settlement.payments_recorded)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 600,
+                            color:
+                              entry.settlement.outstanding_payable === 0 ? '#15803D' : '#B45309',
+                          }}
+                        >
+                          {formatCurrency(entry.settlement.outstanding_payable)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={SETTLEMENT_STATUS_LABELS[entry.settlement.settlement_status]}
+                          size="small"
+                          sx={{
+                            fontWeight: 600,
+                            backgroundColor: settlementColors.bg,
+                            color: settlementColors.text,
+                          }}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
@@ -303,12 +387,50 @@ export const PayrollDetail: React.FC = () => {
       </Paper>
 
       {selectedTailorId && (
-        <TailorAssignmentBreakdown
-          periodId={periodId}
-          tailorId={selectedTailorId}
-          entry={entries.find((e) => e.tailor.id === selectedTailorId) ?? null}
-          data={tailorDetail}
-        />
+        <>
+          <TailorAssignmentBreakdown
+            periodId={periodId}
+            tailorId={selectedTailorId}
+            entry={selectedEntry}
+            data={tailorDetail}
+          />
+          {selectedEntry && (
+            <SettlementPanel
+              entry={selectedEntry}
+              isStaff={isStaff}
+              isFinalized={isFinalized}
+              paymentHistory={paymentHistory}
+              onRecordPayment={() => setPaymentDialogOpen(true)}
+              onSettleInFull={() => setSettleDialogOpen(true)}
+              onApplyAdvance={() => setAdvanceDialogOpen(true)}
+            />
+          )}
+        </>
+      )}
+
+      {selectedEntry && (
+        <>
+          <RecordPaymentDialog
+            open={paymentDialogOpen}
+            onClose={() => setPaymentDialogOpen(false)}
+            submit={handleRecordPayment}
+            settlement={selectedEntry.settlement}
+          />
+          <RecordPaymentDialog
+            open={settleDialogOpen}
+            onClose={() => setSettleDialogOpen(false)}
+            submit={handleSettleInFull}
+            settlement={selectedEntry.settlement}
+            settleInFull
+          />
+          <ApplyAdvanceDialog
+            open={advanceDialogOpen}
+            onClose={() => setAdvanceDialogOpen(false)}
+            submit={handleApplyAdvance}
+            tailorId={selectedEntry.tailor.id}
+            outstandingPayable={selectedEntry.settlement.outstanding_payable}
+          />
+        </>
       )}
     </Box>
   );
@@ -397,5 +519,181 @@ const TailorAssignmentBreakdown: React.FC<{
         </Table>
       </TableContainer>
     </Paper>
+  );
+};
+
+const SettlementPanel: React.FC<{
+  entry: PayrollEntry;
+  isStaff: boolean;
+  isFinalized: boolean;
+  paymentHistory?: PaymentHistoryResponse;
+  onRecordPayment: () => void;
+  onSettleInFull: () => void;
+  onApplyAdvance: () => void;
+}> = ({ entry, isStaff, isFinalized, paymentHistory, onRecordPayment, onSettleInFull, onApplyAdvance }) => {
+  const settlement: PayrollSettlement = entry.settlement;
+  const statusColors = SETTLEMENT_STATUS_COLORS[settlement.settlement_status];
+  const payments = paymentHistory?.payments ?? [];
+
+  return (
+    <Stack direction="column" spacing={2}>
+      <Paper sx={{ borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+        <Box
+          sx={{
+            p: 2,
+            backgroundColor: '#F8FAFC',
+            borderBottom: '1px solid #E2E8F0',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 1.5,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: '10px',
+                backgroundColor: '#EFF6FF',
+                color: '#1E3A8A',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <PaymentsIcon fontSize="small" />
+            </Box>
+            <Box>
+              <Typography sx={{ fontWeight: 700 }}>
+                Settlement · {entry.tailor.name}
+              </Typography>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.25 }}>
+                <Chip
+                  label={SETTLEMENT_STATUS_LABELS[settlement.settlement_status]}
+                  size="small"
+                  sx={{ fontWeight: 600, backgroundColor: statusColors.bg, color: statusColors.text }}
+                />
+                <Typography variant="caption" sx={{ color: '#94A3B8' }}>
+                  {settlement.payment_count} payment{settlement.payment_count === 1 ? '' : 's'}
+                </Typography>
+              </Stack>
+            </Box>
+          </Box>
+          {isStaff && isFinalized && (
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<AccountBalanceWalletIcon fontSize="small" />}
+                onClick={onApplyAdvance}
+              >
+                Apply Advance
+              </Button>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<PaymentsIcon fontSize="small" />}
+                onClick={onRecordPayment}
+              >
+                Record Payment
+              </Button>
+              {settlement.outstanding_payable > 0 && (
+                <Button
+                  size="small"
+                  variant="contained"
+                  startIcon={<VerifiedUserIcon fontSize="small" />}
+                  onClick={onSettleInFull}
+                  sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
+                >
+                  Settle in Full
+                </Button>
+              )}
+            </Stack>
+          )}
+          {!isFinalized && (
+            <Typography variant="body2" sx={{ color: '#94A3B8' }}>
+              Finalize the payroll period to record payments and advances.
+            </Typography>
+          )}
+        </Box>
+
+        <Box sx={{ p: 2 }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} flexWrap="wrap">
+            <SummaryCard label="GROSS PAYABLE" value={formatCurrency(settlement.gross_payable)} color="#0F172A" />
+            <SummaryCard
+              label="ADVANCE DEDUCTION"
+              value={`-${formatCurrency(settlement.advance_deductions)}`}
+              color="#B45309"
+            />
+            <SummaryCard label="PAID AMOUNT" value={formatCurrency(settlement.payments_recorded)} color="#1E3A8A" />
+            <SummaryCard
+              label="OUTSTANDING"
+              value={formatCurrency(settlement.outstanding_payable)}
+              color={settlement.outstanding_payable === 0 ? '#15803D' : '#B45309'}
+            />
+          </Stack>
+        </Box>
+      </Paper>
+
+      <Paper sx={{ borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+        <Box sx={{ p: 2, backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+          <Typography sx={{ fontWeight: 700 }}>Payment History</Typography>
+        </Box>
+        <TableContainer>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Amount</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Method</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Reference</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Notes</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Recorded By</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {payments.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                    <Typography sx={{ color: '#64748B' }}>No payments recorded yet.</Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                payments.map((payment) => {
+                  return (
+                    <TableRow key={payment.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                      <TableCell>
+                        <Typography variant="body2">{formatDate(payment.payment_date)}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {formatCurrency(payment.amount)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{payment.payment_method_display}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{payment.reference || '-'}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ maxWidth: 220 }}>
+                          {payment.notes || '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">{payment.recorded_by_name || '-'}</Typography>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
+    </Stack>
   );
 };

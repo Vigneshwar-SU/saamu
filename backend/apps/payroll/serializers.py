@@ -5,6 +5,7 @@ from decimal import Decimal
 from django.db import models
 from rest_framework import serializers
 
+from apps.payments.services import period_settlement_summary, settlement_summary
 from apps.tailors.models import Tailor, WorkAssignment
 from apps.tailors.serializers import TailorSerializer
 
@@ -58,6 +59,7 @@ class PayrollPeriodSerializer(serializers.ModelSerializer):
         ] or Decimal("0.00")
         ret["total_payable"] = aggregates["total_payable"] or Decimal("0.00")
         ret["entry_count"] = aggregates["entry_count"] or 0
+        ret["settlement"] = period_settlement_summary(instance)
         return ret
 
 
@@ -98,6 +100,7 @@ class PayrollEntrySerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         ret = super().to_representation(instance)
         ret["tailor"] = TailorSerializer(instance.tailor, context=self.context).data
+        ret["settlement"] = settlement_summary(instance)
         return ret
 
 

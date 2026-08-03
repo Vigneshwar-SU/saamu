@@ -4,7 +4,7 @@ A custom tailoring management system for **Saamu Tailors**, a family tailoring b
 
 The application digitizes the shop's operations: customer records, orders, measurements, tailoring workflow, tailor workload, payments, income, expenses, digital bills, and delivery/collection tracking.
 
-**Current stage:** Phase 6 (Attendance & Payroll Foundation). Business modules beyond payroll are implemented in later phases.
+**Current stage:** Phase 7 (Salary Payments, Advances & Payroll Settlement). Business modules beyond payroll settlement are implemented in later phases.
 
 ---
 
@@ -246,6 +246,17 @@ Tokens are never rendered as raw HTML or logged. The access token is short-lived
 - Entries: `GET /api/v1/payroll/entries/` (`period`, `tailor` filters); per-tailor breakdown `GET /api/v1/payroll/periods/{id}/tailors/{tailor_id}/` (order, garment, assigned/completed/remaining, rate snapshot, earned).
 - Frontend: Attendance page (filters + mark/edit), Payroll page (period list + calculate/finalize), Payroll detail (summary, tailor entries, per-tailor assignment breakdown). Mutation controls are hidden for OWNER.
 
+## 8.2 Salary Payments, Advances & Settlement
+
+- **Salary advances**: `GET/POST /api/v1/advances/`, detail `GET /api/v1/advances/{id}/`; filters `tailor`, `status` (`OUTSTANDING` / `DEDUCTED`), `date_from`, `date_to`. Create is STAFF-only and records `recorded_by`. Advances are never deleted or edited; a deduction records the `payroll_entry` and `deducted_at` on the advance.
+- **Settlement is derived, never stored**: for each payroll entry, `gross_payable` = immutable `total_payable`, `advance_deductions` = sum of linked `DEDUCTED` advances, `payments_recorded` = sum of linked payments, and `outstanding_payable` = gross − deductions − paid. Settlement status is `UNPAID` / `PARTIALLY_PAID` / `SETTLED`. The payroll period list/detail, entry list, and `GET /payroll/entries/{id}/settlement/` all expose this summary.
+- **Mutations (STAFF-only, FINALIZED periods only)**:
+  - `POST /api/v1/payroll/entries/{id}/payments/` — record a payment (amount, date, method `CASH` / `BANK_TRANSFER` / `UPI` / `OTHER`, reference, notes). Overpayment is rejected.
+  - `POST /api/v1/payroll/entries/{id}/apply-advance/` — deduct an `OUTSTANDING` advance of the same tailor against the entry (once only, never below zero).
+  - `POST /api/v1/payroll/entries/{id}/settle/` — record one final payment for the full outstanding amount. `GET /api/v1/payroll/entries/{id}/payments/` returns the payment history.
+- **Concurrency safety**: every settlement mutation runs in `transaction.atomic()` with `select_for_update()` row locks, so concurrent payments/advance applications can never overpay a single entry.
+- Frontend: Advances page (tailor/status/date filters, pagination, STAFF-only Add Advance), Payroll list now shows paid / outstanding / settlement status per period, and Payroll detail gains a settlement panel per tailor (gross/advance/paid/outstanding, payment history, STAFF-only Record Payment / Apply Advance / Settle in Full). OWNER sees all information without mutation controls.
+
 ---
 
 ## 9. Verification Commands
@@ -312,7 +323,8 @@ saamu/
 │   │   ├── orders/           # orders, order items, status workflow (Phase 4)
 │   │   ├── tailors/          # tailors, piece rates, work assignments (Phase 5)
 │   │   ├── attendance/       # daily tailor attendance records (Phase 6)
-│   │   └── payroll/          # payroll periods + per-tailor entries (Phase 6)
+│   │   ├── payroll/          # payroll periods + per-tailor entries (Phase 6)
+│   │   └── payments/         # salary advances + payroll payments/settlement (Phase 7)
 │   ├── config/               # Django project settings
 │   ├── logs/  media/  static/
 │   ├── manage.py
@@ -362,6 +374,7 @@ saamu/
 - **Phase 4 — Orders & Tailoring Workflow:** complete
 - **Phase 5 — Tailors, Workload & Piece-Rate Salary:** complete
 - **Phase 6 — Attendance & Payroll Foundation:** complete
-- **Phase 7+ — Business modules (payments, billing, dashboard):** pending
+- **Phase 7 — Salary Payments, Advances & Payroll Settlement:** complete
+- **Phase 8+ — Business modules (billing, dashboard):** pending
 
 Do not treat this document as a feature guide; business functionality is implemented incrementally in later phases and documented in `docs/`.

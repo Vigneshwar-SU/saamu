@@ -5,6 +5,7 @@ import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import ContentCutIcon from '@mui/icons-material/ContentCut';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
 import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
+import SavingsIcon from '@mui/icons-material/Savings';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import PaymentIcon from '@mui/icons-material/Payment';
@@ -48,6 +49,12 @@ export const SIDEBAR_ITEMS: NavItem[] = [
     title: 'Payroll',
     path: '/payroll',
     icon: React.createElement(PointOfSaleIcon),
+  },
+  {
+    id: 'advances',
+    title: 'Advances',
+    path: '/advances',
+    icon: React.createElement(SavingsIcon),
   },
   {
     id: 'income',

@@ -39,6 +39,8 @@ import {
 import {
   PAYROLL_PERIOD_STATUS_COLORS,
   PAYROLL_PERIOD_STATUS_LABELS,
+  SETTLEMENT_STATUS_COLORS,
+  SETTLEMENT_STATUS_LABELS,
 } from '../types/payroll';
 import type { PayrollPeriod, PayrollPeriodPayload } from '../types/payroll';
 
@@ -141,6 +143,9 @@ export const Payroll: React.FC = () => {
                 <TableCell sx={{ fontWeight: 700 }}>Piece Rate Earnings</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Attendance</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Total Payable</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Paid</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Outstanding</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Settlement</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Tailors</TableCell>
                 <TableCell align="right" sx={{ fontWeight: 700 }}>
                   Actions
@@ -150,13 +155,13 @@ export const Payroll: React.FC = () => {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
+                  <TableCell colSpan={11} align="center" sx={{ py: 6 }}>
                     <CircularProgress size={28} />
                   </TableCell>
                 </TableRow>
               ) : isError ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={11} align="center" sx={{ py: 4 }}>
                     <Alert severity="error" sx={{ display: 'inline-flex' }}>
                       {getApiErrorMessage(error)}
                     </Alert>
@@ -169,13 +174,14 @@ export const Payroll: React.FC = () => {
                 </TableRow>
               ) : data && data.results.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
+                  <TableCell colSpan={11} align="center" sx={{ py: 6 }}>
                     <Typography sx={{ color: '#64748B' }}>No payroll periods found.</Typography>
                   </TableCell>
                 </TableRow>
               ) : (
                 data?.results.map((period) => {
                   const colors = PAYROLL_PERIOD_STATUS_COLORS[period.status];
+                  const settlementColors = SETTLEMENT_STATUS_COLORS[period.settlement.settlement_status];
                   return (
                     <TableRow
                       key={period.id}
@@ -211,6 +217,34 @@ export const Payroll: React.FC = () => {
                         <Typography variant="body2" sx={{ fontWeight: 600, color: '#15803D' }}>
                           {formatCurrency(period.total_payable)}
                         </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {formatCurrency(period.settlement.payments_recorded)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 600,
+                            color:
+                              period.settlement.outstanding_payable > 0 ? '#B45309' : '#15803D',
+                          }}
+                        >
+                          {formatCurrency(period.settlement.outstanding_payable)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={SETTLEMENT_STATUS_LABELS[period.settlement.settlement_status]}
+                          size="small"
+                          sx={{
+                            fontWeight: 600,
+                            backgroundColor: settlementColors.bg,
+                            color: settlementColors.text,
+                          }}
+                        />
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2">{period.entry_count}</Typography>

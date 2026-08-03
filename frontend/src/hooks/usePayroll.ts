@@ -1,14 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { payrollService } from '../services/payrollService';
 import type {
+  PaymentHistoryResponse,
+  PaymentPayload,
   PayrollEntryListResult,
   PayrollPeriod,
   PayrollPeriodPayload,
   PayrollTailorDetail,
+  SettlementResponse,
 } from '../types/payroll';
 
 const PAYROLL_PERIODS_KEY = 'payroll-periods';
 const PAYROLL_ENTRIES_KEY = 'payroll-entries';
+const PAYMENT_HISTORY_KEY = 'payroll-payment-history';
 
 export const usePayrollPeriodList = () => {
   return useQuery({
@@ -71,5 +75,61 @@ export const usePayrollTailorDetail = (periodId: number, tailorId: number) => {
     queryKey: ['payroll-tailor-detail', periodId, tailorId],
     queryFn: () => payrollService.tailorDetail(periodId, tailorId),
     enabled: periodId > 0 && tailorId > 0,
+  });
+};
+
+export const usePayrollSettlement = (entryId: number) => {
+  return useQuery<SettlementResponse>({
+    queryKey: ['payroll-settlement', entryId],
+    queryFn: () => payrollService.getSettlement(entryId),
+    enabled: entryId > 0,
+  });
+};
+
+export const usePayrollPaymentHistory = (entryId: number) => {
+  return useQuery<PaymentHistoryResponse>({
+    queryKey: [PAYMENT_HISTORY_KEY, entryId],
+    queryFn: () => payrollService.listPayments(entryId),
+    enabled: entryId > 0,
+  });
+};
+
+export const useRecordPayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ entryId, payload }: { entryId: number; payload: PaymentPayload }) =>
+      payrollService.recordPayment(entryId, payload),
+    onSuccess: (_data, { entryId }) => {
+      queryClient.invalidateQueries({ queryKey: [PAYROLL_ENTRIES_KEY] });
+      queryClient.invalidateQueries({ queryKey: ['payroll-settlement', entryId] });
+      queryClient.invalidateQueries({ queryKey: [PAYMENT_HISTORY_KEY, entryId] });
+    },
+  });
+};
+
+export const useSettleEntry = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ entryId, payload }: { entryId: number; payload: PaymentPayload }) =>
+      payrollService.settleEntry(entryId, payload),
+    onSuccess: (_data, { entryId }) => {
+      queryClient.invalidateQueries({ queryKey: [PAYROLL_ENTRIES_KEY] });
+      queryClient.invalidateQueries({ queryKey: ['payroll-settlement', entryId] });
+      queryClient.invalidateQueries({ queryKey: [PAYMENT_HISTORY_KEY, entryId] });
+    },
+  });
+};
+
+export const useApplyAdvanceToEntry = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ entryId, advanceId }: { entryId: number; advanceId: number }) =>
+      payrollService.applyAdvance(entryId, advanceId),
+    onSuccess: (_data, { entryId }) => {
+      queryClient.invalidateQueries({ queryKey: [PAYROLL_ENTRIES_KEY] });
+      queryClient.invalidateQueries({ queryKey: ['payroll-settlement', entryId] });
+      queryClient.invalidateQueries({ queryKey: [PAYMENT_HISTORY_KEY, entryId] });
+      queryClient.invalidateQueries({ queryKey: ['advances'] });
+    },
   });
 };

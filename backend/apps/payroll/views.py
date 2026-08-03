@@ -19,6 +19,18 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from apps.authentication.permissions import IsOwnerOrStaff, IsStaffRole
+from apps.payments.models import PayrollPayment, SalaryAdvance
+from apps.payments.serializers import (
+    PayrollPaymentCreateSerializer,
+    PayrollPaymentSerializer,
+    SalaryAdvanceSerializer,
+)
+from apps.payments.services import (
+    apply_advance,
+    record_payment,
+    settle_entry,
+    settlement_summary,
+)
 from apps.tailors.models import Tailor, WorkAssignment
 
 from .models import PayrollEntry, PayrollPeriod
@@ -29,6 +41,8 @@ from .serializers import (
 )
 
 PAYROLL_PERIOD_MUTATION_ACTIONS = {"create", "calculate", "finalize"}
+
+SETTLEMENT_MUTATION_ACTIONS = {"payments", "settle", "apply_advance"}
 
 
 class PayrollPeriodViewSet(viewsets.ModelViewSet):
@@ -146,10 +160,21 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
 
 
 class PayrollEntryViewSet(viewsets.ReadOnlyModelViewSet):
-    """Read-only payroll entries with ``period`` / ``tailor`` filters."""
+    """Read-only payroll entries plus settlement sub-resources.
+
+    The ``settlement``, ``payments``, ``settle`` and ``apply-advance`` actions
+    let OWNER/STAFF view derived settlement values and STAFF record payments,
+    apply advances and settle entries. All mutation logic lives in
+    ``apps.payments.services`` and is concurrency-safe.
+    """
 
     serializer_class = PayrollEntrySerializer
     permission_classes = [IsOwnerOrStaff]
+
+    def get_permissions(self):
+        if self.action in SETTLEMENT_MUTATION_ACTIONS and self.request.method == "POST":
+            return [IsStaffRole()]
+        return [IsOwnerOrStaff()]
 
     def get_queryset(self):
         qs = PayrollEntry.objects.select_related("payroll_period", "tailor").all()
@@ -160,3 +185,106 @@ class PayrollEntryViewSet(viewsets.ReadOnlyModelViewSet):
         if tailor:
             qs = qs.filter(tailor_id=tailor)
         return qs
+
+    @action(detail=True, methods=["get"], url_path="settlement")
+    def settlement(self, request, pk=None):
+        """Derived settlement summary (gross, deductions, paid, outstanding)."""
+        entry = self.get_object()
+        return Response(
+            {
+                "success": True,
+                "entry": PayrollEntrySerializer(
+                    entry, context=self.get_serializer_context()
+                ).data,
+                "settlement": settlement_summary(entry),
+            }
+        )
+
+    @action(detail=True, methods=["get", "post"], url_path="payments")
+    def payments(self, request, pk=None):
+        """Payment history (GET) or record a payment (POST, STAFF)."""
+        entry = self.get_object()
+        if request.method == "GET":
+            payments = PayrollPayment.objects.filter(
+                payroll_entry=entry
+            ).select_related("tailor", "recorded_by")
+            return Response(
+                {
+                    "success": True,
+                    "entry_id": entry.id,
+                    "payments": PayrollPaymentSerializer(
+                        payments, many=True, context=self.get_serializer_context()
+                    ).data,
+                }
+            )
+
+        serializer = PayrollPaymentCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        payment, settlement = record_payment(
+            entry=entry,
+            amount=data["amount"],
+            payment_date=data["payment_date"],
+            payment_method=data["payment_method"],
+            reference=data.get("reference", ""),
+            notes=data.get("notes", ""),
+            recorded_by=request.user,
+        )
+        return Response(
+            {
+                "success": True,
+                "message": "Payment recorded successfully.",
+                "payment": PayrollPaymentSerializer(
+                    payment, context=self.get_serializer_context()
+                ).data,
+                "settlement": settlement,
+            },
+            status=http_status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=["post"], url_path="settle")
+    def settle(self, request, pk=None):
+        """Explicit full settlement: one payment covering the outstanding."""
+        serializer = PayrollPaymentCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        payment, settlement = settle_entry(
+            entry=self.get_object(),
+            payment_date=data["payment_date"],
+            payment_method=data["payment_method"],
+            reference=data.get("reference", ""),
+            notes=data.get("notes", ""),
+            recorded_by=request.user,
+        )
+        return Response(
+            {
+                "success": True,
+                "message": "Payroll entry settled in full.",
+                "payment": PayrollPaymentSerializer(
+                    payment, context=self.get_serializer_context()
+                ).data,
+                "settlement": settlement,
+            }
+        )
+
+    @action(detail=True, methods=["post"], url_path="apply-advance")
+    def apply_advance(self, request, pk=None):
+        """Deduct an OUTSTANDING advance against this payroll entry."""
+        entry = self.get_object()
+        advance_id = request.data.get("advance_id")
+        if not advance_id:
+            raise ValidationError({"advance_id": "advance_id is required."})
+        advance = get_object_or_404(SalaryAdvance, pk=advance_id)
+        advance, settlement = apply_advance(
+            entry=entry, advance=advance, recorded_by=request.user
+        )
+        return Response(
+            {
+                "success": True,
+                "message": "Advance applied to the payroll entry.",
+                "advance": SalaryAdvanceSerializer(
+                    advance, context=self.get_serializer_context()
+                ).data,
+                "settlement": settlement,
+            }
+        )

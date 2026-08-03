@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "apps.tailors.apps.TailorsConfig",
     "apps.attendance.apps.AttendanceConfig",
     "apps.payroll.apps.PayrollConfig",
+    "apps.payments.apps.PaymentsConfig",
 ]
 
 MIDDLEWARE = [

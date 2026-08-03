@@ -1,5 +1,8 @@
 import { apiClient } from './apiClient';
 import type {
+  ApplyAdvanceResponse,
+  PaymentHistoryResponse,
+  PaymentPayload,
   PayrollActionResponse,
   PayrollCalculateResponse,
   PayrollEntryListResult,
@@ -7,6 +10,8 @@ import type {
   PayrollPeriodListResult,
   PayrollPeriodPayload,
   PayrollTailorDetail,
+  RecordPaymentResponse,
+  SettlementResponse,
 } from '../types/payroll';
 
 export const payrollService = {
@@ -49,6 +54,44 @@ export const payrollService = {
   async tailorDetail(periodId: number, tailorId: number): Promise<PayrollTailorDetail> {
     const response = await apiClient.get<PayrollTailorDetail>(
       `/payroll/periods/${periodId}/tailors/${tailorId}/`
+    );
+    return response.data;
+  },
+
+  async getSettlement(entryId: number): Promise<SettlementResponse> {
+    const response = await apiClient.get<SettlementResponse>(
+      `/payroll/entries/${entryId}/settlement/`
+    );
+    return response.data;
+  },
+
+  async listPayments(entryId: number): Promise<PaymentHistoryResponse> {
+    const response = await apiClient.get<PaymentHistoryResponse>(
+      `/payroll/entries/${entryId}/payments/`
+    );
+    return response.data;
+  },
+
+  async recordPayment(entryId: number, payload: PaymentPayload): Promise<RecordPaymentResponse> {
+    const response = await apiClient.post<RecordPaymentResponse>(
+      `/payroll/entries/${entryId}/payments/`,
+      payload
+    );
+    return response.data;
+  },
+
+  async settleEntry(entryId: number, payload: PaymentPayload): Promise<RecordPaymentResponse> {
+    const response = await apiClient.post<RecordPaymentResponse>(
+      `/payroll/entries/${entryId}/settle/`,
+      payload
+    );
+    return response.data;
+  },
+
+  async applyAdvance(entryId: number, advanceId: number): Promise<ApplyAdvanceResponse> {
+    const response = await apiClient.post<ApplyAdvanceResponse>(
+      `/payroll/entries/${entryId}/apply-advance/`,
+      { advance_id: advanceId }
     );
     return response.data;
   },
