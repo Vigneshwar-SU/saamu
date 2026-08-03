@@ -223,3 +223,20 @@ Push result: **Pushed.** `caf00db..bd34df8 master -> master`. Verified after pus
 - RBAC verified end-to-end by integration tests and a live API smoke test: OWNER read 200 / mutation 403, STAFF mutations 201/200, anonymous 401; full suite 254 passed.
 - Frontend static checks clean; the Phase 5 UI follows the proven vertical-slice pattern.
 - The full 254-test suite provides the regression baseline for Phase 6.
+
+## 14. Phase 5 UI Refinement (Workload Visibility)
+
+Additive refinement that surfaces workload across the Tailors module without changing RBAC, the assignment status workflow, or any existing response contract.
+
+- **Backend — workload aggregates (additive):**
+  - `GET /tailors/{id}/earnings/` now returns a `workload` object alongside the existing `summary` / `garment_breakdown`: `assigned_quantity`, `completed_quantity`, `outstanding_quantity`, `earned_amount` computed across **all** assignments (status-independent), so partially completed (IN_PROGRESS) work is visible. The existing COMPLETED-only `summary` contract is unchanged.
+  - `GET /tailor-earnings/summary/` now returns `summary.total_active_tailors`, `summary.workload` (`total_assigned`, `total_completed`, `total_outstanding`, `total_earned`), and a per-tailor `workload` block on every row.
+  - Formulas (unchanged semantics): per assignment `outstanding = assigned − completed` (never negative) and `earned = completed × rate_per_piece_snapshot` (incomplete pieces never count as earned); tailor/list figures are SUMs across assignments.
+- **Frontend — Tailors list (`pages/Tailors.tsx`):**
+  - Five summary cards: **Total Tailors**, **Total Assigned**, **Total Completed**, **Total Outstanding**, **Total Earned** (replaces the previous three-card strip).
+  - Table columns are now Tailor | Mobile | Assigned | Completed | Outstanding | Earned | Status | Created | Actions; all quantities formatted with the new `formatPieces` helper ("3 pcs" / "1 pc") and earnings with `formatCurrency` (₹, en-IN).
+- **Frontend — Tailor detail (`pages/TailorDetail.tsx`):**
+  - New **Workload & Earnings** summary (Total Assigned / Completed / Outstanding / Earned) above the existing per-garment breakdown.
+  - Work assignment table columns are now Order | Garment | Assigned | Completed | Outstanding | Rate | Earned | Status | Actions, with the same formatting safety (`formatPieces` clamps decimals/negatives, so values like `3.0` render as "3 pcs").
+- **Formatting safety:** `frontend/src/utils/formatters.ts` adds `formatPieces(quantity)` which normalizes decimal/`null`/`undefined` quantities to whole pieces and clamps negatives to zero, so the UI never shows "3.0 pcs", negative, or `NaN`.
+- **Tests added (`apps/tailors/tests/test_earnings.py`):** partial-progress workload on the detail endpoint, zero-workload default, cross-tailor summary aggregates, and the active-tailor count. All 254+ suite tests remain green (`python -m pytest` → pass). Frontend `npm run lint`, `npx tsc --noEmit`, `npm run build` clean.

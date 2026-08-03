@@ -66,6 +66,60 @@ def _earnings_for_queryset(qs):
     return totals, sorted(breakdown.values(), key=lambda e: e["garment_type"])
 
 
+def _workload_for_queryset(qs):
+    """Aggregate assigned/completed/outstanding pieces and piece-rate earnings.
+
+    Unlike ``_earnings_for_queryset`` (which only counts COMPLETED
+    assignments), this aggregates across every assignment so partially
+    completed work stays visible as workload progress. Per assignment:
+    ``outstanding = assigned - completed`` and
+    ``earned = completed * rate_per_piece_snapshot`` (incomplete pieces never
+    count as earned).
+
+    Returns ``(totals, per_tailor)`` with four workload figures each, where
+    ``per_tailor`` is keyed by tailor id.
+    """
+
+    totals = {
+        "assigned_quantity": 0,
+        "completed_quantity": 0,
+        "outstanding_quantity": 0,
+        "earned_amount": 0,
+    }
+    per_tailor = {}
+    for assignment in qs:
+        outstanding = max(
+            assignment.assigned_quantity - assignment.completed_quantity, 0
+        )
+        earned = assignment.completed_quantity * assignment.rate_per_piece_snapshot
+        totals["assigned_quantity"] += assignment.assigned_quantity
+        totals["completed_quantity"] += assignment.completed_quantity
+        totals["outstanding_quantity"] += outstanding
+        totals["earned_amount"] += earned
+        entry = per_tailor.setdefault(
+            assignment.tailor_id,
+            {
+                "assigned_quantity": 0,
+                "completed_quantity": 0,
+                "outstanding_quantity": 0,
+                "earned_amount": 0,
+            },
+        )
+        entry["assigned_quantity"] += assignment.assigned_quantity
+        entry["completed_quantity"] += assignment.completed_quantity
+        entry["outstanding_quantity"] += outstanding
+        entry["earned_amount"] += earned
+
+    totals["earned_amount"] = round(totals["earned_amount"], 2)
+    for key in ("assigned_quantity", "completed_quantity", "outstanding_quantity"):
+        totals[key] = int(totals[key])
+    for entry in per_tailor.values():
+        entry["earned_amount"] = round(entry["earned_amount"], 2)
+        for key in ("assigned_quantity", "completed_quantity", "outstanding_quantity"):
+            entry[key] = int(entry[key])
+    return totals, per_tailor
+
+
 class TailorViewSet(viewsets.ModelViewSet):
     """Tailor profile CRUD with archive/restore and per-tailor earnings."""
 
@@ -154,6 +208,7 @@ class TailorViewSet(viewsets.ModelViewSet):
         qs = tailor.work_assignments.select_related("order_item", "order_item__order")
         qs = self._apply_earnings_filters(qs)
         totals, breakdown = _earnings_for_queryset(qs)
+        workload, _ = _workload_for_queryset(tailor.work_assignments.all())
         return Response(
             {
                 "success": True,
@@ -162,6 +217,7 @@ class TailorViewSet(viewsets.ModelViewSet):
                 ).data,
                 "summary": totals,
                 "garment_breakdown": breakdown,
+                "workload": workload,
             }
         )
 
@@ -258,6 +314,39 @@ class TailorEarningsSummaryView(APIView):
                     },
                 )
             entry["outstanding_quantity"] = int(row["total"] or 0)
+
+        # Workload overview: aggregate assigned/completed/outstanding/earned
+        # across ALL assignments (including partially completed work), not just
+        # COMPLETED ones. The optional ``tailor`` filter is honored so the
+        # summary can be scoped to a single tailor.
+        workload_qs = WorkAssignment.objects.select_related("tailor").all()
+        if tailor_id:
+            workload_qs = workload_qs.filter(tailor_id=tailor_id)
+        workload_totals, workload_by_tailor = _workload_for_queryset(workload_qs)
+        totals["total_active_tailors"] = Tailor.objects.filter(
+            is_active=True
+        ).count()
+        totals["workload"] = {
+            "total_assigned": workload_totals["assigned_quantity"],
+            "total_completed": workload_totals["completed_quantity"],
+            "total_outstanding": workload_totals["outstanding_quantity"],
+            "total_earned": workload_totals["earned_amount"],
+        }
+        for entry in per_tailor.values():
+            wl = workload_by_tailor.get(entry["id"])
+            if wl is None:
+                wl = {
+                    "assigned_quantity": 0,
+                    "completed_quantity": 0,
+                    "outstanding_quantity": 0,
+                    "earned_amount": 0,
+                }
+            entry["workload"] = {
+                "assigned_quantity": wl["assigned_quantity"],
+                "completed_quantity": wl["completed_quantity"],
+                "outstanding_quantity": wl["outstanding_quantity"],
+                "earned_amount": wl["earned_amount"],
+            }
 
         totals["total_earned"] = round(totals["total_earned"], 2)
         totals["total_completed_quantity"] = int(totals["total_completed_quantity"])

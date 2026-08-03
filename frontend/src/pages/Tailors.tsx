@@ -37,7 +37,7 @@ import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
 import TuneIcon from '@mui/icons-material/Tune';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
-import { formatCurrency, formatDate } from '../utils/formatters';
+import { formatCurrency, formatDate, formatPieces } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { TailorFormDialog } from '../components/TailorFormDialog';
 import { PieceRateDialog } from '../components/PieceRateDialog';
@@ -186,29 +186,45 @@ export const Tailors: React.FC = () => {
       </Box>
 
       {earningsSummary && (
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-          <Paper sx={{ flex: 1, p: 2, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} flexWrap="wrap">
+          <Paper sx={{ flex: 1, minWidth: 180, p: 2, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
             <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600 }}>
-              TAILORS
+              TOTAL TAILORS
             </Typography>
             <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.5 }}>
-              {earningsSummary.tailors.length}
+              {earningsSummary.summary.total_active_tailors ?? earningsSummary.tailors.length}
             </Typography>
           </Paper>
-          <Paper sx={{ flex: 1, p: 2, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+          <Paper sx={{ flex: 1, minWidth: 180, p: 2, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
             <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600 }}>
-              PIECES COMPLETED
+              TOTAL ASSIGNED
             </Typography>
             <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.5 }}>
-              {earningsSummary.summary.total_completed_quantity}
+              {formatPieces(earningsSummary.summary.workload?.total_assigned ?? 0)}
             </Typography>
           </Paper>
-          <Paper sx={{ flex: 1, p: 2, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+          <Paper sx={{ flex: 1, minWidth: 180, p: 2, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+            <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600 }}>
+              TOTAL COMPLETED
+            </Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.5, color: '#15803D' }}>
+              {formatPieces(earningsSummary.summary.workload?.total_completed ?? 0)}
+            </Typography>
+          </Paper>
+          <Paper sx={{ flex: 1, minWidth: 180, p: 2, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+            <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600 }}>
+              TOTAL OUTSTANDING
+            </Typography>
+            <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.5, color: '#B45309' }}>
+              {formatPieces(earningsSummary.summary.workload?.total_outstanding ?? 0)}
+            </Typography>
+          </Paper>
+          <Paper sx={{ flex: 1, minWidth: 180, p: 2, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
             <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600 }}>
               TOTAL EARNED
             </Typography>
             <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.5, color: '#15803D' }}>
-              {formatCurrency(earningsSummary.summary.total_earned)}
+              {formatCurrency(earningsSummary.summary.workload?.total_earned ?? 0)}
             </Typography>
           </Paper>
         </Stack>
@@ -253,6 +269,8 @@ export const Tailors: React.FC = () => {
               <TableRow sx={{ backgroundColor: '#F8FAFC' }}>
                 <TableCell sx={{ fontWeight: 700 }}>Tailor</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Mobile</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Assigned</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Completed</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Outstanding</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Earned</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
@@ -265,13 +283,13 @@ export const Tailors: React.FC = () => {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                  <TableCell colSpan={9} align="center" sx={{ py: 6 }}>
                     <CircularProgress size={28} />
                   </TableCell>
                 </TableRow>
               ) : isError ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
                     <Alert severity="error" sx={{ display: 'inline-flex' }}>
                       {getApiErrorMessage(error)}
                     </Alert>
@@ -284,13 +302,19 @@ export const Tailors: React.FC = () => {
                 </TableRow>
               ) : data && data.results.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                  <TableCell colSpan={9} align="center" sx={{ py: 6 }}>
                     <Typography sx={{ color: '#64748B' }}>No tailors found.</Typography>
                   </TableCell>
                 </TableRow>
               ) : (
                 data?.results.map((tailor) => {
                   const entry = earningsSummary?.tailors.find((summaryEntry) => summaryEntry.id === tailor.id);
+                  const workload = entry?.workload ?? {
+                    assigned_quantity: 0,
+                    completed_quantity: 0,
+                    outstanding_quantity: 0,
+                    earned_amount: 0,
+                  };
                   return (
                     <TableRow
                       key={tailor.id}
@@ -309,12 +333,22 @@ export const Tailors: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2">
-                          {entry ? `${entry.outstanding_quantity} pcs` : '-'}
+                          {formatPieces(workload.assigned_quantity)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {formatPieces(workload.completed_quantity)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {formatPieces(workload.outstanding_quantity)}
                         </Typography>
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" sx={{ fontWeight: 600, color: '#15803D' }}>
-                          {entry ? formatCurrency(entry.earned_amount) : '-'}
+                          {formatCurrency(workload.earned_amount)}
                         </Typography>
                       </TableCell>
                       <TableCell>

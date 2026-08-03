@@ -12,3 +12,10 @@ export const formatCurrency = (amount: number, currency = 'INR'): string => {
     maximumFractionDigits: 2,
   }).format(amount);
 };
+
+export const formatPieces = (quantity: number): string => {
+  const value = Math.trunc(Number(quantity));
+  if (!Number.isFinite(value)) return '0 pcs';
+  const clamped = Math.max(0, value);
+  return `${clamped} pc${clamped === 1 ? '' : 's'}`;
+};

@@ -150,6 +150,13 @@ export interface TailorEarningsBreakdownEntry {
   earned_amount: number;
 }
 
+export interface TailorWorkload {
+  assigned_quantity: number;
+  completed_quantity: number;
+  outstanding_quantity: number;
+  earned_amount: number;
+}
+
 export interface TailorEarnings {
   success: boolean;
   tailor: Tailor;
@@ -158,6 +165,7 @@ export interface TailorEarnings {
     total_earned: number;
   };
   garment_breakdown: TailorEarningsBreakdownEntry[];
+  workload: TailorWorkload;
 }
 
 export interface TailorSummaryEntry {
@@ -166,6 +174,7 @@ export interface TailorSummaryEntry {
   completed_quantity: number;
   earned_amount: number;
   outstanding_quantity: number;
+  workload: TailorWorkload;
 }
 
 export interface TailorEarningsSummary {
@@ -173,6 +182,13 @@ export interface TailorEarningsSummary {
   summary: {
     total_completed_quantity: number;
     total_earned: number;
+    total_active_tailors: number;
+    workload: TailorWorkload & {
+      total_assigned: number;
+      total_completed: number;
+      total_outstanding: number;
+      total_earned: number;
+    };
   };
   tailors: TailorSummaryEntry[];
 }

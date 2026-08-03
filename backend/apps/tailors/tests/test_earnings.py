@@ -137,6 +137,115 @@ def test_earnings_owner_can_read(client, owner, completed_assignment):
     assert response.status_code == 200
 
 
+def test_earnings_workload_counts_partial_progress(client, staff):
+    customer = create_customer()
+    order = create_order_with_items(customer, {"SHIRT": 6})
+    tailor = create_tailor("Workload Tailor")
+    create_piece_rate(garment_type="SHIRT", rate_per_piece="150.00")
+    item = get_order_item(order, "SHIRT")
+
+    create_assignment(
+        tailor,
+        item,
+        assigned_quantity=4,
+        status=WorkAssignment.Status.COMPLETED,
+        completed_quantity=4,
+        rate_per_piece_snapshot="150.00",
+    )
+    create_assignment(
+        tailor,
+        item,
+        assigned_quantity=2,
+        status=WorkAssignment.Status.IN_PROGRESS,
+        completed_quantity=1,
+        rate_per_piece_snapshot="150.00",
+    )
+
+    response = client.get(tailor_earnings_url(tailor.id), **_auth(staff))
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["workload"]["assigned_quantity"] == 6
+    assert data["workload"]["completed_quantity"] == 5
+    assert data["workload"]["outstanding_quantity"] == 1
+    assert data["workload"]["earned_amount"] == 750.0
+
+    # Existing COMPLETED-only earnings contract is unchanged.
+    assert data["summary"]["total_completed_quantity"] == 4
+    assert data["summary"]["total_earned"] == 600.0
+
+
+def test_earnings_workload_zero_for_no_assignments(client, staff):
+    tailor = create_tailor("Idle Tailor")
+    response = client.get(tailor_earnings_url(tailor.id), **_auth(staff))
+    assert response.status_code == 200
+    data = response.json()
+    assert data["workload"]["assigned_quantity"] == 0
+    assert data["workload"]["completed_quantity"] == 0
+    assert data["workload"]["outstanding_quantity"] == 0
+    assert data["workload"]["earned_amount"] == 0.0
+
+
+def test_summary_workload_aggregates_across_tailors(client, staff):
+    customer = create_customer()
+    order = create_order_with_items(customer, {"SHIRT": 8, "PANT": 4})
+    tailor_a = create_tailor("Tailor A")
+    tailor_b = create_tailor("Tailor B")
+    create_piece_rate(garment_type="SHIRT", rate_per_piece="150.00")
+    create_piece_rate(garment_type="PANT", rate_per_piece="200.00")
+
+    shirt = get_order_item(order, "SHIRT")
+    pant = get_order_item(order, "PANT")
+
+    create_assignment(
+        tailor_a,
+        shirt,
+        assigned_quantity=5,
+        status=WorkAssignment.Status.COMPLETED,
+        completed_quantity=5,
+        rate_per_piece_snapshot="150.00",
+    )
+    create_assignment(
+        tailor_b,
+        pant,
+        assigned_quantity=3,
+        status=WorkAssignment.Status.IN_PROGRESS,
+        completed_quantity=2,
+        rate_per_piece_snapshot="200.00",
+    )
+
+    response = client.get(tailor_earnings_summary_url(), **_auth(staff))
+    assert response.status_code == 200
+    data = response.json()
+
+    workload = data["summary"]["workload"]
+    assert workload["total_assigned"] == 8
+    assert workload["total_completed"] == 7
+    assert workload["total_outstanding"] == 1
+    assert workload["total_earned"] == 1150.0
+
+    by_name = {t["name"]: t for t in data["tailors"]}
+    a = by_name["Tailor A"]["workload"]
+    assert a["assigned_quantity"] == 5
+    assert a["completed_quantity"] == 5
+    assert a["outstanding_quantity"] == 0
+    assert a["earned_amount"] == 750.0
+    b = by_name["Tailor B"]["workload"]
+    assert b["assigned_quantity"] == 3
+    assert b["completed_quantity"] == 2
+    assert b["outstanding_quantity"] == 1
+    assert b["earned_amount"] == 400.0
+
+
+def test_summary_reports_active_tailor_count(client, staff, completed_assignment):
+    create_tailor("Idle Tailor")
+    create_tailor("Archived Tailor", is_active=False)
+    response = client.get(tailor_earnings_summary_url(), **_auth(staff))
+    assert response.status_code == 200
+    data = response.json()
+    assert data["summary"]["total_active_tailors"] == 2
+
+
 def test_summary_aggregates_all_tailors(client, staff, completed_assignment):
     tailor = completed_assignment["tailor"]
 

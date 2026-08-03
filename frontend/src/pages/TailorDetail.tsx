@@ -40,7 +40,7 @@ import StraightenIcon from '@mui/icons-material/Straighten';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
-import { formatCurrency, formatDate } from '../utils/formatters';
+import { formatCurrency, formatDate, formatPieces } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { TailorFormDialog } from '../components/TailorFormDialog';
 import AssignWorkDialog from '../components/AssignWorkDialog';
@@ -370,24 +370,34 @@ export const TailorDetail: React.FC = () => {
       {earnings && (
         <Paper sx={{ p: 3, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
           <Typography variant="h6" sx={{ fontWeight: 700, mb: 2.5 }}>
-            Earnings
+            Workload &amp; Earnings
           </Typography>
           <Box
             sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
               gap: 3,
             }}
           >
             <InfoCell
               icon={<StraightenIcon sx={{ fontSize: 18 }} />}
-              label="Pieces Completed"
-              value={`${earnings.summary.total_completed_quantity} pcs`}
+              label="Total Assigned"
+              value={formatPieces(earnings.workload.assigned_quantity)}
+            />
+            <InfoCell
+              icon={<CheckCircleIcon sx={{ fontSize: 18 }} />}
+              label="Total Completed"
+              value={formatPieces(earnings.workload.completed_quantity)}
+            />
+            <InfoCell
+              icon={<PaymentsIcon sx={{ fontSize: 18 }} />}
+              label="Total Outstanding"
+              value={formatPieces(earnings.workload.outstanding_quantity)}
             />
             <InfoCell
               icon={<PaymentsIcon sx={{ fontSize: 18 }} />}
               label="Total Earned"
-              value={formatCurrency(earnings.summary.total_earned)}
+              value={formatCurrency(earnings.workload.earned_amount)}
             />
           </Box>
           {earnings.garment_breakdown.length > 0 && (
@@ -420,7 +430,7 @@ export const TailorDetail: React.FC = () => {
                       {entry.garment_type}
                     </Typography>
                     <Typography variant="body2" sx={{ color: '#64748B' }}>
-                      {entry.completed_quantity} pcs · {formatCurrency(entry.earned_amount)}
+                      {formatPieces(entry.completed_quantity)} · {formatCurrency(entry.earned_amount)}
                     </Typography>
                   </Box>
                 ))}
@@ -474,13 +484,16 @@ export const TailorDetail: React.FC = () => {
           <Table size="medium">
             <TableHead>
               <TableRow sx={{ backgroundColor: '#F8FAFC' }}>
-                <TableCell sx={{ fontWeight: 700 }}>Garment</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Order</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Garment</TableCell>
                 <TableCell align="center" sx={{ fontWeight: 700 }}>
-                  Qty
+                  Assigned
                 </TableCell>
                 <TableCell align="center" sx={{ fontWeight: 700 }}>
-                  Done
+                  Completed
+                </TableCell>
+                <TableCell align="center" sx={{ fontWeight: 700 }}>
+                  Outstanding
                 </TableCell>
                 <TableCell align="right" sx={{ fontWeight: 700 }}>
                   Rate
@@ -497,7 +510,7 @@ export const TailorDetail: React.FC = () => {
             <TableBody>
               {assignments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
+                  <TableCell colSpan={9} align="center" sx={{ py: 6 }}>
                     <Typography sx={{ color: '#64748B' }}>
                       {statusFilter ? 'No assignments match this status.' : 'No work assigned yet.'}
                     </Typography>
@@ -509,12 +522,6 @@ export const TailorDetail: React.FC = () => {
                   return (
                     <TableRow key={assignment.id} hover>
                       <TableCell>
-                        <Typography sx={{ fontWeight: 600 }}>{assignment.order_item.garment_type}</Typography>
-                        <Typography variant="caption" sx={{ color: '#94A3B8' }}>
-                          {assignment.order_item.customer_name}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
                         <Button
                           size="small"
                           sx={{ textTransform: 'none' }}
@@ -523,19 +530,25 @@ export const TailorDetail: React.FC = () => {
                           {assignment.order_item.order_number}
                         </Button>
                       </TableCell>
+                      <TableCell>
+                        <Typography sx={{ fontWeight: 600 }}>{assignment.order_item.garment_type}</Typography>
+                        <Typography variant="caption" sx={{ color: '#94A3B8' }}>
+                          {assignment.order_item.customer_name}
+                        </Typography>
+                      </TableCell>
                       <TableCell align="center">
                         <Typography variant="body2">
-                          {assignment.assigned_quantity}
-                          {assignment.remaining_quantity > 0 && (
-                            <Typography variant="caption" sx={{ color: '#94A3B8', display: 'block' }}>
-                              {assignment.remaining_quantity} pending
-                            </Typography>
-                          )}
+                          {formatPieces(assignment.assigned_quantity)}
                         </Typography>
                       </TableCell>
                       <TableCell align="center">
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {assignment.completed_quantity}
+                          {formatPieces(assignment.completed_quantity)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#B45309' }}>
+                          {formatPieces(assignment.assigned_quantity - assignment.completed_quantity)}
                         </Typography>
                       </TableCell>
                       <TableCell align="right">
