@@ -11,7 +11,11 @@ import type {
   PayrollPeriodPayload,
   PayrollTailorDetail,
   RecordPaymentResponse,
+  SalaryConfigurationListParams,
+  SalaryConfigurationPayload,
   SettlementResponse,
+  TailorSalaryConfiguration,
+  TailorSalaryConfigurationListResult,
 } from '../types/payroll';
 
 export const payrollService = {
@@ -92,6 +96,41 @@ export const payrollService = {
     const response = await apiClient.post<ApplyAdvanceResponse>(
       `/payroll/entries/${entryId}/apply-advance/`,
       { advance_id: advanceId }
+    );
+    return response.data;
+  },
+
+  async listSalaryConfigurations(
+    params: SalaryConfigurationListParams = {}
+  ): Promise<TailorSalaryConfigurationListResult> {
+    const query = new URLSearchParams();
+    if (params.tailor) query.set('tailor', String(params.tailor));
+    if (params.salary_model) query.set('salary_model', params.salary_model);
+    if (params.is_active !== undefined) query.set('is_active', String(params.is_active));
+    const qs = query.toString();
+    const response = await apiClient.get<TailorSalaryConfigurationListResult>(
+      `/salary-configurations/${qs ? `?${qs}` : ''}`
+    );
+    return response.data;
+  },
+
+  async createSalaryConfiguration(
+    payload: SalaryConfigurationPayload
+  ): Promise<TailorSalaryConfiguration> {
+    const response = await apiClient.post<TailorSalaryConfiguration>(
+      '/salary-configurations/',
+      payload
+    );
+    return response.data;
+  },
+
+  async updateSalaryConfiguration(
+    id: number,
+    payload: Partial<SalaryConfigurationPayload>
+  ): Promise<TailorSalaryConfiguration> {
+    const response = await apiClient.patch<TailorSalaryConfiguration>(
+      `/salary-configurations/${id}/`,
+      payload
     );
     return response.data;
   },

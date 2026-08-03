@@ -1,6 +1,28 @@
 from django.contrib import admin
 
-from .models import PayrollEntry, PayrollPeriod
+from .models import (
+    PayrollEntry,
+    PayrollPeriod,
+    TailorSalaryConfiguration,
+)
+
+
+@admin.register(TailorSalaryConfiguration)
+class TailorSalaryConfigurationAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "tailor",
+        "salary_model",
+        "fixed_salary_amount",
+        "effective_from",
+        "effective_to",
+        "is_active",
+        "created_by",
+        "created_at",
+    )
+    list_filter = ("salary_model", "is_active")
+    ordering = ("-effective_from",)
+    readonly_fields = ("created_by",)
 
 
 @admin.register(PayrollPeriod)

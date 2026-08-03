@@ -50,6 +50,55 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   OTHER: 'Other',
 };
 
+export const SALARY_MODELS = ['PER_GARMENT', 'FIXED_SALARY', 'MIXED'] as const;
+
+export type SalaryModel = (typeof SALARY_MODELS)[number];
+
+export const SALARY_MODEL_LABELS: Record<SalaryModel, string> = {
+  PER_GARMENT: 'Per Garment',
+  FIXED_SALARY: 'Fixed Salary',
+  MIXED: 'Fixed + Per Garment',
+};
+
+export interface TailorSalaryConfiguration {
+  id: number;
+  tailor: Tailor;
+  salary_model: SalaryModel;
+  salary_model_display: string;
+  fixed_salary_amount: number;
+  effective_from: string;
+  effective_to: string | null;
+  is_active: boolean;
+  notes: string;
+  created_by: number | null;
+  created_by_name: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TailorSalaryConfigurationListResult {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: TailorSalaryConfiguration[];
+}
+
+export interface SalaryConfigurationPayload {
+  tailor: number;
+  salary_model: SalaryModel;
+  fixed_salary_amount: number;
+  effective_from: string;
+  effective_to?: string | null;
+  is_active?: boolean;
+  notes?: string;
+}
+
+export interface SalaryConfigurationListParams {
+  tailor?: number;
+  salary_model?: SalaryModel | '';
+  is_active?: boolean;
+}
+
 export interface PayrollSettlement {
   gross_payable: number;
   advance_deductions: number;
@@ -70,7 +119,9 @@ export interface PayrollPeriod {
   created_at: string;
   updated_at: string;
   total_completed_pieces: number;
+  total_fixed_salary: number;
   total_piece_rate_earnings: number;
+  total_gross_salary: number;
   total_attendance_amount: number;
   total_payable: number;
   entry_count: number;
@@ -98,7 +149,11 @@ export interface PayrollEntry {
   half_days: number;
   absent_days: number;
   completed_pieces: number;
+  salary_model: SalaryModel;
+  salary_model_display: string;
+  fixed_salary_amount: number;
   piece_rate_earnings: number;
+  gross_salary: number;
   attendance_amount: number;
   total_payable: number;
   settlement: PayrollSettlement;
@@ -198,4 +253,31 @@ export interface ApplyAdvanceResponse {
   message: string;
   advance: SalaryAdvance;
   settlement: PayrollSettlement;
+}
+
+export interface SalaryBreakdown {
+  salary_model: SalaryModel;
+  salary_model_display: string;
+  fixed_salary_amount: number;
+  completed_pieces: number;
+  piece_rate_earnings: number;
+  gross_salary: number;
+  attendance: {
+    present_days: number;
+    half_days: number;
+    absent_days: number;
+  };
+}
+
+export interface SalaryBreakdownResponse {
+  success: boolean;
+  period: PayrollPeriod;
+  tailor: {
+    id: number;
+    name: string;
+    mobile_number: string;
+    is_active: boolean;
+  };
+  salary_breakdown: SalaryBreakdown | null;
+  settlement: PayrollSettlement | null;
 }

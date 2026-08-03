@@ -12,6 +12,7 @@ import { TailorDetail } from '../pages/TailorDetail';
 import { AttendancePage } from '../pages/Attendance';
 import { Payroll } from '../pages/Payroll';
 import { PayrollDetail } from '../pages/PayrollDetail';
+import { SalaryConfigurations } from '../pages/SalaryConfigurations';
 import { Advances } from '../pages/Advances';
 import { Dashboard } from '../pages/Dashboard';
 import { Income } from '../pages/Income';
@@ -40,6 +41,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="/attendance" element={<AttendancePage />} />
           <Route path="/payroll" element={<Payroll />} />
           <Route path="/payroll/:id" element={<PayrollDetail />} />
+          <Route path="/salary-configurations" element={<SalaryConfigurations />} />
           <Route path="/advances" element={<Advances />} />
           <Route path="/income" element={<Income />} />
           <Route path="/expenses" element={<Expenses />} />

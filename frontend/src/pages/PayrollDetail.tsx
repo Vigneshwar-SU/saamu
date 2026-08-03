@@ -45,6 +45,7 @@ import {
 import {
   PAYROLL_PERIOD_STATUS_COLORS,
   PAYROLL_PERIOD_STATUS_LABELS,
+  SALARY_MODEL_LABELS,
   SETTLEMENT_STATUS_COLORS,
   SETTLEMENT_STATUS_LABELS,
 } from '../types/payroll';
@@ -253,6 +254,16 @@ export const PayrollDetail: React.FC = () => {
           color="#1E3A8A"
         />
         <SummaryCard
+          label="TOTAL FIXED SALARY"
+          value={formatCurrency(period.total_fixed_salary)}
+          color="#7C3AED"
+        />
+        <SummaryCard
+          label="TOTAL GROSS SALARY"
+          value={formatCurrency(period.total_gross_salary)}
+          color="#0E7490"
+        />
+        <SummaryCard
           label="ATTENDANCE"
           value={formatCurrency(period.total_attendance_amount)}
         />
@@ -274,6 +285,8 @@ export const PayrollDetail: React.FC = () => {
                 <TableCell sx={{ fontWeight: 700 }}>Half Day</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Absent</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Completed</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Salary Model</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Fixed Salary</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Piece Rate Earnings</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Attendance Amount</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Total Payable</TableCell>
@@ -286,7 +299,7 @@ export const PayrollDetail: React.FC = () => {
             <TableBody>
               {entries.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={12} align="center" sx={{ py: 6 }}>
+                  <TableCell colSpan={14} align="center" sx={{ py: 6 }}>
                     <Typography sx={{ color: '#64748B' }}>
                       {period.status === 'DRAFT'
                         ? 'No entries yet. Calculate payroll to generate tailor entries.'
@@ -330,6 +343,35 @@ export const PayrollDetail: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2">{formatPieces(entry.completed_pieces)}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={SALARY_MODEL_LABELS[entry.salary_model]}
+                          size="small"
+                          sx={{
+                            fontWeight: 600,
+                            fontSize: '0.7rem',
+                            backgroundColor:
+                              entry.salary_model === 'FIXED_SALARY'
+                                ? '#EDE9FE'
+                                : entry.salary_model === 'MIXED'
+                                ? '#E0F2FE'
+                                : '#F1F5F9',
+                            color:
+                              entry.salary_model === 'FIXED_SALARY'
+                                ? '#6D28D9'
+                                : entry.salary_model === 'MIXED'
+                                ? '#0369A1'
+                                : '#475569',
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {entry.salary_model === 'PER_GARMENT'
+                            ? '—'
+                            : formatCurrency(entry.fixed_salary_amount)}
+                        </Typography>
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2">{formatCurrency(entry.piece_rate_earnings)}</Typography>
@@ -466,7 +508,32 @@ const TailorAssignmentBreakdown: React.FC<{
         {entry && (
           <Typography variant="body2" sx={{ color: '#64748B', mt: 0.5 }}>
             {entry.present_days} present · {entry.half_days} half day · {entry.absent_days} absent ·{' '}
-            {formatPieces(entry.completed_pieces)} completed · {formatCurrency(entry.total_payable)} payable
+            {formatPieces(entry.completed_pieces)} completed ·{' '}
+            <Chip
+              label={SALARY_MODEL_LABELS[entry.salary_model]}
+              size="small"
+              sx={{
+                fontWeight: 600,
+                fontSize: '0.7rem',
+                height: 18,
+                backgroundColor:
+                  entry.salary_model === 'FIXED_SALARY'
+                    ? '#EDE9FE'
+                    : entry.salary_model === 'MIXED'
+                    ? '#E0F2FE'
+                    : '#F1F5F9',
+                color:
+                  entry.salary_model === 'FIXED_SALARY'
+                    ? '#6D28D9'
+                    : entry.salary_model === 'MIXED'
+                    ? '#0369A1'
+                    : '#475569',
+              }}
+            />{' '}
+            {entry.salary_model !== 'PER_GARMENT' &&
+              `${formatCurrency(entry.fixed_salary_amount)} fixed · `}
+            {formatCurrency(entry.piece_rate_earnings)} piece ·{' '}
+            {formatCurrency(entry.gross_salary)} gross · {formatCurrency(entry.total_payable)} payable
           </Typography>
         )}
       </Box>

@@ -4,7 +4,7 @@ A custom tailoring management system for **Saamu Tailors**, a family tailoring b
 
 The application digitizes the shop's operations: customer records, orders, measurements, tailoring workflow, tailor workload, payments, income, expenses, digital bills, and delivery/collection tracking.
 
-**Current stage:** Phase 9 (Customer Billing & Invoice Foundation). Business modules beyond billing are implemented in later phases.
+**Current stage:** Phase 10 (Tailor Salary & Payroll). Business modules beyond payroll are implemented in later phases.
 
 ---
 
@@ -340,7 +340,7 @@ saamu/
 │   │   ├── orders/           # orders, order items, status workflow (Phase 4)
 │   │   ├── tailors/          # tailors, piece rates, work assignments (Phase 5)
 │   │   ├── attendance/       # daily tailor attendance records (Phase 6)
-│   │   ├── payroll/          # payroll periods + per-tailor entries (Phase 6)
+│   │   ├── payroll/          # payroll periods, per-tailor entries + salary configurations (Phase 6/10)
 │   │   ├── payments/         # salary advances + payroll payments/settlement (Phase 7)
 │   │   ├── finance/          # income, expenses + dashboard summary (Phase 8)
 │   │   └── billing/          # customer invoices + payments (Phase 9)
@@ -396,6 +396,7 @@ saamu/
 - **Phase 7 — Salary Payments, Advances & Payroll Settlement:** complete
 - **Phase 8 — Income, Expenses & Financial Dashboard:** complete
 - **Phase 9 — Customer Billing & Invoice Foundation:** complete
-- **Phase 10+ — Business modules (reports, exports, reminders):** pending
+- **Phase 10 — Tailor Salary & Payroll:** complete
+- **Phase 11+ — Business modules (reports, exports, reminders):** pending
 
 Do not treat this document as a feature guide; business functionality is implemented incrementally in later phases and documented in `docs/`.

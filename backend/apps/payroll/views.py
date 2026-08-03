@@ -33,16 +33,55 @@ from apps.payments.services import (
 )
 from apps.tailors.models import Tailor, WorkAssignment
 
-from .models import PayrollEntry, PayrollPeriod
+from .models import PayrollEntry, PayrollPeriod, TailorSalaryConfiguration
 from .serializers import (
     PayrollAssignmentSerializer,
     PayrollEntrySerializer,
     PayrollPeriodSerializer,
+    TailorSalaryConfigurationSerializer,
 )
 
 PAYROLL_PERIOD_MUTATION_ACTIONS = {"create", "calculate", "finalize"}
 
 SETTLEMENT_MUTATION_ACTIONS = {"payments", "settle", "apply_advance"}
+
+
+class SalaryConfigurationViewSet(viewsets.ModelViewSet):
+    """Salary configuration records governing how each tailor is paid.
+
+    Reads are OWNER + STAFF; mutations (create / patch) are STAFF only. New
+    effective configurations should be created rather than editing the past,
+    so payroll history stays reproducible from the snapshotted entries.
+    """
+
+    http_method_names = ["get", "post", "patch", "head", "options"]
+    serializer_class = TailorSalaryConfigurationSerializer
+    queryset = TailorSalaryConfiguration.objects.select_related(
+        "tailor", "created_by"
+    ).all()
+
+    def get_permissions(self):
+        if self.action in {"create", "update", "partial_update"}:
+            return [IsStaffRole()]
+        return [IsOwnerOrStaff()]
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        tailor = (self.request.query_params.get("tailor") or "").strip()
+        if tailor:
+            qs = qs.filter(tailor_id=tailor)
+        salary_model = (self.request.query_params.get("salary_model") or "").strip()
+        if salary_model:
+            qs = qs.filter(salary_model=salary_model)
+        is_active = (self.request.query_params.get("is_active") or "").strip()
+        if is_active.lower() in {"true", "1"}:
+            qs = qs.filter(is_active=True)
+        elif is_active.lower() in {"false", "0"}:
+            qs = qs.filter(is_active=False)
+        return qs
 
 
 class PayrollPeriodViewSet(viewsets.ModelViewSet):
@@ -113,6 +152,53 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
                 "period": PayrollPeriodSerializer(
                     period, context=self.get_serializer_context()
                 ).data,
+            }
+        )
+
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path=r"tailors/(?P<tailor_id>[^/.]+)/salary-breakdown",
+    )
+    def salary_breakdown(self, request, pk=None, tailor_id=None):
+        """Salary + settlement breakdown for one tailor in the period.
+
+        Combines the snapshotted entry components (salary model, fixed salary,
+        completed pieces, piece-rate earnings, gross salary, attendance
+        summary) with the derived settlement figures from ``apps.payments``.
+        """
+        period = self.get_object()
+        tailor = get_object_or_404(Tailor, pk=tailor_id)
+        entry = period.entries.filter(tailor=tailor).first()
+        context = self.get_serializer_context()
+        return Response(
+            {
+                "success": True,
+                "period": PayrollPeriodSerializer(period, context=context).data,
+                "tailor": {
+                    "id": tailor.id,
+                    "name": tailor.full_name,
+                    "mobile_number": tailor.mobile_number,
+                    "is_active": tailor.is_active,
+                },
+                "salary_breakdown": (
+                    {
+                        "salary_model": entry.salary_model,
+                        "salary_model_display": entry.get_salary_model_display(),
+                        "fixed_salary_amount": entry.fixed_salary_amount,
+                        "completed_pieces": entry.completed_pieces,
+                        "piece_rate_earnings": entry.piece_rate_earnings,
+                        "gross_salary": entry.gross_salary,
+                        "attendance": {
+                            "present_days": entry.present_days,
+                            "half_days": entry.half_days,
+                            "absent_days": entry.absent_days,
+                        },
+                    }
+                    if entry
+                    else None
+                ),
+                "settlement": (settlement_summary(entry) if entry else None),
             }
         )
 

@@ -32,6 +32,18 @@ def payroll_tailor_detail_url(period_id, tailor_id):
     return f"/api/v1/payroll/periods/{period_id}/tailors/{tailor_id}/"
 
 
+def payroll_salary_breakdown_url(period_id, tailor_id):
+    return f"/api/v1/payroll/periods/{period_id}/tailors/{tailor_id}/salary-breakdown/"
+
+
+def salary_configurations_url():
+    return "/api/v1/salary-configurations/"
+
+
+def salary_configuration_url(config_id):
+    return f"/api/v1/salary-configurations/{config_id}/"
+
+
 def create_payroll_period(
     period_start=None, period_end=None, status=PayrollPeriod.Status.DRAFT, **kwargs
 ):

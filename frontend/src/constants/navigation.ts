@@ -5,6 +5,7 @@ import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import ContentCutIcon from '@mui/icons-material/ContentCut';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
 import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
+import TuneIcon from '@mui/icons-material/Tune';
 import SavingsIcon from '@mui/icons-material/Savings';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
@@ -50,6 +51,12 @@ export const SIDEBAR_ITEMS: NavItem[] = [
     title: 'Payroll',
     path: '/payroll',
     icon: React.createElement(PointOfSaleIcon),
+  },
+  {
+    id: 'salary-configurations',
+    title: 'Salary Config',
+    path: '/salary-configurations',
+    icon: React.createElement(TuneIcon),
   },
   {
     id: 'advances',
