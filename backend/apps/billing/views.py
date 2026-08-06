@@ -18,14 +18,22 @@ from datetime import date
 
 from django.db.models import Case, DecimalField, F, OuterRef, Q, Sum, Value, When
 from django.db.models.functions import Coalesce
+from django.shortcuts import get_object_or_404
 from rest_framework import status as http_status
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from apps.authentication.permissions import IsOwnerOrStaff, IsStaffRole
+from apps.orders.models import Order, OrderStatus
 
+from .communications import (
+    MESSAGE_TYPE_READY_FOR_COLLECTION,
+    SUPPORTED_MESSAGE_TYPES,
+    build_order_communication,
+)
 from .models import CustomerPayment, Invoice
 from .serializers import (
     CustomerPaymentCreateSerializer,
@@ -240,3 +248,44 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 )
             qs = qs.filter(payment_method=method)
         return qs
+
+
+class CommunicationMessagePrepareView(APIView):
+    """Prepare a WhatsApp-ready customer message (GET, read-only).
+
+    ``GET /api/v1/communications/messages/prepare/order/<order_id>/?message_type=...``
+    returns the server-authored plain-text message together with a normalized
+    destination and WhatsApp handoff URL. The payload only ever reflects
+    backend-authoritative data; nothing is sent, stored or logged. The user
+    decides whether to copy the message or open WhatsApp in the browser.
+
+    Only the four supported message types are accepted. A ready-for-collection
+    message can only be prepared when the order is actually READY, so the
+    message never makes an unsupported claim.
+    """
+
+    http_method_names = ["get"]
+    permission_classes = [IsOwnerOrStaff]
+
+    def get(self, request, order_id):
+        message_type = (request.query_params.get("message_type") or "").strip()
+        if message_type not in SUPPORTED_MESSAGE_TYPES:
+            raise ValidationError({"message_type": "Unsupported message type."})
+
+        order = get_object_or_404(Order.objects.select_related("customer"), pk=order_id)
+        if (
+            message_type == MESSAGE_TYPE_READY_FOR_COLLECTION
+            and order.status != OrderStatus.READY
+        ):
+            raise ValidationError(
+                {
+                    "message_type": (
+                        "A ready-for-collection message can only be prepared for "
+                        "an order that is ready. Current status: "
+                        f"{order.get_status_display()}."
+                    )
+                }
+            )
+
+        data = build_order_communication(order, message_type)
+        return Response({"success": True, "data": data})

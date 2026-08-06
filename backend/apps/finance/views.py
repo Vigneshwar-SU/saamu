@@ -12,11 +12,13 @@ The income list supports ``date_from``, ``date_to``, ``payment_method`` and
 ``GET /income/summary/`` returns server-side derived totals and breakdowns
 honoring the same filters. Expense records are financial history with no
 update/delete routes. The dashboard is read-only for OWNER + STAFF and never
-mutates source data.
+mutates source data. Reports (Phase 14) and their CSV/PDF exports (Phase 17)
+are read-only for OWNER + STAFF and reuse the same aggregations.
 """
 
 from datetime import date
 
+from django.http import HttpResponse
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -27,6 +29,7 @@ from apps.authentication.permissions import IsOwnerOrStaff, IsStaffRole
 from apps.billing.models import CustomerPayment
 
 from .models import Expense
+from .report_exports import build_csv_report, build_pdf_report
 from .serializers import ExpenseSerializer, IncomeSerializer
 from .services import (
     build_dashboard_summary,
@@ -222,3 +225,53 @@ class ReportsSummaryView(APIView):
     def get(self, request):
         date_from, date_to = _parse_range(request)
         return Response(build_reports_summary(date_from, date_to))
+
+
+def _range_slug(range_info):
+    """Human-readable, filesystem-safe range descriptor for file names."""
+    date_from = range_info.get("date_from")
+    date_to = range_info.get("date_to")
+    if date_from and date_to:
+        return f"{date_from}_to_{date_to}"
+    if date_from:
+        return f"from_{date_from}"
+    if date_to:
+        return f"to_{date_to}"
+    return "all-time"
+
+
+def _export_filename(export_format, range_info):
+    return f"saamu-tailors-report-{_range_slug(range_info)}.{export_format}"
+
+
+class ReportsExportView(APIView):
+    """Read-only CSV/PDF export of the reports summary.
+
+    Exports are a thin presentation layer over the same authoritative
+    ``build_reports_summary`` aggregation used by ``ReportsSummaryView``, with
+    the identical inclusive date range semantics and permission model
+    (authenticated OWNER/STAFF only). Only ``GET`` is allowed, so exporting
+    can never mutate business records. The file name is derived solely from
+    the applied date range, so it is always safe in ``Content-Disposition``.
+    """
+
+    permission_classes = [IsOwnerOrStaff]
+    export_format = None
+
+    def get(self, request):
+        export_format = self.export_format
+        date_from, date_to = _parse_range(request)
+        summary = build_reports_summary(date_from, date_to)
+
+        if export_format == "csv":
+            content = build_csv_report(summary)
+            content_type = "text/csv; charset=utf-8"
+        else:
+            content = build_pdf_report(summary)
+            content_type = "application/pdf"
+
+        response = HttpResponse(content, content_type=content_type)
+        response["Content-Disposition"] = (
+            f'attachment; filename="{_export_filename(export_format, summary["range"])}"'
+        )
+        return response

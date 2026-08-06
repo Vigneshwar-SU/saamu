@@ -28,9 +28,13 @@ import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import GroupsIcon from '@mui/icons-material/Groups';
 import HandymanIcon from '@mui/icons-material/Handyman';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { formatCurrency } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiErrors';
-import { useReportsSummary } from '../hooks/useReports';
+import { downloadBlob } from '../utils/download';
+import { useReportsSummary, useReportExport } from '../hooks/useReports';
+import type { ReportExportFormat } from '../hooks/useReports';
 import {
   ORDER_STATUSES,
   ORDER_STATUS_LABELS,
@@ -167,6 +171,9 @@ export const Reports: React.FC = () => {
 
   const summary = data ?? emptySummary;
 
+  const exportMutation = useReportExport();
+  const [exportError, setExportError] = useState<string | null>(null);
+
   const applyFilters = () => {
     setAppliedFrom(dateFrom);
     setAppliedTo(dateTo);
@@ -177,6 +184,22 @@ export const Reports: React.FC = () => {
     setDateTo('');
     setAppliedFrom('');
     setAppliedTo('');
+  };
+
+  const handleExport = (format: ReportExportFormat) => {
+    if (exportMutation.isPending) return;
+    setExportError(null);
+    exportMutation.mutate(
+      { format, params: filterParams },
+      {
+        onSuccess: ({ blob, filename }) => {
+          downloadBlob(blob, filename);
+        },
+        onError: (exportFailure) => {
+          setExportError(getApiErrorMessage(exportFailure));
+        },
+      }
+    );
   };
 
   const netPosition = summary.financial.net_position;
@@ -252,6 +275,25 @@ export const Reports: React.FC = () => {
           >
             Reset
           </Button>
+          <Box sx={{ flexGrow: 1 }} />
+          <Button
+            variant="contained"
+            color="secondary"
+            startIcon={<FileDownloadIcon />}
+            onClick={() => handleExport('csv')}
+            disabled={exportMutation.isPending}
+          >
+            {exportMutation.isPending ? 'Exporting…' : 'Export CSV'}
+          </Button>
+          <Button
+            variant="contained"
+            color="secondary"
+            startIcon={<PictureAsPdfIcon />}
+            onClick={() => handleExport('pdf')}
+            disabled={exportMutation.isPending}
+          >
+            {exportMutation.isPending ? 'Exporting…' : 'Export PDF'}
+          </Button>
           {summary.range.date_from || summary.range.date_to ? (
             <Chip
               size="small"
@@ -263,6 +305,15 @@ export const Reports: React.FC = () => {
             <Chip size="small" label="All time" variant="outlined" sx={{ fontWeight: 600 }} />
           )}
         </Stack>
+        {exportError && (
+          <Alert
+            severity="error"
+            onClose={() => setExportError(null)}
+            sx={{ mt: 2 }}
+          >
+            Export failed: {exportError}
+          </Alert>
+        )}
       </Paper>
 
       {isFetching && !isLoading && <LinearProgress sx={{ height: 3 }} />}

@@ -54,6 +54,7 @@ import {
   useWorkAssignmentList,
 } from '../hooks/useTailors';
 import AssignWorkDialog from '../components/AssignWorkDialog';
+import { OrderCommunicationPanel } from '../components/OrderCommunicationPanel';
 import ReportProgressDialog from '../components/ReportProgressDialog';
 import WorkAssignmentStatusChip from '../components/WorkAssignmentStatusChip';
 import { MEASUREMENT_FIELD_LABELS } from '../types/customers';
@@ -571,6 +572,8 @@ export const OrderDetail: React.FC = () => {
           </Box>
         </Box>
       </Paper>
+
+      <OrderCommunicationPanel orderId={orderId} />
 
       <Paper sx={{ borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
         <Box

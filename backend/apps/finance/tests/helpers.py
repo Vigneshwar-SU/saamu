@@ -38,6 +38,14 @@ def reports_summary_url():
     return "/api/v1/reports/summary/"
 
 
+def reports_export_csv_url():
+    return "/api/v1/reports/export/csv/"
+
+
+def reports_export_pdf_url():
+    return "/api/v1/reports/export/pdf/"
+
+
 def create_expense(amount="100.00", expense_date=None, **kwargs):
     defaults = {
         "category": Expense.Category.MATERIAL,

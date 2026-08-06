@@ -4,7 +4,7 @@ A custom tailoring management system for **Saamu Tailors**, a family tailoring b
 
 The application digitizes the shop's operations: customer records, orders, measurements, tailoring workflow, tailor workload, payments, income, expenses, digital bills, and delivery/collection tracking.
 
-**Current stage:** Phase 16 (Backup, Restore & Data Portability). Adds a hardened operator workflow for PostgreSQL backup/restore: management commands (`db_backup`, `db_list_backups`, `db_verify`, `db_restore`, `db_cleanup`), configurable backup storage outside the source tree, pre-restore safety backups, restore verification, retention cleanup, and a documented local → cloud PostgreSQL migration path. No new business features; no schema changes; no UI/API surface. Manual verification checklist pending.
+**Current stage:** Phase 18 (Customer Communication & WhatsApp-Ready Delivery). Adds a read-only preparation endpoint `GET /api/v1/communications/messages/prepare/order/<id>/?message_type=...` (OWNER/STAFF) that returns a server-authored plain-text WhatsApp-ready message for one of four templates (order acknowledgement, order status update, ready for collection, payment/balance summary) plus a normalized phone destination and a fixed `wa.me` handoff URL — nothing is ever sent automatically. The Order Detail page gains a reusable Customer Communication panel with message-type selection, a compact preview, Copy WhatsApp Message (with copy-success state) and Open WhatsApp (disabled when no usable number), with loading/error/retry and duplicate-action protection. No provider integration, no credentials, no schema changes. Manual verification checklist pending.
 
 ---
 
@@ -288,6 +288,16 @@ Tokens are never rendered as raw HTML or logged. The access token is short-lived
 - **Date filtering**: optional inclusive `date_from` / `date_to` apply consistently across every date-based metric (orders by `order_date`, customers by creation date, income/refunds by `payment_date`, expenses by `expense_date`, payroll by `payment_date`, advances by `advance_date`); invalid or reversed ranges → 400 with the standard error contract. Workload and active counts are live shop snapshots, matching the dashboard.
 - **RBAC**: anonymous → 401; both OWNER and STAFF can read; there are no mutation endpoints (no POST/PUT/PATCH/DELETE).
 - Frontend: a `Reports` page with From/To/Apply/Reset date filters, financial stat cards (net position, income, expenses, order revenue), operational cards (orders with status chips and garment quantities, customers, tailor workload, payroll & settlements) and breakdown tables (income by payment type, expenses by category). Loading, error and empty states follow the existing page patterns; React Query keys are invalidated whenever payments, refunds, expenses, orders, work assignments, payroll payments or salary advances change.
+- **Exports (Phase 17)**: `GET /api/v1/reports/export/csv/` and `GET /api/v1/reports/export/pdf/` (OWNER + STAFF, read-only) produce a deterministic UTF-8 CSV and a printable PDF snapshot from the same authoritative `build_reports_summary` aggregation the page renders, honoring the same inclusive `date_from`/`date_to` semantics (no range = all time). File names are range-derived and safe (`saamu-tailors-report-<range>.csv|pdf`). The Reports page has Export CSV / Export PDF buttons that download the file for the applied range only, with loading/disabled states, duplicate-submit protection, recoverable error display and no navigation. PDF rendering uses `reportlab` (added to `backend/requirements.txt`).
+
+## 8.7 Customer Communication & WhatsApp-Ready Delivery (Phase 18)
+
+- **Preparation only, never sending**: `GET /api/v1/communications/messages/prepare/order/<order_id>/?message_type=...` (OWNER + STAFF, GET-only, read-only) returns `{success, data: {message_type, message, phone_number, whatsapp_url}}`. The server authors the plain-text message from authoritative order/customer/payment data (`order_payment_summary`); nothing is sent, stored or logged. The user then decides to copy the message or open WhatsApp in the browser (`https://wa.me/<number>?text=<encoded>`), so delivery is never claimed.
+- **Four templates** with stable identifiers: `ORDER_ACKNOWLEDGEMENT` (name, order number/date, concise item summary, total, paid/balance when available, expected delivery), `ORDER_STATUS_UPDATE` (name, order number, current status, deterministic next step when the lifecycle defines a single one), `READY_FOR_COLLECTION` (only preparable when the order is actually `READY`, plus the database-backed shop location/phone), and `PAYMENT_BALANCE` (order number, total, paid, balance, authoritative payment state). Wording is centralized in `apps/billing/communications.py` and deterministic.
+- **Safe phone handling**: only the existing `Customer.mobile_number` is used (no duplicate field, no migration). Harmless formatting is stripped; an explicit `+` country code is kept; a bare 10-digit Indian mobile (leading 6–9) is the only case where the `91` prefix is added (unambiguous for this India-only business); anything else is unusable and yields `phone_number: null` with no `whatsapp_url`. Numbers are never logged.
+- **Errors**: unsupported message type / non-ready collection → 400 `validation_error`; missing order → 404 `not_found`; anonymous → 401; POST/PUT/PATCH/DELETE → 405. Standard `{success:false,error:{code,message,details?}}` contract preserved.
+- **Frontend**: a reusable `OrderCommunicationPanel` on the Order Detail page (message-type select, compact preview, Copy WhatsApp Message with a 2-second copied state, Open WhatsApp disabled when no usable number with an explanation, loading/error/retry and duplicate-action protection). The frontend never calculates totals or balances.
+- No WhatsApp Business/Meta Cloud/Twilio integration, no provider credentials, no webhooks, no background senders, no message history — all explicitly deferred.
 
 ---
 
@@ -393,7 +403,7 @@ saamu/
 │   │   ├── payroll/          # payroll periods, per-tailor entries + salary configurations (Phase 6/10)
 │   │   ├── payments/         # salary advances + payroll payments/settlement (Phase 7)
 │   │   ├── finance/          # expenses + derived customer-payment income + dashboard summary (Phase 8/12/13)
-│   │   └── billing/          # customer invoices, typed payments + digital bills (Phase 9/11)
+│   │   └── billing/          # customer invoices, typed payments, digital bills + WhatsApp-ready communication (Phase 9/11/18)
 │   ├── config/               # Django project settings
 │   ├── logs/  media/  static/
 │   ├── manage.py
@@ -453,6 +463,8 @@ saamu/
 - **Phase 14 — Reports & Business Insights:** complete
 - **Phase 15 — Production Hardening & Operational Readiness:** complete
 - **Phase 16 — Backup, Restore & Data Portability:** complete
-- **Phase 17+ — Business modules (exports, reminders, cloud migration):** pending
+- **Phase 17 — Reports Export (CSV/PDF):** complete
+- **Phase 18 — Customer Communication & WhatsApp-Ready Delivery:** complete
+- **Phase 19+ — Business modules (automated reminders/sending, cloud migration):** pending
 
 Do not treat this document as a feature guide; business functionality is implemented incrementally in later phases and documented in `docs/`.

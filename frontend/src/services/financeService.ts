@@ -17,6 +17,12 @@ import type {
   ReportsSummary,
   ReportsSummaryParams,
 } from '../types/reports';
+import { extractDownloadFilename } from '../utils/download';
+
+export interface ReportExportResult {
+  blob: Blob;
+  filename: string;
+}
 
 function buildQuery(params: Record<string, string | number | undefined>): string {
   const query = new URLSearchParams();
@@ -79,5 +85,37 @@ export const financeService = {
       `/reports/summary/${buildQuery({ ...params })}`
     );
     return response.data;
+  },
+
+  async exportReportsCsv(
+    params: ReportsSummaryParams = {}
+  ): Promise<ReportExportResult> {
+    const response = await apiClient.get<Blob>(
+      `/reports/export/csv/${buildQuery({ ...params })}`,
+      { responseType: 'blob' }
+    );
+    return {
+      blob: response.data,
+      filename: extractDownloadFilename(
+        response.headers as Record<string, unknown>,
+        'saamu-tailors-report.csv'
+      ),
+    };
+  },
+
+  async exportReportsPdf(
+    params: ReportsSummaryParams = {}
+  ): Promise<ReportExportResult> {
+    const response = await apiClient.get<Blob>(
+      `/reports/export/pdf/${buildQuery({ ...params })}`,
+      { responseType: 'blob' }
+    );
+    return {
+      blob: response.data,
+      filename: extractDownloadFilename(
+        response.headers as Record<string, unknown>,
+        'saamu-tailors-report.pdf'
+      ),
+    };
   },
 };
