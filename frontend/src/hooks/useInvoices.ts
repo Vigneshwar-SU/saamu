@@ -1,5 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { invoiceService } from '../services/invoiceService';
+import {
+  DASHBOARD_KEY,
+  INCOME_KEY,
+  INCOME_SUMMARY_KEY,
+} from './useFinance';
+import { REPORTS_KEY } from './useReports';
 import type {
   BillResponse,
   BillingListResult,
@@ -40,6 +46,7 @@ export const useCreateInvoice = () => {
       queryClient.invalidateQueries({ queryKey: [INVOICES_KEY] });
       queryClient.invalidateQueries({ queryKey: ['order'] });
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: [REPORTS_KEY] });
     },
   });
 };
@@ -58,6 +65,7 @@ export const useCreateOrderInvoice = () => {
       queryClient.invalidateQueries({ queryKey: [INVOICES_KEY] });
       queryClient.invalidateQueries({ queryKey: ['order'] });
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: [REPORTS_KEY] });
     },
   });
 };
@@ -79,6 +87,10 @@ export const useCreatePayment = (invoiceId: number) => {
       queryClient.invalidateQueries({ queryKey: [INVOICES_KEY] });
       queryClient.invalidateQueries({ queryKey: [INVOICE_PAYMENTS_KEY, invoiceId] });
       queryClient.invalidateQueries({ queryKey: [INVOICE_BILL_KEY, invoiceId] });
+      queryClient.invalidateQueries({ queryKey: [INCOME_KEY] });
+      queryClient.invalidateQueries({ queryKey: [INCOME_SUMMARY_KEY] });
+      queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REPORTS_KEY] });
     },
   });
 };

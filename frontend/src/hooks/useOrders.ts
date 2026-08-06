@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { orderService } from '../services/orderService';
+import { DASHBOARD_KEY } from './useFinance';
+import { REPORTS_KEY } from './useReports';
 import type {
   Order,
   OrderCreatePayload,
@@ -30,6 +32,8 @@ export const useCreateOrder = () => {
     mutationFn: (payload: OrderCreatePayload) => orderService.create(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REPORTS_KEY] });
     },
   });
 };
@@ -41,6 +45,8 @@ export const useUpdateOrder = (id: number) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['order', id] });
+      queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REPORTS_KEY] });
     },
   });
 };
@@ -52,6 +58,8 @@ export const useChangeOrderStatus = (id: number) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['order', id] });
+      queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REPORTS_KEY] });
     },
   });
 };

@@ -26,10 +26,11 @@ class ExpenseAdmin(admin.ModelAdmin):
         "category",
         "amount",
         "expense_date",
+        "payment_method",
         "reference",
         "recorded_by",
         "created_at",
     )
-    list_filter = ("category",)
+    list_filter = ("category", "payment_method")
     ordering = ("-expense_date",)
     readonly_fields = ("recorded_by", "created_at", "updated_at")

@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { payrollService } from '../services/payrollService';
+import { DASHBOARD_KEY } from './useFinance';
+import { REPORTS_KEY } from './useReports';
 import type {
   PaymentHistoryResponse,
   PaymentPayload,
@@ -103,6 +105,8 @@ export const useRecordPayment = () => {
       queryClient.invalidateQueries({ queryKey: [PAYROLL_ENTRIES_KEY] });
       queryClient.invalidateQueries({ queryKey: ['payroll-settlement', entryId] });
       queryClient.invalidateQueries({ queryKey: [PAYMENT_HISTORY_KEY, entryId] });
+      queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REPORTS_KEY] });
     },
   });
 };
@@ -116,6 +120,8 @@ export const useSettleEntry = () => {
       queryClient.invalidateQueries({ queryKey: [PAYROLL_ENTRIES_KEY] });
       queryClient.invalidateQueries({ queryKey: ['payroll-settlement', entryId] });
       queryClient.invalidateQueries({ queryKey: [PAYMENT_HISTORY_KEY, entryId] });
+      queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REPORTS_KEY] });
     },
   });
 };
@@ -130,6 +136,7 @@ export const useApplyAdvanceToEntry = () => {
       queryClient.invalidateQueries({ queryKey: ['payroll-settlement', entryId] });
       queryClient.invalidateQueries({ queryKey: [PAYMENT_HISTORY_KEY, entryId] });
       queryClient.invalidateQueries({ queryKey: ['advances'] });
+      queryClient.invalidateQueries({ queryKey: [REPORTS_KEY] });
     },
   });
 };

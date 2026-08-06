@@ -1,9 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  pieceRateService,
-  tailorService,
-  workAssignmentService,
-} from '../services/tailorService';
+import { DASHBOARD_KEY } from './useFinance';
+import { REPORTS_KEY } from './useReports';
+import { pieceRateService, tailorService, workAssignmentService } from '../services/tailorService';
 import type {
   PieceRatePayload,
   Tailor,
@@ -50,6 +48,7 @@ export const useCreateTailor = () => {
     mutationFn: (payload: TailorPayload) => tailorService.create(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [TAILORS_KEY] });
+      queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
     },
   });
 };
@@ -61,6 +60,7 @@ export const useUpdateTailor = (id: number) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [TAILORS_KEY] });
       queryClient.invalidateQueries({ queryKey: ['tailor', id] });
+      queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
     },
   });
 };
@@ -72,6 +72,7 @@ export const useArchiveTailor = () => {
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: [TAILORS_KEY] });
       queryClient.invalidateQueries({ queryKey: ['tailor', id] });
+      queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
     },
   });
 };
@@ -83,6 +84,7 @@ export const useRestoreTailor = () => {
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: [TAILORS_KEY] });
       queryClient.invalidateQueries({ queryKey: ['tailor', id] });
+      queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
     },
   });
 };
@@ -129,6 +131,9 @@ export const useCreateWorkAssignment = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [WORK_ASSIGNMENTS_KEY] });
       queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['order'] });
+      queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REPORTS_KEY] });
       invalidateEarnings(queryClient);
     },
   });
@@ -141,6 +146,8 @@ export const useUpdateWorkAssignment = () => {
       workAssignmentService.reportProgress(id, completedQuantity),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [WORK_ASSIGNMENTS_KEY] });
+      queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REPORTS_KEY] });
       invalidateEarnings(queryClient);
     },
   });
@@ -160,6 +167,8 @@ export const useChangeWorkAssignmentStatus = () => {
     }) => workAssignmentService.changeStatus(id, status, completedQuantity),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [WORK_ASSIGNMENTS_KEY] });
+      queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
+      queryClient.invalidateQueries({ queryKey: [REPORTS_KEY] });
       invalidateEarnings(queryClient);
     },
   });

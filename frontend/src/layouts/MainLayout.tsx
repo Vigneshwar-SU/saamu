@@ -42,7 +42,7 @@ export const MainLayout: React.FC = () => {
             minHeight: 'calc(100vh - 64px)',
           }}
         >
-          <Box sx={{ p: { xs: 2, sm: 3, md: 4 }, flexGrow: 1 }}>
+          <Box className="page-content" sx={{ p: { xs: 2, sm: 3, md: 4 }, flexGrow: 1 }}>
             <Outlet />
           </Box>
 

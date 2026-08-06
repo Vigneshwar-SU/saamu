@@ -35,3 +35,37 @@ html, body, #root {
 ::-webkit-scrollbar-thumb:hover {
   background: #94A3B8;
 }
+
+/* Print: only the digital bill is printed; the application shell is hidden. */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  /* Application chrome: header, sidebar, footer. */
+  header,
+  footer,
+  .MuiDrawer-root {
+    display: none !important;
+  }
+
+  /* Neutralize layout scaffolding around the bill. */
+  main {
+    min-height: 0 !important;
+  }
+
+  .page-content {
+    padding: 0 !important;
+  }
+
+  /* The bill document itself. */
+  .print-bill {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+}

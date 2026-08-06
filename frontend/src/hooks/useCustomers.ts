@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { customerService } from '../services/customerService';
+import { DASHBOARD_KEY } from './useFinance';
 import type {
   Customer,
   CustomerListParams,
@@ -28,6 +29,7 @@ export const useCreateCustomer = () => {
     mutationFn: (payload: CustomerPayload) => customerService.create(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
     },
   });
 };
@@ -39,6 +41,7 @@ export const useUpdateCustomer = (id: number) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['customer', id] });
+      queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
     },
   });
 };
@@ -50,6 +53,7 @@ export const useArchiveCustomer = () => {
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['customer', id] });
+      queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
     },
   });
 };
@@ -61,6 +65,7 @@ export const useRestoreCustomer = () => {
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['customer', id] });
+      queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
     },
   });
 };

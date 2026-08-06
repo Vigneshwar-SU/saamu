@@ -38,6 +38,7 @@ def _valid_payload(**extra):
         "category": Expense.Category.MATERIAL,
         "amount": "100.00",
         "expense_date": str(TODAY),
+        "payment_method": Expense.Method.CASH,
         "description": "Fabric purchased.",
         "reference": "INV-001",
     }
@@ -142,6 +143,41 @@ def test_expense_invalid_category_rejected(client, staff):
     assert response.status_code == 400
 
 
+def test_expense_requires_payment_method(client, staff):
+    response = client.post(
+        expenses_list_url(),
+        _valid_payload(payment_method=""),
+        content_type="application/json",
+        **_auth(staff),
+    )
+    assert response.status_code == 400
+    body = response.json()
+    assert "payment_method" in body["error"]["details"]
+
+
+def test_expense_invalid_payment_method_rejected(client, staff):
+    response = client.post(
+        expenses_list_url(),
+        _valid_payload(payment_method="CHEQUE"),
+        content_type="application/json",
+        **_auth(staff),
+    )
+    assert response.status_code == 400
+
+
+def test_expense_records_payment_method_and_display(client, staff):
+    response = client.post(
+        expenses_list_url(),
+        _valid_payload(payment_method=Expense.Method.BANK_TRANSFER),
+        content_type="application/json",
+        **_auth(staff),
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["payment_method"] == Expense.Method.BANK_TRANSFER
+    assert data["payment_method_display"] == "Bank Transfer"
+
+
 def test_expense_filters(client, staff):
     create_expense(amount="100.00", expense_date=TODAY)
     create_expense(
@@ -162,6 +198,23 @@ def test_expense_filters(client, staff):
     assert response.json()["results"][0]["category"] == "RENT"
 
     response = client.get(expenses_list_url(), {"category": "BOGUS"}, **_auth(staff))
+    assert response.status_code == 400
+
+
+def test_expense_payment_method_filter(client, staff):
+    create_expense(amount="100.00", payment_method=Expense.Method.CASH)
+    create_expense(amount="200.00", payment_method=Expense.Method.UPI)
+
+    response = client.get(
+        expenses_list_url(), {"payment_method": "UPI"}, **_auth(staff)
+    )
+    assert response.status_code == 200
+    assert response.json()["count"] == 1
+    assert response.json()["results"][0]["payment_method"] == "UPI"
+
+    response = client.get(
+        expenses_list_url(), {"payment_method": "CHEQUE"}, **_auth(staff)
+    )
     assert response.status_code == 400
 
 

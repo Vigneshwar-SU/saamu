@@ -1,10 +1,12 @@
 """Income and expense records for the shop ledger.
 
 Phase 8 records money the shop receives (``Income``) and spends (``Expense``)
-against controlled categories. Both are financial history: they are never
-physically deleted and carry no update/delete API, so the ledger stays intact
-even after the recorder is gone. ``recorded_by`` is always set server-side from
-the authenticated user and never accepted from a client.
+against controlled categories. Phase 12 adds a controlled ``payment_method`` to
+every expense (CASH / UPI / BANK_TRANSFER / OTHER) so outflows can be tracked
+by how they were paid. Both are financial history: they are never physically
+deleted and carry no update/delete API, so the ledger stays intact even after
+the recorder is gone. ``recorded_by`` is always set server-side from the
+authenticated user and never accepted from a client.
 
 The ledger is deliberately separate from payroll: payroll settlements live in
 ``apps.payments`` (``PayrollPayment``) and salary advances stay a distinct
@@ -60,6 +62,12 @@ class Income(TimeStampedModel):
 class Expense(TimeStampedModel):
     """A single recorded shop expense entry."""
 
+    class Method(models.TextChoices):
+        CASH = "CASH", "Cash"
+        UPI = "UPI", "UPI"
+        BANK_TRANSFER = "BANK_TRANSFER", "Bank Transfer"
+        OTHER = "OTHER", "Other"
+
     class Category(models.TextChoices):
         RENT = "RENT", "Rent"
         ELECTRICITY = "ELECTRICITY", "Electricity"
@@ -72,6 +80,12 @@ class Expense(TimeStampedModel):
     category = models.CharField(max_length=20, choices=Category.choices)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     expense_date = models.DateField()
+    payment_method = models.CharField(
+        max_length=20,
+        choices=Method.choices,
+        default=Method.CASH,
+        help_text="How the expense was paid (CASH / UPI / BANK_TRANSFER / OTHER).",
+    )
     description = models.TextField(blank=True, default="")
     reference = models.CharField(max_length=100, blank=True, default="")
     recorded_by = models.ForeignKey(
@@ -95,6 +109,7 @@ class Expense(TimeStampedModel):
         indexes = [
             models.Index(fields=["expense_date"]),
             models.Index(fields=["category"]),
+            models.Index(fields=["payment_method"]),
         ]
 
     def __str__(self):

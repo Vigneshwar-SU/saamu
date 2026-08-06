@@ -181,7 +181,8 @@ export const Payroll: React.FC = () => {
               ) : (
                 data?.results.map((period) => {
                   const colors = PAYROLL_PERIOD_STATUS_COLORS[period.status];
-                  const settlementColors = SETTLEMENT_STATUS_COLORS[period.settlement.settlement_status];
+                  const settlementColors =
+                    SETTLEMENT_STATUS_COLORS[period.settlement.settlement_status];
                   return (
                     <TableRow
                       key={period.id}
@@ -205,13 +206,19 @@ export const Payroll: React.FC = () => {
                         />
                       </TableCell>
                       <TableCell>
-                        <Typography variant="body2">{formatPieces(period.total_completed_pieces)}</Typography>
+                        <Typography variant="body2">
+                          {formatPieces(period.total_completed_pieces)}
+                        </Typography>
                       </TableCell>
                       <TableCell>
-                        <Typography variant="body2">{formatCurrency(period.total_piece_rate_earnings)}</Typography>
+                        <Typography variant="body2">
+                          {formatCurrency(period.total_piece_rate_earnings)}
+                        </Typography>
                       </TableCell>
                       <TableCell>
-                        <Typography variant="body2">{formatCurrency(period.total_attendance_amount)}</Typography>
+                        <Typography variant="body2">
+                          {formatCurrency(period.total_attendance_amount)}
+                        </Typography>
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" sx={{ fontWeight: 600, color: '#15803D' }}>
@@ -268,6 +275,7 @@ export const Payroll: React.FC = () => {
                               <Button
                                 size="small"
                                 startIcon={<CalculateIcon fontSize="small" />}
+                                disabled={calculateMutation.isPending || finalizeMutation.isPending}
                                 onClick={(event) => {
                                   event.stopPropagation();
                                   handleCalculate(period);
@@ -282,6 +290,7 @@ export const Payroll: React.FC = () => {
                               <Button
                                 size="small"
                                 startIcon={<CheckCircleOutlineIcon fontSize="small" />}
+                                disabled={calculateMutation.isPending || finalizeMutation.isPending}
                                 onClick={(event) => {
                                   event.stopPropagation();
                                   handleFinalize(period);
@@ -302,7 +311,11 @@ export const Payroll: React.FC = () => {
         </TableContainer>
       </Paper>
 
-      <PayrollPeriodDialog open={dialogOpen} onClose={() => setDialogOpen(false)} submit={handleCreate} />
+      <PayrollPeriodDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        submit={handleCreate}
+      />
     </Box>
   );
 };

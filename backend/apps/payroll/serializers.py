@@ -117,15 +117,42 @@ class PayrollPeriodSerializer(serializers.ModelSerializer):
         ret["created_by_name"] = (
             instance.created_by.username if instance.created_by else None
         )
-        aggregates = instance.entries.aggregate(
-            total_completed_pieces=models.Sum("completed_pieces"),
-            total_fixed_salary=models.Sum("fixed_salary_amount"),
-            total_piece_rate_earnings=models.Sum("piece_rate_earnings"),
-            total_gross_salary=models.Sum("gross_salary"),
-            total_attendance_amount=models.Sum("attendance_amount"),
-            total_payable=models.Sum("total_payable"),
-            entry_count=models.Count("id"),
-        )
+        if hasattr(instance, "_total_payable"):
+            aggregates = {
+                "total_completed_pieces": instance._total_completed_pieces or 0,
+                "total_fixed_salary": (instance._total_fixed_salary or Decimal("0.00")),
+                "total_piece_rate_earnings": (
+                    instance._total_piece_rate_earnings or Decimal("0.00")
+                ),
+                "total_gross_salary": instance._total_gross_salary or Decimal("0.00"),
+                "total_attendance_amount": (
+                    instance._total_attendance_amount or Decimal("0.00")
+                ),
+                "total_payable": instance._total_payable or Decimal("0.00"),
+                "entry_count": instance._entry_count or 0,
+            }
+            settlement = period_settlement_summary(
+                instance,
+                precomputed={
+                    "gross_payable": aggregates["total_payable"],
+                    "advance_deductions": (
+                        instance._settlement_deductions or Decimal("0.00")
+                    ),
+                    "payments_recorded": (instance._settlement_paid or Decimal("0.00")),
+                    "payment_count": instance._settlement_payment_count or 0,
+                },
+            )
+        else:
+            aggregates = instance.entries.aggregate(
+                total_completed_pieces=models.Sum("completed_pieces"),
+                total_fixed_salary=models.Sum("fixed_salary_amount"),
+                total_piece_rate_earnings=models.Sum("piece_rate_earnings"),
+                total_gross_salary=models.Sum("gross_salary"),
+                total_attendance_amount=models.Sum("attendance_amount"),
+                total_payable=models.Sum("total_payable"),
+                entry_count=models.Count("id"),
+            )
+            settlement = period_settlement_summary(instance)
         ret["total_completed_pieces"] = aggregates["total_completed_pieces"] or 0
         ret["total_fixed_salary"] = aggregates["total_fixed_salary"] or Decimal("0.00")
         ret["total_piece_rate_earnings"] = aggregates[
@@ -137,7 +164,7 @@ class PayrollPeriodSerializer(serializers.ModelSerializer):
         ] or Decimal("0.00")
         ret["total_payable"] = aggregates["total_payable"] or Decimal("0.00")
         ret["entry_count"] = aggregates["entry_count"] or 0
-        ret["settlement"] = period_settlement_summary(instance)
+        ret["settlement"] = settlement
         return ret
 
 
@@ -185,7 +212,19 @@ class PayrollEntrySerializer(serializers.ModelSerializer):
         ret = super().to_representation(instance)
         ret["tailor"] = TailorSerializer(instance.tailor, context=self.context).data
         ret["salary_model_display"] = instance.get_salary_model_display()
-        ret["settlement"] = settlement_summary(instance)
+        if hasattr(instance, "_payments_total"):
+            ret["settlement"] = settlement_summary(
+                instance,
+                precomputed={
+                    "advance_deductions": (
+                        instance._advance_deductions or Decimal("0.00")
+                    ),
+                    "payments_recorded": instance._payments_total or Decimal("0.00"),
+                    "payment_count": instance._payment_count or 0,
+                },
+            )
+        else:
+            ret["settlement"] = settlement_summary(instance)
         return ret
 
 

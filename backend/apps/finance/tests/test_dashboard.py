@@ -4,11 +4,15 @@ from datetime import date, timedelta
 
 import pytest
 
+from apps.billing.models import CustomerPayment
+from apps.billing.tests.helpers import (
+    create_invoice,
+)
+from apps.billing.tests.helpers import create_payment as create_customer_payment
 from apps.customers.tests.helpers import auth_header, create_customer
-from apps.finance.models import Expense, Income
+from apps.finance.models import Expense
 from apps.finance.tests.helpers import (
     create_expense,
-    create_income,
     dashboard_summary_url,
     make_owner,
     make_staff,
@@ -74,14 +78,23 @@ def test_owner_and_staff_can_read_empty_dashboard(client, owner, staff):
         assert data["operational"]["workload"]["assigned_quantity"] == 0
         assert data["operational"]["active_customers"] == 0
         assert data["operational"]["active_tailors"] == 0
-        assert data["recent_income"] == []
+        assert data["recent_payments"] == []
         assert data["recent_expenses"] == []
 
 
 def test_dashboard_income_expense_and_net_totals(client, staff):
-    create_income(amount="500.00", income_date=TODAY)
-    create_income(
-        amount="250.50", income_date=TODAY, category=Income.Category.OTHER_INCOME
+    invoice = create_invoice()
+    create_customer_payment(
+        invoice,
+        amount="500.00",
+        payment_date=TODAY,
+        payment_type=CustomerPayment.PaymentType.ADVANCE,
+    )
+    create_customer_payment(
+        invoice,
+        amount="250.50",
+        payment_date=TODAY,
+        payment_type=CustomerPayment.PaymentType.PARTIAL,
     )
     create_expense(amount="100.00", expense_date=TODAY)
     create_expense(amount="50.25", expense_date=TODAY, category=Expense.Category.RENT)
@@ -113,8 +126,8 @@ def test_dashboard_salary_advances_are_separate_metric(client, staff):
 
 def test_dashboard_order_revenue_distinct_from_recorded_income(client, staff):
     customer = create_customer()
-    create_order_with_items(customer, {"SHIRT": 5, "PANT": 3})
-    create_income(amount="500.00", income_date=TODAY)
+    order = create_order_with_items(customer, {"SHIRT": 5, "PANT": 3})
+    create_customer_payment(create_invoice(order), amount="500.00", payment_date=TODAY)
 
     data = _summary(client, staff).json()["financial"]
     assert data["order_revenue"] == 800.0
@@ -174,21 +187,30 @@ def test_dashboard_active_counts_and_recent_lists(client, staff):
     create_customer("Archived Customer", is_active=False)
     create_tailor("Active Tailor")
     create_tailor("Archived Tailor", is_active=False)
-    income = create_income(amount="500.00", income_date=TODAY)
+    payment = create_customer_payment(
+        create_invoice(create_order_with_items(customer, {"SHIRT": 1})),
+        amount="500.00",
+        payment_date=TODAY,
+    )
     expense = create_expense(amount="100.00", expense_date=TODAY)
 
     data = _summary(client, staff).json()
     assert data["operational"]["active_customers"] == 1
     assert data["operational"]["active_tailors"] == 1
-    assert data["recent_income"][0]["id"] == income.id
-    assert data["recent_income"][0]["amount"] == 500.0
+    assert data["recent_payments"][0]["id"] == payment.id
+    assert data["recent_payments"][0]["amount"] == 500.0
     assert data["recent_expenses"][0]["id"] == expense.id
 
 
 def test_dashboard_inclusive_date_boundaries(client, staff):
-    create_income(amount="100.00", income_date=TODAY)
-    create_income(amount="200.00", income_date=TODAY + timedelta(days=3))
-    create_income(amount="300.00", income_date=TODAY - timedelta(days=3))
+    invoice = create_invoice()
+    create_customer_payment(invoice, amount="100.00", payment_date=TODAY)
+    create_customer_payment(
+        invoice, amount="200.00", payment_date=TODAY + timedelta(days=3)
+    )
+    create_customer_payment(
+        invoice, amount="300.00", payment_date=TODAY - timedelta(days=3)
+    )
 
     data = _summary(
         client,
@@ -222,7 +244,7 @@ def test_dashboard_is_read_only(client, staff):
 
 
 def test_dashboard_owner_can_read(client, owner, staff):
-    create_income(amount="500.00", income_date=TODAY)
+    create_customer_payment(create_invoice(), amount="500.00", payment_date=TODAY)
     response = _summary(client, owner)
     assert response.status_code == 200
     assert response.json()["financial"]["recorded_income"] == 500.0

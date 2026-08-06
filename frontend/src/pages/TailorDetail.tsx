@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Alert,
   Box,
@@ -6,10 +6,6 @@ import {
   Button,
   Chip,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   FormControl,
   IconButton,
   InputLabel,
@@ -24,7 +20,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  TextField,
   Tooltip,
   Typography,
 } from '@mui/material';
@@ -44,6 +39,8 @@ import { formatCurrency, formatDate, formatPieces } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { TailorFormDialog } from '../components/TailorFormDialog';
 import AssignWorkDialog from '../components/AssignWorkDialog';
+import ReportProgressDialog from '../components/ReportProgressDialog';
+import WorkAssignmentStatusChip from '../components/WorkAssignmentStatusChip';
 import {
   useArchiveTailor,
   useChangeWorkAssignmentStatus,
@@ -54,16 +51,8 @@ import {
   useUpdateWorkAssignment,
   useWorkAssignmentList,
 } from '../hooks/useTailors';
-import {
-  NEXT_ASSIGNMENT_STATUS,
-  WORK_ASSIGNMENT_STATUS_COLORS,
-  WORK_ASSIGNMENT_STATUS_LABELS,
-} from '../types/tailors';
-import type {
-  TailorPayload,
-  WorkAssignment,
-  WorkAssignmentStatus,
-} from '../types/tailors';
+import { NEXT_ASSIGNMENT_STATUS, WORK_ASSIGNMENT_STATUS_LABELS } from '../types/tailors';
+import type { TailorPayload, WorkAssignment, WorkAssignmentStatus } from '../types/tailors';
 
 const InfoCell: React.FC<{
   icon: React.ReactNode;
@@ -93,102 +82,17 @@ const InfoCell: React.FC<{
       >
         {label}
       </Typography>
-      <Typography variant="body2" sx={{ fontWeight: 500, color: '#0F172A', whiteSpace: 'pre-wrap' }}>
+      <Typography
+        variant="body2"
+        sx={{ fontWeight: 500, color: '#0F172A', whiteSpace: 'pre-wrap' }}
+      >
         {value}
       </Typography>
     </Box>
   </Box>
 );
 
-interface ReportProgressDialogProps {
-  open: boolean;
-  assignment: WorkAssignment | null;
-  onClose: () => void;
-  submit: (completedQuantity: number) => Promise<unknown>;
-}
-
-const ReportProgressDialog: React.FC<ReportProgressDialogProps> = ({ open, assignment, onClose, submit }) => {
-  const [value, setValue] = useState('');
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (open && assignment) {
-      setValue(String(assignment.completed_quantity));
-      setSubmitError(null);
-    }
-  }, [open, assignment]);
-
-  if (!assignment) return null;
-
-  const max = assignment.assigned_quantity;
-
-  const handleSubmit = async () => {
-    const quantity = Number(value);
-    if (!Number.isInteger(quantity) || quantity < 0 || quantity > max) {
-      setSubmitError(`Completed quantity must be between 0 and ${max}.`);
-      return;
-    }
-    setSubmitError(null);
-    setIsSubmitting(true);
-    try {
-      await submit(quantity);
-      onClose();
-    } catch (error) {
-      setSubmitError(getApiErrorMessage(error));
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle sx={{ fontWeight: 700 }}>Report Progress</DialogTitle>
-      <DialogContent dividers>
-        <Stack spacing={2.5} sx={{ mt: 0.5 }}>
-          {submitError && <Alert severity="error">{submitError}</Alert>}
-          <Typography variant="body2" sx={{ color: '#475569' }}>
-            {assignment.order_item.garment_type} · assigned {assignment.assigned_quantity} pcs
-          </Typography>
-          <TextField
-            label="Completed quantity"
-            type="number"
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-            inputProps={{ min: 0, max }}
-            fullWidth
-            autoFocus
-          />
-        </Stack>
-      </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} color="inherit">
-          Cancel
-        </Button>
-        <Button
-          onClick={handleSubmit}
-          variant="contained"
-          disabled={isSubmitting}
-          startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
-          sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
-        >
-          Save
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-};
-
-const statusChip = (status: WorkAssignmentStatus) => {
-  const colors = WORK_ASSIGNMENT_STATUS_COLORS[status];
-  return (
-    <Chip
-      label={WORK_ASSIGNMENT_STATUS_LABELS[status]}
-      size="small"
-      sx={{ fontWeight: 600, backgroundColor: colors.bg, color: colors.text }}
-    />
-  );
-};
+const statusChip = (status: WorkAssignmentStatus) => <WorkAssignmentStatusChip status={status} />;
 
 export const TailorDetail: React.FC = () => {
   const { id } = useParams();
@@ -201,7 +105,10 @@ export const TailorDetail: React.FC = () => {
   const { data: earnings } = useTailorEarnings(tailorId);
 
   const [statusFilter, setStatusFilter] = useState<WorkAssignmentStatus | ''>('');
-  const { data: assignmentsData } = useWorkAssignmentList({ tailor: tailorId, status: statusFilter });
+  const { data: assignmentsData } = useWorkAssignmentList({
+    tailor: tailorId,
+    status: statusFilter,
+  });
 
   const updateMutation = useUpdateTailor(tailorId);
   const archiveMutation = useArchiveTailor();
@@ -283,7 +190,9 @@ export const TailorDetail: React.FC = () => {
 
       {actionError && <Alert severity="error">{actionError}</Alert>}
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}>
+      <Box
+        sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}
+      >
         <Stack direction="row" spacing={1.5} alignItems="flex-start">
           <Tooltip title="Back to tailors">
             <IconButton
@@ -318,7 +227,11 @@ export const TailorDetail: React.FC = () => {
           <Stack direction="row" spacing={1}>
             {tailor.is_active ? (
               <>
-                <Button variant="outlined" startIcon={<EditIcon />} onClick={() => setEditOpen(true)}>
+                <Button
+                  variant="outlined"
+                  startIcon={<EditIcon />}
+                  onClick={() => setEditOpen(true)}
+                >
                   Edit
                 </Button>
                 <Button
@@ -329,7 +242,12 @@ export const TailorDetail: React.FC = () => {
                 >
                   Assign Work
                 </Button>
-                <Button variant="outlined" color="error" startIcon={<ArchiveIcon />} onClick={handleArchive}>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<ArchiveIcon />}
+                  onClick={handleArchive}
+                >
                   Archive
                 </Button>
               </>
@@ -363,7 +281,11 @@ export const TailorDetail: React.FC = () => {
             label="Active"
             value={tailor.is_active ? 'Yes' : 'No'}
           />
-          <InfoCell icon={<EditIcon sx={{ fontSize: 18 }} />} label="Notes" value={tailor.notes || '-'} />
+          <InfoCell
+            icon={<EditIcon sx={{ fontSize: 18 }} />}
+            label="Notes"
+            value={tailor.notes || '-'}
+          />
         </Box>
       </Paper>
 
@@ -404,7 +326,12 @@ export const TailorDetail: React.FC = () => {
             <Box sx={{ mt: 2.5 }}>
               <Typography
                 variant="caption"
-                sx={{ color: '#94A3B8', textTransform: 'uppercase', fontSize: '0.68rem', fontWeight: 600 }}
+                sx={{
+                  color: '#94A3B8',
+                  textTransform: 'uppercase',
+                  fontSize: '0.68rem',
+                  fontWeight: 600,
+                }}
               >
                 By Garment
               </Typography>
@@ -430,7 +357,8 @@ export const TailorDetail: React.FC = () => {
                       {entry.garment_type}
                     </Typography>
                     <Typography variant="body2" sx={{ color: '#64748B' }}>
-                      {formatPieces(entry.completed_quantity)} · {formatCurrency(entry.earned_amount)}
+                      {formatPieces(entry.completed_quantity)} ·{' '}
+                      {formatCurrency(entry.earned_amount)}
                     </Typography>
                   </Box>
                 ))}
@@ -441,7 +369,16 @@ export const TailorDetail: React.FC = () => {
       )}
 
       <Paper sx={{ borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-        <Box sx={{ px: 3, py: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
+        <Box
+          sx={{
+            px: 3,
+            py: 2,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 2,
+          }}
+        >
           <Stack direction="row" spacing={1} alignItems="center">
             <Box
               sx={{
@@ -531,7 +468,9 @@ export const TailorDetail: React.FC = () => {
                         </Button>
                       </TableCell>
                       <TableCell>
-                        <Typography sx={{ fontWeight: 600 }}>{assignment.order_item.garment_type}</Typography>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          {assignment.order_item.garment_type}
+                        </Typography>
                         <Typography variant="caption" sx={{ color: '#94A3B8' }}>
                           {assignment.order_item.customer_name}
                         </Typography>
@@ -548,11 +487,15 @@ export const TailorDetail: React.FC = () => {
                       </TableCell>
                       <TableCell align="center">
                         <Typography variant="body2" sx={{ fontWeight: 600, color: '#B45309' }}>
-                          {formatPieces(assignment.assigned_quantity - assignment.completed_quantity)}
+                          {formatPieces(
+                            assignment.assigned_quantity - assignment.completed_quantity
+                          )}
                         </Typography>
                       </TableCell>
                       <TableCell align="right">
-                        <Typography variant="body2">{formatCurrency(assignment.rate_per_piece_snapshot)}</Typography>
+                        <Typography variant="body2">
+                          {formatCurrency(assignment.rate_per_piece_snapshot)}
+                        </Typography>
                       </TableCell>
                       <TableCell align="right">
                         <Typography variant="body2" sx={{ fontWeight: 600, color: '#15803D' }}>
@@ -567,6 +510,7 @@ export const TailorDetail: React.FC = () => {
                               <Button
                                 size="small"
                                 startIcon={<EditIcon fontSize="small" />}
+                                disabled={progressMutation.isPending}
                                 onClick={() => {
                                   setSelectedAssignment(assignment);
                                   setProgressOpen(true);
@@ -580,6 +524,7 @@ export const TailorDetail: React.FC = () => {
                                 size="small"
                                 variant="contained"
                                 color={nextStatus === 'COMPLETED' ? 'success' : 'primary'}
+                                disabled={statusMutation.isPending}
                                 startIcon={
                                   nextStatus === 'COMPLETED' ? (
                                     <CheckCircleIcon fontSize="small" />
@@ -599,7 +544,9 @@ export const TailorDetail: React.FC = () => {
                                   }
                                 }}
                               >
-                                {nextStatus === 'COMPLETED' ? 'Complete' : WORK_ASSIGNMENT_STATUS_LABELS[nextStatus]}
+                                {nextStatus === 'COMPLETED'
+                                  ? 'Complete'
+                                  : WORK_ASSIGNMENT_STATUS_LABELS[nextStatus]}
                               </Button>
                             </Tooltip>
                           </Stack>

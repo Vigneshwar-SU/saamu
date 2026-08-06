@@ -167,7 +167,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
         if request.method == "GET":
             qs = (
                 CustomerPayment.objects.filter(invoice=invoice)
-                .select_related("recorded_by")
+                .select_related("invoice", "recorded_by")
                 .all()
             )
             qs = self._apply_payment_filters(qs)

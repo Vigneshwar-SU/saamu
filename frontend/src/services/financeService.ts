@@ -5,11 +5,18 @@ import type {
   Expense,
   ExpenseListParams,
   ExpensePayload,
+  ExpenseSummary,
+  ExpenseSummaryParams,
   FinanceListResult,
   Income,
   IncomeListParams,
-  IncomePayload,
+  IncomeSummary,
+  IncomeSummaryParams,
 } from '../types/finance';
+import type {
+  ReportsSummary,
+  ReportsSummaryParams,
+} from '../types/reports';
 
 function buildQuery(params: Record<string, string | number | undefined>): string {
   const query = new URLSearchParams();
@@ -30,8 +37,10 @@ export const financeService = {
     return response.data;
   },
 
-  async createIncome(payload: IncomePayload): Promise<Income> {
-    const response = await apiClient.post<Income>('/income/', payload);
+  async getIncomeSummary(params: IncomeSummaryParams = {}): Promise<IncomeSummary> {
+    const response = await apiClient.get<IncomeSummary>(
+      `/income/summary/${buildQuery({ ...params })}`
+    );
     return response.data;
   },
 
@@ -47,11 +56,27 @@ export const financeService = {
     return response.data;
   },
 
+  async getExpenseSummary(
+    params: ExpenseSummaryParams = {}
+  ): Promise<ExpenseSummary> {
+    const response = await apiClient.get<ExpenseSummary>(
+      `/expenses/summary/${buildQuery({ ...params })}`
+    );
+    return response.data;
+  },
+
   async getDashboardSummary(
     params: DashboardSummaryParams = {}
   ): Promise<DashboardSummary> {
     const response = await apiClient.get<DashboardSummary>(
       `/dashboard/summary/${buildQuery({ ...params })}`
+    );
+    return response.data;
+  },
+
+  async getReportsSummary(params: ReportsSummaryParams = {}): Promise<ReportsSummary> {
+    const response = await apiClient.get<ReportsSummary>(
+      `/reports/summary/${buildQuery({ ...params })}`
     );
     return response.data;
   },

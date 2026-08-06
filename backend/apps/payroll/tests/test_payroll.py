@@ -3,11 +3,14 @@
 from datetime import date, timedelta
 
 import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from apps.attendance.models import Attendance
 from apps.attendance.tests.helpers import create_attendance
 from apps.customers.tests.helpers import auth_header
+from apps.payments.services import period_settlement_summary, settlement_summary
 from apps.payroll.models import PayrollEntry, PayrollPeriod
 from apps.payroll.tests.helpers import (
     create_completed_assignment,
@@ -509,3 +512,102 @@ def test_archived_tailor_payroll_history_visible(client, staff):
     assert response.status_code == 200
     assert response.json()["tailor"]["is_active"] is False
     assert response.json()["entry"]["completed_pieces"] == 2
+
+
+def test_period_list_aggregate_queries_are_bounded(client, staff):
+    """Phase 15 N+1 regression: period list queries do not scale with rows.
+
+    The period aggregates and settlement values are precomputed with queryset
+    annotations, so listing any number of periods stays within a small constant
+    number of queries instead of the previous per-period aggregate queries.
+    """
+    customer = create_customer()
+    tailor = create_tailor()
+    order = _setup_work(customer, {"SHIRT": 12}, tailor)
+    item = get_order_item(order, "SHIRT")
+    for _ in range(3):
+        period = create_payroll_period(
+            period_start=TODAY - timedelta(days=7), period_end=TODAY
+        )
+        create_completed_assignment(tailor, item, 2, 2, "150.00", timezone.now())
+        period.calculate()
+
+    with CaptureQueriesContext(connection) as ctx:
+        response = client.get(payroll_periods_url(), **_auth(staff))
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 3
+    assert data["results"][0]["total_payable"] == 900.0
+    assert data["results"][0]["settlement"]["gross_payable"] == 900.0
+    assert len(ctx) <= 10
+
+
+def test_entry_list_settlement_queries_are_bounded(client, staff):
+    """Phase 15 N+1 regression: entry list settlement does not query per row."""
+    customer = create_customer()
+    tailor = create_tailor()
+    order = _setup_work(customer, {"SHIRT": 8}, tailor)
+    item = get_order_item(order, "SHIRT")
+    period = create_payroll_period(
+        period_start=TODAY - timedelta(days=7), period_end=TODAY
+    )
+    create_completed_assignment(tailor, item, 4, 4, "150.00", timezone.now())
+    period.calculate()
+
+    with CaptureQueriesContext(connection) as ctx:
+        response = client.get(payroll_entries_url(), **_auth(staff))
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 1
+    assert data["results"][0]["settlement"]["gross_payable"] == 600.0
+    assert len(ctx) <= 10
+
+
+def test_precomputed_settlement_summary_matches_live(client, staff):
+    """Precomputed settlement values must equal the live per-row computation."""
+    customer = create_customer()
+    tailor = create_tailor()
+    order = _setup_work(customer, {"SHIRT": 4}, tailor)
+    item = get_order_item(order, "SHIRT")
+    period = create_payroll_period(
+        period_start=TODAY - timedelta(days=7), period_end=TODAY
+    )
+    create_completed_assignment(tailor, item, 2, 2, "150.00", timezone.now())
+    period.calculate()
+
+    entry = period.entries.get()
+    live = settlement_summary(entry)
+    precomputed = settlement_summary(
+        entry,
+        precomputed={
+            "advance_deductions": live["advance_deductions"],
+            "payments_recorded": live["payments_recorded"],
+            "payment_count": live["payment_count"],
+        },
+    )
+    assert precomputed == live
+
+
+def test_precomputed_period_settlement_summary_matches_live(client, staff):
+    """Precomputed period settlement values must equal the live computation."""
+    customer = create_customer()
+    tailor = create_tailor()
+    order = _setup_work(customer, {"SHIRT": 4}, tailor)
+    item = get_order_item(order, "SHIRT")
+    period = create_payroll_period(
+        period_start=TODAY - timedelta(days=7), period_end=TODAY
+    )
+    create_completed_assignment(tailor, item, 2, 2, "150.00", timezone.now())
+    period.calculate()
+
+    live = period_settlement_summary(period)
+    precomputed = period_settlement_summary(
+        period,
+        precomputed={
+            "gross_payable": live["gross_payable"],
+            "advance_deductions": live["advance_deductions"],
+            "payments_recorded": live["payments_recorded"],
+            "payment_count": live["payment_count"],
+        },
+    )
+    assert precomputed == live

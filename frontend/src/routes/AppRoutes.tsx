@@ -20,7 +20,8 @@ import { Expenses } from '../pages/Expenses';
 import { Invoices } from '../pages/Invoices';
 import { InvoiceDetail } from '../pages/InvoiceDetail';
 import { InvoiceBill } from '../pages/InvoiceBill';
-import { Payments, Reports, Settings } from '../pages/Placeholders';
+import { Reports } from '../pages/Reports';
+import { Payments, Settings } from '../pages/Placeholders';
 
 export const AppRoutes: React.FC = () => {
   return (

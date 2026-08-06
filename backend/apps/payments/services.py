@@ -49,18 +49,28 @@ def outstanding_payable(entry):
     return entry.total_payable - _advance_deductions(entry) - _payments_total(entry)
 
 
-def settlement_summary(entry):
+def settlement_summary(entry, precomputed=None):
     """Derive the settlement values for one payroll entry.
 
     Returns gross_payable, advance_deductions, payments_recorded,
     outstanding_payable, settlement_status and payment_count. The summary is
     purely derived and works for any payroll period state; mutations are only
     permitted on FINALIZED periods.
+
+    ``precomputed`` is an optional dict of ``advance_deductions`` /
+    ``payments_recorded`` / ``payment_count`` supplied by callers that already
+    hold the aggregates (e.g. annotated querysets), so list serialization does
+    not issue per-row queries. When omitted the values are queried.
     """
     gross = entry.total_payable
-    deductions = _advance_deductions(entry)
-    paid = _payments_total(entry)
-    payment_count = PayrollPayment.objects.filter(payroll_entry=entry).count()
+    if precomputed is not None:
+        deductions = precomputed["advance_deductions"]
+        paid = precomputed["payments_recorded"]
+        payment_count = precomputed["payment_count"]
+    else:
+        deductions = _advance_deductions(entry)
+        paid = _payments_total(entry)
+        payment_count = PayrollPayment.objects.filter(payroll_entry=entry).count()
     outstanding = gross - deductions - paid
 
     if outstanding <= ZERO:
@@ -80,29 +90,39 @@ def settlement_summary(entry):
     }
 
 
-def period_settlement_summary(period):
+def period_settlement_summary(period, precomputed=None):
     """Aggregate settlement values across every entry of a payroll period.
 
     Mirrors the shape of :func:`settlement_summary` so the frontend can reuse
-    one type for both entry-level and period-level summaries.
+    one type for both entry-level and period-level summaries. ``precomputed``
+    (``gross_payable`` / ``advance_deductions`` / ``payments_recorded`` /
+    ``payment_count``) lets annotated querysets skip the per-row queries.
     """
-    gross = period.entries.aggregate(total=models.Sum("total_payable"))["total"] or ZERO
-    deductions = (
-        SalaryAdvance.objects.filter(
-            payroll_entry__payroll_period=period,
-            status=SalaryAdvance.Status.DEDUCTED,
-        ).aggregate(total=models.Sum("amount"))["total"]
-        or ZERO
-    )
-    paid = (
-        PayrollPayment.objects.filter(payroll_entry__payroll_period=period).aggregate(
-            total=models.Sum("amount")
-        )["total"]
-        or ZERO
-    )
-    payment_count = PayrollPayment.objects.filter(
-        payroll_entry__payroll_period=period
-    ).count()
+    if precomputed is not None:
+        gross = precomputed["gross_payable"]
+        deductions = precomputed["advance_deductions"]
+        paid = precomputed["payments_recorded"]
+        payment_count = precomputed["payment_count"]
+    else:
+        gross = (
+            period.entries.aggregate(total=models.Sum("total_payable"))["total"] or ZERO
+        )
+        deductions = (
+            SalaryAdvance.objects.filter(
+                payroll_entry__payroll_period=period,
+                status=SalaryAdvance.Status.DEDUCTED,
+            ).aggregate(total=models.Sum("amount"))["total"]
+            or ZERO
+        )
+        paid = (
+            PayrollPayment.objects.filter(
+                payroll_entry__payroll_period=period
+            ).aggregate(total=models.Sum("amount"))["total"]
+            or ZERO
+        )
+        payment_count = PayrollPayment.objects.filter(
+            payroll_entry__payroll_period=period
+        ).count()
     outstanding = gross - deductions - paid
 
     if gross <= ZERO:

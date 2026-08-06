@@ -11,6 +11,14 @@ moves CALCULATED periods to FINALIZED (immutable through normal operations).
 
 from decimal import Decimal
 
+from django.db.models import (
+    Count,
+    DecimalField,
+    IntegerField,
+    OuterRef,
+    Subquery,
+    Sum,
+)
 from django.shortcuts import get_object_or_404
 from rest_framework import status as http_status
 from rest_framework import viewsets
@@ -44,6 +52,66 @@ from .serializers import (
 PAYROLL_PERIOD_MUTATION_ACTIONS = {"create", "calculate", "finalize"}
 
 SETTLEMENT_MUTATION_ACTIONS = {"payments", "settle", "apply_advance"}
+
+_DECIMAL_OUTPUT = DecimalField(max_digits=12, decimal_places=2)
+_INTEGER_OUTPUT = IntegerField()
+
+
+def _aggregated_subquery(qs, group_by, expression, output_field):
+    """Correlated subquery summing/counting ``qs`` rows grouped by ``group_by``.
+
+    Used to precompute the payroll aggregates inside the queryset itself so the
+    list serializers never issue per-row aggregate queries (the Phase 15 N+1
+    fix). Returns NULL for groups with no matching rows; serializers normalize
+    NULL to zero.
+    """
+    return Subquery(
+        qs.values(group_by).annotate(total=expression).values("total"),
+        output_field=output_field,
+    )
+
+
+def _annotated_payroll_periods():
+    entries = PayrollEntry.objects.filter(payroll_period=OuterRef("pk"))
+    advances = SalaryAdvance.objects.filter(
+        payroll_entry__payroll_period=OuterRef("pk"),
+        status=SalaryAdvance.Status.DEDUCTED,
+    )
+    payments = PayrollPayment.objects.filter(
+        payroll_entry__payroll_period=OuterRef("pk")
+    )
+    return PayrollPeriod.objects.select_related("created_by").annotate(
+        _total_completed_pieces=_aggregated_subquery(
+            entries, "payroll_period", Sum("completed_pieces"), _INTEGER_OUTPUT
+        ),
+        _total_fixed_salary=_aggregated_subquery(
+            entries, "payroll_period", Sum("fixed_salary_amount"), _DECIMAL_OUTPUT
+        ),
+        _total_piece_rate_earnings=_aggregated_subquery(
+            entries, "payroll_period", Sum("piece_rate_earnings"), _DECIMAL_OUTPUT
+        ),
+        _total_gross_salary=_aggregated_subquery(
+            entries, "payroll_period", Sum("gross_salary"), _DECIMAL_OUTPUT
+        ),
+        _total_attendance_amount=_aggregated_subquery(
+            entries, "payroll_period", Sum("attendance_amount"), _DECIMAL_OUTPUT
+        ),
+        _total_payable=_aggregated_subquery(
+            entries, "payroll_period", Sum("total_payable"), _DECIMAL_OUTPUT
+        ),
+        _entry_count=_aggregated_subquery(
+            entries, "payroll_period", Count("id"), _INTEGER_OUTPUT
+        ),
+        _settlement_deductions=_aggregated_subquery(
+            advances, "payroll_entry__payroll_period", Sum("amount"), _DECIMAL_OUTPUT
+        ),
+        _settlement_paid=_aggregated_subquery(
+            payments, "payroll_entry__payroll_period", Sum("amount"), _DECIMAL_OUTPUT
+        ),
+        _settlement_payment_count=_aggregated_subquery(
+            payments, "payroll_entry__payroll_period", Count("id"), _INTEGER_OUTPUT
+        ),
+    )
 
 
 class SalaryConfigurationViewSet(viewsets.ModelViewSet):
@@ -89,7 +157,7 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
 
     http_method_names = ["get", "post", "head", "options"]
     serializer_class = PayrollPeriodSerializer
-    queryset = PayrollPeriod.objects.select_related("created_by").all()
+    queryset = _annotated_payroll_periods()
 
     def get_permissions(self):
         if self.action in PAYROLL_PERIOD_MUTATION_ACTIONS:
@@ -117,6 +185,9 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
                 }
             )
         period.calculate()
+        # Re-fetch with the annotated aggregates: the annotations captured above
+        # predate `calculate()` and would otherwise be stale in the response.
+        period = self.get_queryset().get(pk=period.pk)
         entries = period.entries.select_related("tailor").all()
         return Response(
             {
@@ -263,7 +334,21 @@ class PayrollEntryViewSet(viewsets.ReadOnlyModelViewSet):
         return [IsOwnerOrStaff()]
 
     def get_queryset(self):
-        qs = PayrollEntry.objects.select_related("payroll_period", "tailor").all()
+        advances = SalaryAdvance.objects.filter(
+            payroll_entry=OuterRef("pk"), status=SalaryAdvance.Status.DEDUCTED
+        )
+        payments = PayrollPayment.objects.filter(payroll_entry=OuterRef("pk"))
+        qs = PayrollEntry.objects.select_related("payroll_period", "tailor").annotate(
+            _advance_deductions=_aggregated_subquery(
+                advances, "payroll_entry", Sum("amount"), _DECIMAL_OUTPUT
+            ),
+            _payments_total=_aggregated_subquery(
+                payments, "payroll_entry", Sum("amount"), _DECIMAL_OUTPUT
+            ),
+            _payment_count=_aggregated_subquery(
+                payments, "payroll_entry", Count("id"), _INTEGER_OUTPUT
+            ),
+        )
         period = (self.request.query_params.get("period") or "").strip()
         if period:
             qs = qs.filter(payroll_period_id=period)

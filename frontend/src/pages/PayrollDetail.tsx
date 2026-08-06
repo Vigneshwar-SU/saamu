@@ -216,6 +216,7 @@ export const PayrollDetail: React.FC = () => {
             <Button
               variant="contained"
               startIcon={<CalculateIcon />}
+              disabled={calculateMutation.isPending || finalizeMutation.isPending}
               onClick={handleCalculate}
               sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
             >
@@ -226,6 +227,7 @@ export const PayrollDetail: React.FC = () => {
             <Button
               variant="contained"
               startIcon={<CheckCircleOutlineIcon />}
+              disabled={calculateMutation.isPending || finalizeMutation.isPending}
               onClick={handleFinalize}
               sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
             >
@@ -236,7 +238,14 @@ export const PayrollDetail: React.FC = () => {
       </Box>
 
       {period.notes && (
-        <Paper sx={{ p: 2, borderRadius: '12px', border: '1px solid #E2E8F0', backgroundColor: '#F8FAFC' }}>
+        <Paper
+          sx={{
+            p: 2,
+            borderRadius: '12px',
+            border: '1px solid #E2E8F0',
+            backgroundColor: '#F8FAFC',
+          }}
+        >
           <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600 }}>
             NOTES
           </Typography>
@@ -247,7 +256,10 @@ export const PayrollDetail: React.FC = () => {
       )}
 
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} flexWrap="wrap">
-        <SummaryCard label="TOTAL COMPLETED PIECES" value={formatPieces(period.total_completed_pieces)} />
+        <SummaryCard
+          label="TOTAL COMPLETED PIECES"
+          value={formatPieces(period.total_completed_pieces)}
+        />
         <SummaryCard
           label="PIECE RATE EARNINGS"
           value={formatCurrency(period.total_piece_rate_earnings)}
@@ -263,10 +275,7 @@ export const PayrollDetail: React.FC = () => {
           value={formatCurrency(period.total_gross_salary)}
           color="#0E7490"
         />
-        <SummaryCard
-          label="ATTENDANCE"
-          value={formatCurrency(period.total_attendance_amount)}
-        />
+        <SummaryCard label="ATTENDANCE" value={formatCurrency(period.total_attendance_amount)} />
         <SummaryCard
           label="TOTAL PAYABLE"
           value={formatCurrency(period.total_payable)}
@@ -309,7 +318,8 @@ export const PayrollDetail: React.FC = () => {
                 </TableRow>
               ) : (
                 entries.map((entry) => {
-                  const settlementColors = SETTLEMENT_STATUS_COLORS[entry.settlement.settlement_status];
+                  const settlementColors =
+                    SETTLEMENT_STATUS_COLORS[entry.settlement.settlement_status];
                   return (
                     <TableRow
                       key={entry.id}
@@ -342,7 +352,9 @@ export const PayrollDetail: React.FC = () => {
                         <Typography variant="body2">{entry.absent_days}</Typography>
                       </TableCell>
                       <TableCell>
-                        <Typography variant="body2">{formatPieces(entry.completed_pieces)}</Typography>
+                        <Typography variant="body2">
+                          {formatPieces(entry.completed_pieces)}
+                        </Typography>
                       </TableCell>
                       <TableCell>
                         <Chip
@@ -355,14 +367,14 @@ export const PayrollDetail: React.FC = () => {
                               entry.salary_model === 'FIXED_SALARY'
                                 ? '#EDE9FE'
                                 : entry.salary_model === 'MIXED'
-                                ? '#E0F2FE'
-                                : '#F1F5F9',
+                                  ? '#E0F2FE'
+                                  : '#F1F5F9',
                             color:
                               entry.salary_model === 'FIXED_SALARY'
                                 ? '#6D28D9'
                                 : entry.salary_model === 'MIXED'
-                                ? '#0369A1'
-                                : '#475569',
+                                  ? '#0369A1'
+                                  : '#475569',
                           }}
                         />
                       </TableCell>
@@ -374,10 +386,14 @@ export const PayrollDetail: React.FC = () => {
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        <Typography variant="body2">{formatCurrency(entry.piece_rate_earnings)}</Typography>
+                        <Typography variant="body2">
+                          {formatCurrency(entry.piece_rate_earnings)}
+                        </Typography>
                       </TableCell>
                       <TableCell>
-                        <Typography variant="body2">{formatCurrency(entry.attendance_amount)}</Typography>
+                        <Typography variant="body2">
+                          {formatCurrency(entry.attendance_amount)}
+                        </Typography>
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2" sx={{ fontWeight: 600, color: '#15803D' }}>
@@ -520,20 +536,20 @@ const TailorAssignmentBreakdown: React.FC<{
                   entry.salary_model === 'FIXED_SALARY'
                     ? '#EDE9FE'
                     : entry.salary_model === 'MIXED'
-                    ? '#E0F2FE'
-                    : '#F1F5F9',
+                      ? '#E0F2FE'
+                      : '#F1F5F9',
                 color:
                   entry.salary_model === 'FIXED_SALARY'
                     ? '#6D28D9'
                     : entry.salary_model === 'MIXED'
-                    ? '#0369A1'
-                    : '#475569',
+                      ? '#0369A1'
+                      : '#475569',
               }}
             />{' '}
             {entry.salary_model !== 'PER_GARMENT' &&
               `${formatCurrency(entry.fixed_salary_amount)} fixed · `}
-            {formatCurrency(entry.piece_rate_earnings)} piece ·{' '}
-            {formatCurrency(entry.gross_salary)} gross · {formatCurrency(entry.total_payable)} payable
+            {formatCurrency(entry.piece_rate_earnings)} piece · {formatCurrency(entry.gross_salary)}{' '}
+            gross · {formatCurrency(entry.total_payable)} payable
           </Typography>
         )}
       </Box>
@@ -553,12 +569,17 @@ const TailorAssignmentBreakdown: React.FC<{
             {assignments.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                  <Typography sx={{ color: '#64748B' }}>No completed assignments in this period.</Typography>
+                  <Typography sx={{ color: '#64748B' }}>
+                    No completed assignments in this period.
+                  </Typography>
                 </TableCell>
               </TableRow>
             ) : (
               assignments.map((assignment) => (
-                <TableRow key={assignment.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                <TableRow
+                  key={assignment.id}
+                  sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                >
                   <TableCell>
                     <Typography variant="body2">{assignment.order_number}</Typography>
                   </TableCell>
@@ -566,13 +587,19 @@ const TailorAssignmentBreakdown: React.FC<{
                     <Typography variant="body2">{assignment.garment_type}</Typography>
                   </TableCell>
                   <TableCell>
-                    <Typography variant="body2">{formatPieces(assignment.assigned_quantity)}</Typography>
+                    <Typography variant="body2">
+                      {formatPieces(assignment.assigned_quantity)}
+                    </Typography>
                   </TableCell>
                   <TableCell>
-                    <Typography variant="body2">{formatPieces(assignment.completed_quantity)}</Typography>
+                    <Typography variant="body2">
+                      {formatPieces(assignment.completed_quantity)}
+                    </Typography>
                   </TableCell>
                   <TableCell>
-                    <Typography variant="body2">{formatCurrency(assignment.rate_per_piece_snapshot)}</Typography>
+                    <Typography variant="body2">
+                      {formatCurrency(assignment.rate_per_piece_snapshot)}
+                    </Typography>
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2" sx={{ fontWeight: 600, color: '#15803D' }}>
@@ -597,7 +624,15 @@ const SettlementPanel: React.FC<{
   onRecordPayment: () => void;
   onSettleInFull: () => void;
   onApplyAdvance: () => void;
-}> = ({ entry, isStaff, isFinalized, paymentHistory, onRecordPayment, onSettleInFull, onApplyAdvance }) => {
+}> = ({
+  entry,
+  isStaff,
+  isFinalized,
+  paymentHistory,
+  onRecordPayment,
+  onSettleInFull,
+  onApplyAdvance,
+}) => {
   const settlement: PayrollSettlement = entry.settlement;
   const statusColors = SETTLEMENT_STATUS_COLORS[settlement.settlement_status];
   const payments = paymentHistory?.payments ?? [];
@@ -633,14 +668,16 @@ const SettlementPanel: React.FC<{
               <PaymentsIcon fontSize="small" />
             </Box>
             <Box>
-              <Typography sx={{ fontWeight: 700 }}>
-                Settlement · {entry.tailor.name}
-              </Typography>
+              <Typography sx={{ fontWeight: 700 }}>Settlement · {entry.tailor.name}</Typography>
               <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.25 }}>
                 <Chip
                   label={SETTLEMENT_STATUS_LABELS[settlement.settlement_status]}
                   size="small"
-                  sx={{ fontWeight: 600, backgroundColor: statusColors.bg, color: statusColors.text }}
+                  sx={{
+                    fontWeight: 600,
+                    backgroundColor: statusColors.bg,
+                    color: statusColors.text,
+                  }}
                 />
                 <Typography variant="caption" sx={{ color: '#94A3B8' }}>
                   {settlement.payment_count} payment{settlement.payment_count === 1 ? '' : 's'}
@@ -688,13 +725,21 @@ const SettlementPanel: React.FC<{
 
         <Box sx={{ p: 2 }}>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} flexWrap="wrap">
-            <SummaryCard label="GROSS PAYABLE" value={formatCurrency(settlement.gross_payable)} color="#0F172A" />
+            <SummaryCard
+              label="GROSS PAYABLE"
+              value={formatCurrency(settlement.gross_payable)}
+              color="#0F172A"
+            />
             <SummaryCard
               label="ADVANCE DEDUCTION"
               value={`-${formatCurrency(settlement.advance_deductions)}`}
               color="#B45309"
             />
-            <SummaryCard label="PAID AMOUNT" value={formatCurrency(settlement.payments_recorded)} color="#1E3A8A" />
+            <SummaryCard
+              label="PAID AMOUNT"
+              value={formatCurrency(settlement.payments_recorded)}
+              color="#1E3A8A"
+            />
             <SummaryCard
               label="OUTSTANDING"
               value={formatCurrency(settlement.outstanding_payable)}
@@ -730,7 +775,10 @@ const SettlementPanel: React.FC<{
               ) : (
                 payments.map((payment) => {
                   return (
-                    <TableRow key={payment.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                    <TableRow
+                      key={payment.id}
+                      sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                    >
                       <TableCell>
                         <Typography variant="body2">{formatDate(payment.payment_date)}</Typography>
                       </TableCell>

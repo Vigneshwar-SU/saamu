@@ -2,26 +2,38 @@
 
 Permission model (backend authoritative):
 - Reads (list/detail) -> OWNER or STAFF.
-- Mutations (create) -> STAFF.
+- Mutations (create) -> STAFF (expenses only).
 
-Income and expense records are financial history: they are never updated or
-deleted (no update/delete routes). List filtering supports ``date_from``,
-``date_to`` and ``category`` with inclusive date boundaries. The dashboard is
-read-only for OWNER + STAFF and never mutates source data.
+Income (Phase 13) is never mutated here: it is derived read-only from the
+append-only customer payments recorded through the billing API, so income
+viewing can never bypass billing permissions or accept client-supplied totals.
+The income list supports ``date_from``, ``date_to``, ``payment_method`` and
+``payment_type`` filters with inclusive date boundaries, and
+``GET /income/summary/`` returns server-side derived totals and breakdowns
+honoring the same filters. Expense records are financial history with no
+update/delete routes. The dashboard is read-only for OWNER + STAFF and never
+mutates source data.
 """
 
 from datetime import date
 
 from rest_framework import viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.authentication.permissions import IsOwnerOrStaff, IsStaffRole
+from apps.billing.models import CustomerPayment
 
-from .models import Expense, Income
+from .models import Expense
 from .serializers import ExpenseSerializer, IncomeSerializer
-from .services import build_dashboard_summary
+from .services import (
+    build_dashboard_summary,
+    build_expense_summary,
+    build_income_summary,
+    build_reports_summary,
+)
 
 
 def _parse_date(value, field_name):
@@ -42,19 +54,24 @@ def _parse_range(request):
     return date_from, date_to
 
 
-class IncomeViewSet(viewsets.ModelViewSet):
-    """Income records with OWNER+STAFF reads and STAFF creation."""
+class IncomeViewSet(viewsets.ReadOnlyModelViewSet):
+    """Customer-derived income records, read-only for OWNER and STAFF.
 
-    http_method_names = ["get", "post", "head", "options"]
+    Income is derived from append-only customer payments: each payment
+    contributes to income exactly once and REFUND transactions reduce net
+    income. Recording or editing a payment is only ever possible through the
+    billing API, so this view exposes no mutation surface.
+    """
+
     serializer_class = IncomeSerializer
 
     def get_permissions(self):
-        if self.action == "create":
-            return [IsStaffRole()]
         return [IsOwnerOrStaff()]
 
     def get_queryset(self):
-        qs = Income.objects.select_related("recorded_by").all()
+        qs = CustomerPayment.objects.select_related(
+            "invoice__order__customer", "recorded_by"
+        ).all()
         if self.action == "list":
             qs = self._apply_list_filters(qs)
         return qs
@@ -62,20 +79,52 @@ class IncomeViewSet(viewsets.ModelViewSet):
     def _apply_list_filters(self, qs):
         date_from, date_to = _parse_range(self.request)
         if date_from:
-            qs = qs.filter(income_date__gte=date_from)
+            qs = qs.filter(payment_date__gte=date_from)
         if date_to:
-            qs = qs.filter(income_date__lte=date_to)
+            qs = qs.filter(payment_date__lte=date_to)
 
-        category = (self.request.query_params.get("category") or "").strip()
-        if category:
-            if category not in Income.Category.values:
-                raise ValidationError({"category": "Invalid income category filter."})
-            qs = qs.filter(category=category)
+        payment_method = (self.request.query_params.get("payment_method") or "").strip()
+        if payment_method:
+            if payment_method not in CustomerPayment.Method.values:
+                raise ValidationError(
+                    {"payment_method": "Invalid payment method filter."}
+                )
+            qs = qs.filter(payment_method=payment_method)
+
+        payment_type = (self.request.query_params.get("payment_type") or "").strip()
+        if payment_type:
+            if payment_type not in CustomerPayment.PaymentType.values:
+                raise ValidationError({"payment_type": "Invalid payment type filter."})
+            qs = qs.filter(payment_type=payment_type)
 
         return qs
 
-    def perform_create(self, serializer):
-        serializer.save(recorded_by=self.request.user)
+    @action(detail=False, methods=["get"], url_path="summary")
+    def summary(self, request):
+        """Server-side income summary honoring the same list filters.
+
+        ``total_income`` is net customer-derived income (qualifying payments
+        minus refunds) for an inclusive date range; ``by_payment_method`` and
+        ``by_payment_type`` break the filtered set down so their totals sum
+        back to ``total_income``.
+        """
+        date_from, date_to = _parse_range(request)
+        payment_method = (request.query_params.get("payment_method") or "").strip()
+        if payment_method and payment_method not in CustomerPayment.Method.values:
+            raise ValidationError({"payment_method": "Invalid payment method filter."})
+
+        payment_type = (request.query_params.get("payment_type") or "").strip()
+        if payment_type and payment_type not in CustomerPayment.PaymentType.values:
+            raise ValidationError({"payment_type": "Invalid payment type filter."})
+
+        return Response(
+            build_income_summary(
+                date_from,
+                date_to,
+                payment_method=payment_method or None,
+                payment_type=payment_type or None,
+            )
+        )
 
 
 class ExpenseViewSet(viewsets.ModelViewSet):
@@ -108,7 +157,41 @@ class ExpenseViewSet(viewsets.ModelViewSet):
                 raise ValidationError({"category": "Invalid expense category filter."})
             qs = qs.filter(category=category)
 
+        payment_method = (self.request.query_params.get("payment_method") or "").strip()
+        if payment_method:
+            if payment_method not in Expense.Method.values:
+                raise ValidationError(
+                    {"payment_method": "Invalid payment method filter."}
+                )
+            qs = qs.filter(payment_method=payment_method)
+
         return qs
+
+    @action(detail=False, methods=["get"], url_path="summary")
+    def summary(self, request):
+        """Server-side expense summary honoring the same list filters.
+
+        Returns total expenses, expense count and per-category / per-payment-
+        method breakdowns for an inclusive date range. Read-only for OWNER and
+        STAFF; every figure is derived from database records.
+        """
+        date_from, date_to = _parse_range(request)
+        category = (request.query_params.get("category") or "").strip()
+        if category and category not in Expense.Category.values:
+            raise ValidationError({"category": "Invalid expense category filter."})
+
+        payment_method = (request.query_params.get("payment_method") or "").strip()
+        if payment_method and payment_method not in Expense.Method.values:
+            raise ValidationError({"payment_method": "Invalid payment method filter."})
+
+        return Response(
+            build_expense_summary(
+                date_from,
+                date_to,
+                category=category or None,
+                payment_method=payment_method or None,
+            )
+        )
 
     def perform_create(self, serializer):
         serializer.save(recorded_by=self.request.user)
@@ -122,3 +205,20 @@ class DashboardSummaryView(APIView):
     def get(self, request):
         date_from, date_to = _parse_range(request)
         return Response(build_dashboard_summary(date_from, date_to, request=request))
+
+
+class ReportsSummaryView(APIView):
+    """Read-only reports & business insights summary over a date range.
+
+    All values are aggregated server-side from the authoritative records:
+    income/refunds from ``CustomerPayment`` (Phase 13), expenses from
+    ``Expense`` (Phase 12), and orders / customers / workload from their own
+    modules. The net position is derived, never stored. Only ``GET`` is
+    allowed, so reports can never mutate business records.
+    """
+
+    permission_classes = [IsOwnerOrStaff]
+
+    def get(self, request):
+        date_from, date_to = _parse_range(request)
+        return Response(build_reports_summary(date_from, date_to))

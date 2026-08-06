@@ -27,10 +27,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import { useDashboardSummary } from '../hooks/useFinance';
 import { formatCurrency, formatDate, formatPieces } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiErrors';
-import {
-  INCOME_CATEGORY_LABELS,
-  EXPENSE_CATEGORY_LABELS,
-} from '../types/finance';
+import { EXPENSE_CATEGORY_LABELS } from '../types/finance';
 import type { DashboardOrderCounts } from '../types/finance';
 
 type OrderCountKey = Exclude<keyof DashboardOrderCounts, 'total'>;
@@ -53,10 +50,7 @@ const ORDER_STATUS_COLORS: Record<OrderCountKey, { bg: string; text: string }> =
   CANCELLED: { bg: '#FEE2E2', text: '#B91C1C' },
 };
 
-function categoryLabel(category: string, type: 'income' | 'expense'): string {
-  if (type === 'income') {
-    return INCOME_CATEGORY_LABELS[category as keyof typeof INCOME_CATEGORY_LABELS] ?? category;
-  }
+function expenseCategoryLabel(category: string): string {
   return EXPENSE_CATEGORY_LABELS[category as keyof typeof EXPENSE_CATEGORY_LABELS] ?? category;
 }
 
@@ -226,7 +220,7 @@ export const Dashboard: React.FC = () => {
               <StatCard
                 label="Recorded Income"
                 value={formatCurrency(financial?.recorded_income ?? 0)}
-                sublabel="Income ledger for the selected range"
+                sublabel="Net customer receipts for the selected range"
                 accent="#15803D"
               />
               <StatCard
@@ -396,29 +390,44 @@ export const Dashboard: React.FC = () => {
                   <TableHead>
                     <TableRow>
                       <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>Category</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
                       <TableCell sx={{ fontWeight: 700 }}>Amount</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {data?.recent_income.length === 0 ? (
+                    {data?.recent_payments.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={3} align="center" sx={{ py: 3 }}>
                           <Typography variant="body2" sx={{ color: '#64748B' }}>
-                            No income recorded yet.
+                            No customer payments yet.
                           </Typography>
                         </TableCell>
                       </TableRow>
                     ) : (
-                      data?.recent_income.map((income) => (
-                        <TableRow key={income.id}>
-                          <TableCell>{formatDate(income.income_date)}</TableCell>
-                          <TableCell>{categoryLabel(income.category, 'income')}</TableCell>
-                          <TableCell sx={{ fontWeight: 600, color: '#15803D' }}>
-                            {formatCurrency(income.amount)}
-                          </TableCell>
-                        </TableRow>
-                      ))
+                      data?.recent_payments.map((payment) => {
+                        const isRefund = payment.payment_type === 'REFUND';
+                        return (
+                          <TableRow key={payment.id}>
+                            <TableCell>{formatDate(payment.payment_date)}</TableCell>
+                            <TableCell>
+                              <Chip
+                                label={payment.payment_type_display}
+                                size="small"
+                                sx={{
+                                  fontWeight: 600,
+                                  backgroundColor: isRefund ? '#FEE2E2' : '#DCFCE7',
+                                  color: isRefund ? '#B91C1C' : '#15803D',
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell
+                              sx={{ fontWeight: 600, color: isRefund ? '#B91C1C' : '#15803D' }}
+                            >
+                              {formatCurrency(payment.net_amount)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
                     )}
                   </TableBody>
                 </Table>
@@ -451,7 +460,7 @@ export const Dashboard: React.FC = () => {
                       data?.recent_expenses.map((expense) => (
                         <TableRow key={expense.id}>
                           <TableCell>{formatDate(expense.expense_date)}</TableCell>
-                          <TableCell>{categoryLabel(expense.category, 'expense')}</TableCell>
+                          <TableCell>{expenseCategoryLabel(expense.category)}</TableCell>
                           <TableCell sx={{ fontWeight: 600, color: '#B91C1C' }}>
                             {formatCurrency(expense.amount)}
                           </TableCell>

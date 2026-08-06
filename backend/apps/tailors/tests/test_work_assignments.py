@@ -12,6 +12,7 @@ from apps.tailors.tests.helpers import (
     create_piece_rate,
     create_tailor,
     get_order_item,
+    make_owner,
     make_staff,
     work_assignment_url,
     work_assignments_url,
@@ -266,6 +267,35 @@ def test_list_filters_by_status(client, staff):
     results = response.json()["results"]
     assert len(results) == 1
     assert results[0]["status"] == "IN_PROGRESS"
+
+
+def test_list_filters_by_order(client, staff):
+    customer = create_customer()
+    order_a = create_order_with_items(customer, {"SHIRT": 4})
+    order_b = create_order_with_items(customer, {"PANT": 4})
+    tailor = create_tailor()
+    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="PANT")
+    item_a = get_order_item(order_a, "SHIRT")
+    item_b = get_order_item(order_b, "PANT")
+
+    create_assignment(tailor, item_a, assigned_quantity=2)
+    create_assignment(tailor, item_b, assigned_quantity=2)
+
+    response = client.get(work_assignments_url(), {"order": order_a.id}, **_auth(staff))
+    assert response.status_code == 200
+    results = response.json()["results"]
+    assert len(results) == 1
+    assert results[0]["order_item"]["order"] == order_a.id
+    assert results[0]["order_item"]["order_number"] == order_a.order_number
+    assert results[0]["tailor"]["id"] == tailor.id
+    assert results[0]["assigned_quantity"] == 2
+
+    owner_response = client.get(
+        work_assignments_url(), {"order": order_a.id}, **_auth(make_owner())
+    )
+    assert owner_response.status_code == 200
+    assert len(owner_response.json()["results"]) == 1
 
 
 def test_list_filters_invalid_status_rejected(client, staff):

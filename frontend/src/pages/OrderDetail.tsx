@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Box,
@@ -11,9 +11,13 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  FormControl,
   IconButton,
+  InputLabel,
   Link,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   Table,
   TableBody,
@@ -36,12 +40,22 @@ import PaymentsIcon from '@mui/icons-material/Payments';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HistoryIcon from '@mui/icons-material/History';
+import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
-import { formatCurrency, formatDate } from '../utils/formatters';
+import { formatCurrency, formatDate, formatPieces } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { useChangeOrderStatus, useOrder, useUpdateOrder } from '../hooks/useOrders';
 import { useCreateOrderInvoice, useInvoiceList } from '../hooks/useInvoices';
+import {
+  useChangeWorkAssignmentStatus,
+  useUpdateWorkAssignment,
+  useWorkAssignmentList,
+} from '../hooks/useTailors';
+import AssignWorkDialog from '../components/AssignWorkDialog';
+import ReportProgressDialog from '../components/ReportProgressDialog';
+import WorkAssignmentStatusChip from '../components/WorkAssignmentStatusChip';
 import { MEASUREMENT_FIELD_LABELS } from '../types/customers';
 import type { MeasurementFieldName } from '../types/customers';
 import {
@@ -52,6 +66,8 @@ import {
 } from '../types/orders';
 import type { Order, OrderItem, OrderStatus, OrderUpdatePayload } from '../types/orders';
 import { INVOICE_STATUS_COLORS, INVOICE_STATUS_LABELS } from '../types/billing';
+import { NEXT_ASSIGNMENT_STATUS, WORK_ASSIGNMENT_STATUS_LABELS } from '../types/tailors';
+import type { WorkAssignment, WorkAssignmentStatus } from '../types/tailors';
 
 const InfoCell: React.FC<{
   icon: React.ReactNode;
@@ -81,7 +97,10 @@ const InfoCell: React.FC<{
       >
         {label}
       </Typography>
-      <Typography variant="body2" sx={{ fontWeight: 500, color: '#0F172A', whiteSpace: 'pre-wrap' }}>
+      <Typography
+        variant="body2"
+        sx={{ fontWeight: 500, color: '#0F172A', whiteSpace: 'pre-wrap' }}
+      >
         {value}
       </Typography>
     </Box>
@@ -171,9 +190,7 @@ const EditOrderDialog: React.FC<EditOrderDialogProps> = ({ open, order, onClose,
 const MeasurementSnapshotRow: React.FC<{ item: OrderItem }> = ({ item }) => {
   const [open, setOpen] = useState(false);
   const snapshot = item.measurement_snapshot;
-  const fields = snapshot
-    ? (Object.entries(snapshot) as Array<[string, number | null]>)
-    : [];
+  const fields = snapshot ? (Object.entries(snapshot) as Array<[string, number | null]>) : [];
 
   if (!snapshot || fields.length === 0) return null;
 
@@ -197,7 +214,11 @@ const MeasurementSnapshotRow: React.FC<{ item: OrderItem }> = ({ item }) => {
             <Box
               sx={{
                 display: 'grid',
-                gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', md: 'repeat(4, 1fr)' },
+                gridTemplateColumns: {
+                  xs: 'repeat(2, 1fr)',
+                  sm: 'repeat(3, 1fr)',
+                  md: 'repeat(4, 1fr)',
+                },
                 gap: 2,
               }}
             >
@@ -205,7 +226,13 @@ const MeasurementSnapshotRow: React.FC<{ item: OrderItem }> = ({ item }) => {
                 <Box key={field}>
                   <Typography
                     variant="caption"
-                    sx={{ color: '#94A3B8', display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 600 }}
+                    sx={{
+                      color: '#94A3B8',
+                      display: 'block',
+                      fontSize: '0.7rem',
+                      textTransform: 'uppercase',
+                      fontWeight: 600,
+                    }}
                   >
                     {MEASUREMENT_FIELD_LABELS[field as MeasurementFieldName] ?? field}
                   </Typography>
@@ -237,10 +264,23 @@ export const OrderDetail: React.FC = () => {
   const { data: orderInvoicesData } = useInvoiceList({ order: validOrderId }, validOrderId > 0);
   const createInvoiceMutation = useCreateOrderInvoice();
 
+  const [statusFilter, setStatusFilter] = useState<WorkAssignmentStatus | ''>('');
+  const { data: assignmentsData } = useWorkAssignmentList({
+    order: validOrderId,
+    status: statusFilter,
+  });
+  const assignmentStatusMutation = useChangeWorkAssignmentStatus();
+  const assignmentProgressMutation = useUpdateWorkAssignment();
+
   const existingInvoice = orderInvoicesData?.results[0];
 
   const [editOpen, setEditOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState<WorkAssignment | null>(null);
+  const [progressOpen, setProgressOpen] = useState(false);
+
+  const assignments = useMemo(() => assignmentsData?.results ?? [], [assignmentsData]);
 
   const nextStatus = order ? NEXT_STATUS[order.status] : undefined;
   const isTerminal = order ? TERMINAL_ORDER_STATUSES.has(order.status) : false;
@@ -279,9 +319,7 @@ export const OrderDetail: React.FC = () => {
 
   const handleCancel = async () => {
     if (!order) return;
-    const confirmed = window.confirm(
-      `Cancel order ${order.order_number}? This cannot be undone.`
-    );
+    const confirmed = window.confirm(`Cancel order ${order.order_number}? This cannot be undone.`);
     if (!confirmed) return;
     setActionError(null);
     try {
@@ -334,7 +372,9 @@ export const OrderDetail: React.FC = () => {
         </Alert>
       )}
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}>
+      <Box
+        sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}
+      >
         <Stack direction="row" spacing={1.5} alignItems="flex-start">
           <Tooltip title="Back to orders">
             <IconButton
@@ -372,7 +412,12 @@ export const OrderDetail: React.FC = () => {
                 Move to {ORDER_STATUS_LABELS[nextStatus]}
               </Button>
             )}
-            <Button variant="outlined" color="error" startIcon={<CancelIcon />} onClick={handleCancel}>
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<CancelIcon />}
+              onClick={handleCancel}
+            >
               Cancel
             </Button>
           </Stack>
@@ -427,14 +472,21 @@ export const OrderDetail: React.FC = () => {
           <InfoCell
             icon={<InventoryIcon sx={{ fontSize: 18 }} />}
             label="Collected At"
-            value={order.collected_at ? formatDate(order.collected_at, 'DD MMM YYYY, hh:mm A') : '-'}
+            value={
+              order.collected_at ? formatDate(order.collected_at, 'DD MMM YYYY, hh:mm A') : '-'
+            }
           />
         </Box>
         {order.notes && (
           <Box sx={{ mt: 3 }}>
             <Typography
               variant="caption"
-              sx={{ color: '#94A3B8', textTransform: 'uppercase', fontSize: '0.68rem', fontWeight: 600 }}
+              sx={{
+                color: '#94A3B8',
+                textTransform: 'uppercase',
+                fontSize: '0.68rem',
+                fontWeight: 600,
+              }}
             >
               Order Notes
             </Typography>
@@ -446,7 +498,9 @@ export const OrderDetail: React.FC = () => {
       </Paper>
 
       <Paper sx={{ p: 3, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
+        <Box
+          sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}
+        >
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
             Billing
           </Typography>
@@ -482,12 +536,19 @@ export const OrderDetail: React.FC = () => {
           <InfoCell
             icon={<ReceiptLongIcon sx={{ fontSize: 18 }} />}
             label="Outstanding Balance"
-            value={formatCurrency(Number(order.payment_summary?.outstanding_balance ?? order.total_amount))}
+            value={formatCurrency(
+              Number(order.payment_summary?.outstanding_balance ?? order.total_amount)
+            )}
           />
           <Box>
             <Typography
               variant="caption"
-              sx={{ color: '#94A3B8', textTransform: 'uppercase', fontSize: '0.68rem', fontWeight: 600 }}
+              sx={{
+                color: '#94A3B8',
+                textTransform: 'uppercase',
+                fontSize: '0.68rem',
+                fontWeight: 600,
+              }}
             >
               Payment Status
             </Typography>
@@ -512,7 +573,15 @@ export const OrderDetail: React.FC = () => {
       </Paper>
 
       <Paper sx={{ borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-        <Box sx={{ px: 3, py: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box
+          sx={{
+            px: 3,
+            py: 2,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
           <Stack direction="row" spacing={1} alignItems="center">
             <Box
               sx={{
@@ -598,6 +667,215 @@ export const OrderDetail: React.FC = () => {
         </TableContainer>
       </Paper>
 
+      <Paper sx={{ borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+        <Box
+          sx={{
+            px: 3,
+            py: 2,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 2,
+          }}
+        >
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: '10px',
+                backgroundColor: '#EFF6FF',
+                color: '#1E3A8A',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <PersonAddAltIcon fontSize="small" />
+            </Box>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                Work Assignments
+              </Typography>
+              <Typography variant="caption" sx={{ color: '#64748B' }}>
+                Piece-rate work assigned for this order
+              </Typography>
+            </Box>
+          </Stack>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={statusFilter}
+                label="Status"
+                onChange={(event) =>
+                  setStatusFilter(event.target.value as WorkAssignmentStatus | '')
+                }
+              >
+                <MenuItem value="">All</MenuItem>
+                <MenuItem value="ASSIGNED">Assigned</MenuItem>
+                <MenuItem value="IN_PROGRESS">In Progress</MenuItem>
+                <MenuItem value="COMPLETED">Completed</MenuItem>
+              </Select>
+            </FormControl>
+            {isStaff && (
+              <Button
+                variant="contained"
+                startIcon={<PersonAddAltIcon />}
+                onClick={() => setAssignOpen(true)}
+                sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
+              >
+                Assign Work
+              </Button>
+            )}
+          </Stack>
+        </Box>
+        <Divider />
+        <TableContainer>
+          <Table size="medium">
+            <TableHead>
+              <TableRow sx={{ backgroundColor: '#F8FAFC' }}>
+                <TableCell sx={{ fontWeight: 700 }}>Tailor</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Garment</TableCell>
+                <TableCell align="center" sx={{ fontWeight: 700 }}>
+                  Assigned
+                </TableCell>
+                <TableCell align="center" sx={{ fontWeight: 700 }}>
+                  Completed
+                </TableCell>
+                <TableCell align="center" sx={{ fontWeight: 700 }}>
+                  Outstanding
+                </TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700 }}>
+                  Rate
+                </TableCell>
+                <TableCell align="right" sx={{ fontWeight: 700 }}>
+                  Earned
+                </TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
+                {isStaff && (
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>
+                    Actions
+                  </TableCell>
+                )}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {assignments.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={isStaff ? 9 : 8} align="center" sx={{ py: 6 }}>
+                    <Typography sx={{ color: '#64748B' }}>
+                      {statusFilter
+                        ? 'No assignments match this status.'
+                        : 'No work assigned for this order yet.'}
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                assignments.map((assignment) => {
+                  const nextStatus = NEXT_ASSIGNMENT_STATUS[assignment.status];
+                  return (
+                    <TableRow key={assignment.id} hover>
+                      <TableCell>
+                        <Typography sx={{ fontWeight: 600 }}>{assignment.tailor.name}</Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography sx={{ fontWeight: 600 }}>
+                          {assignment.order_item.garment_type}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Typography variant="body2">
+                          {formatPieces(assignment.assigned_quantity)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {formatPieces(assignment.completed_quantity)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#B45309' }}>
+                          {formatPieces(
+                            assignment.assigned_quantity - assignment.completed_quantity
+                          )}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography variant="body2">
+                          {formatCurrency(assignment.rate_per_piece_snapshot)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#15803D' }}>
+                          {formatCurrency(assignment.earned_amount)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <WorkAssignmentStatusChip status={assignment.status} />
+                      </TableCell>
+                      {isStaff && (
+                        <TableCell align="right">
+                          {nextStatus && (
+                            <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                              <Tooltip title="Report completed quantity">
+                                <Button
+                                  size="small"
+                                  startIcon={<EditIcon fontSize="small" />}
+                                  disabled={assignmentProgressMutation.isPending}
+                                  onClick={() => {
+                                    setSelectedAssignment(assignment);
+                                    setProgressOpen(true);
+                                  }}
+                                >
+                                  Progress
+                                </Button>
+                              </Tooltip>
+                              <Tooltip
+                                title={`Move to ${WORK_ASSIGNMENT_STATUS_LABELS[nextStatus]}`}
+                              >
+                                <Button
+                                  size="small"
+                                  variant="contained"
+                                  color={nextStatus === 'COMPLETED' ? 'success' : 'primary'}
+                                  disabled={assignmentStatusMutation.isPending}
+                                  startIcon={
+                                    nextStatus === 'COMPLETED' ? (
+                                      <CheckCircleIcon fontSize="small" />
+                                    ) : (
+                                      <PlayArrowIcon fontSize="small" />
+                                    )
+                                  }
+                                  onClick={async () => {
+                                    setActionError(null);
+                                    try {
+                                      await assignmentStatusMutation.mutateAsync({
+                                        id: assignment.id,
+                                        status: nextStatus,
+                                      });
+                                    } catch (transitionError) {
+                                      setActionError(getApiErrorMessage(transitionError));
+                                    }
+                                  }}
+                                >
+                                  {nextStatus === 'COMPLETED'
+                                    ? 'Complete'
+                                    : WORK_ASSIGNMENT_STATUS_LABELS[nextStatus]}
+                                </Button>
+                              </Tooltip>
+                            </Stack>
+                          )}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
+
       <Paper sx={{ p: 3, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2.5 }}>
           <Box
@@ -651,7 +929,8 @@ export const OrderDetail: React.FC = () => {
                     </Typography>
                   </Stack>
                   <Typography variant="caption" sx={{ color: '#94A3B8' }}>
-                    {entry.changed_by_username ?? 'System'} · {formatDate(entry.changed_at, 'DD MMM YYYY, hh:mm A')}
+                    {entry.changed_by_username ?? 'System'} ·{' '}
+                    {formatDate(entry.changed_at, 'DD MMM YYYY, hh:mm A')}
                   </Typography>
                 </Box>
               </Stack>
@@ -665,6 +944,24 @@ export const OrderDetail: React.FC = () => {
         order={order}
         onClose={() => setEditOpen(false)}
         submit={(payload) => updateMutation.mutateAsync(payload)}
+      />
+      <AssignWorkDialog
+        open={assignOpen}
+        onClose={() => setAssignOpen(false)}
+        onCreated={() => setAssignOpen(false)}
+        defaultOrderId={orderId}
+      />
+      <ReportProgressDialog
+        open={progressOpen}
+        assignment={selectedAssignment}
+        onClose={() => setProgressOpen(false)}
+        submit={async (completedQuantity) => {
+          if (!selectedAssignment) return;
+          await assignmentProgressMutation.mutateAsync({
+            id: selectedAssignment.id,
+            completedQuantity,
+          });
+        }}
       />
     </Box>
   );

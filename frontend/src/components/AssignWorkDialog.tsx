@@ -28,9 +28,16 @@ interface AssignWorkDialogProps {
   onClose: () => void;
   onCreated: () => void;
   defaultTailorId?: number;
+  defaultOrderId?: number;
 }
 
-const AssignWorkDialog: React.FC<AssignWorkDialogProps> = ({ open, onClose, onCreated, defaultTailorId }) => {
+const AssignWorkDialog: React.FC<AssignWorkDialogProps> = ({
+  open,
+  onClose,
+  onCreated,
+  defaultTailorId,
+  defaultOrderId,
+}) => {
   const { data: tailorsData } = useTailorList({ scope: 'active' });
   const { data: pieceRatesData } = usePieceRates();
   const createMutation = useCreateWorkAssignment();
@@ -50,12 +57,12 @@ const AssignWorkDialog: React.FC<AssignWorkDialogProps> = ({ open, onClose, onCr
     if (open) {
       setTailorId(defaultTailorId ?? '');
       setOrderSearch('');
-      setOrderId('');
+      setOrderId(defaultOrderId ?? '');
       setOrderItemId('');
       setQuantity('');
       setSubmitError(null);
     }
-  }, [open, defaultTailorId]);
+  }, [open, defaultTailorId, defaultOrderId]);
 
   const activeTailors = useMemo(() => tailorsData?.results ?? [], [tailorsData]);
   const orders = useMemo(() => ordersData?.results ?? [], [ordersData]);
@@ -133,36 +140,50 @@ const AssignWorkDialog: React.FC<AssignWorkDialogProps> = ({ open, onClose, onCr
             <FormHelperText>Only active tailors can receive work.</FormHelperText>
           </FormControl>
 
-          <TextField
-            label="Search order"
-            placeholder="Order number or customer name"
-            value={orderSearch}
-            onChange={(event) => {
-              setOrderSearch(event.target.value);
-              setOrderId('');
-              setOrderItemId('');
-            }}
-            size="small"
-            fullWidth
-          />
+          {!defaultOrderId && (
+            <>
+              <TextField
+                label="Search order"
+                placeholder="Order number or customer name"
+                value={orderSearch}
+                onChange={(event) => {
+                  setOrderSearch(event.target.value);
+                  setOrderId('');
+                  setOrderItemId('');
+                }}
+                size="small"
+                fullWidth
+              />
 
-          <FormControl fullWidth size="small">
-            <InputLabel>Order *</InputLabel>
-            <Select
-              value={orderId}
+              <FormControl fullWidth size="small">
+                <InputLabel>Order *</InputLabel>
+                <Select
+                  value={orderId}
+                  label="Order *"
+                  onChange={(event) => {
+                    setOrderId(event.target.value as number | '');
+                    setOrderItemId('');
+                  }}
+                >
+                  {orders.map((entry) => (
+                    <MenuItem key={entry.id} value={entry.id}>
+                      {entry.order_number} · {entry.customer.full_name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </>
+          )}
+
+          {defaultOrderId && order && (
+            <TextField
               label="Order *"
-              onChange={(event) => {
-                setOrderId(event.target.value as number | '');
-                setOrderItemId('');
-              }}
-            >
-              {orders.map((entry) => (
-                <MenuItem key={entry.id} value={entry.id}>
-                  {entry.order_number} · {entry.customer.full_name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+              value={`${order.order_number} · ${order.customer.full_name}`}
+              size="small"
+              fullWidth
+              disabled
+            />
+          )}
 
           {order && (
             <>

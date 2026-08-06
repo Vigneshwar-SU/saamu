@@ -1,7 +1,12 @@
 from django.urls import include, path
 from rest_framework.routers import SimpleRouter
 
-from .views import DashboardSummaryView, ExpenseViewSet, IncomeViewSet
+from .views import (
+    DashboardSummaryView,
+    ExpenseViewSet,
+    IncomeViewSet,
+    ReportsSummaryView,
+)
 
 router = SimpleRouter()
 router.register("income", IncomeViewSet, basename="income")
@@ -12,4 +17,5 @@ urlpatterns = [
     path(
         "dashboard/summary/", DashboardSummaryView.as_view(), name="dashboard-summary"
     ),
+    path("reports/summary/", ReportsSummaryView.as_view(), name="reports-summary"),
 ]

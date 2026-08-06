@@ -259,10 +259,11 @@ Tokens are never rendered as raw HTML or logged. The access token is short-lived
 
 ## 8.3 Income, Expenses & Dashboard
 
-- **Income records**: `GET/POST /api/v1/income/`, detail `GET /api/v1/income/{id}/`; filters `date_from`, `date_to`, `category`, `page` (inclusive date boundaries). Categories are controlled: `ORDER_PAYMENT`, `OTHER_INCOME`. Create is STAFF-only and records `recorded_by` server-side; records are never updated or physically deleted.
-- **Expense records**: `GET/POST /api/v1/expenses/`, detail `GET /api/v1/expenses/{id}/`; same filters and rules. Categories: `RENT`, `ELECTRICITY`, `MATERIAL`, `MAINTENANCE`, `SHOP_SUPPLIES`, `TRANSPORT`, `OTHER_EXPENSE`. Both use `Decimal` money with `amount > 0` enforced at the database and serializer level.
-- **Dashboard** `GET /api/v1/dashboard/summary/` (OWNER + STAFF, read-only) with optional `date_from` / `date_to`. It returns a `financial` block (recorded income, recorded expenses, net recorded balance, payroll paid from actual `PayrollPayment` records, salary advances kept as a separate metric, and order revenue clearly distinguished from recorded cash income), an `operational` block (order status counts, garment quantities, tailor workload, active customer/tailor counts) and recent income/expenses. All arithmetic is derived on the fly from authoritative records — finalized payroll, payment and advance history is never rewritten.
-- Frontend: real `Dashboard` page (date-range filter, financial cards, order status, shop overview, tailor workload, recent income/expenses) plus `Income` and `Expenses` pages (date/category filters, pagination, STAFF-only Add dialogs). OWNER sees all information without mutation controls. Navigation entries are added without touching existing modules.
+- **Income is derived, never entered**: income is **not** a manual ledger anymore. `GET /api/v1/income/`, `GET /api/v1/income/{id}/` and `GET /api/v1/income/summary/` read the customer payments recorded in the billing app (Phase 11); every non-refund payment (ADVANCE / PARTIAL / FINAL) contributes to income exactly once and refunds reduce net income (a refund is never positive). `POST /income/` no longer exists; payments and refunds are recorded through the invoice payment API.
+- **Income summary**: `GET /api/v1/income/summary/` (OWNER + STAFF, read-only) returns `total_income`, `payment_count`, `refund_count`, `total_refunds`, `by_payment_method` and `by_payment_type`. Filters on both the list and the summary: `date_from`, `date_to`, `payment_method`, `payment_type` (all validated; invalid values → 400; inclusive date boundaries).
+- **Expense records**: `GET/POST /api/v1/expenses/`, detail `GET /api/v1/expenses/{id}/`, summary `GET /api/v1/expenses/summary/`; filters `date_from`, `date_to`, `category`, `payment_method`, `page` (inclusive date boundaries). Categories: `RENT`, `ELECTRICITY`, `MATERIAL`, `MAINTENANCE`, `SHOP_SUPPLIES`, `TRANSPORT`, `OTHER_EXPENSE`. Create is STAFF-only and records `recorded_by` server-side; records are never updated or physically deleted. Both use `Decimal` money with `amount > 0` enforced at the database and serializer level.
+- **Dashboard** `GET /api/v1/dashboard/summary/` (OWNER + STAFF, read-only) with optional `date_from` / `date_to`. Its `financial.recorded_income` is computed by the same shared aggregation service as the income API (so dashboard and income can never disagree), `recent_payments` shows the latest payment rows, and it also returns payroll paid from actual `PayrollPayment` records, salary advances as a separate metric, order revenue clearly distinguished from recorded cash income, and an `operational` block (order status counts, garment quantities, tailor workload, active customer/tailor counts). All arithmetic is derived on the fly from authoritative records.
+- Frontend: `Dashboard` page (date-range filter, financial cards, order status, shop overview, tailor workload, recent income/expenses), a read-only `Income` page (summary cards, date/payment-method/payment-type filters, payment detail table with refund-aware amounts, breakdowns by method and type, pagination) and an `Expenses` page (summary cards, date/category/payment-method filters, pagination, STAFF-only Add dialog). OWNER sees all information without mutation controls. Navigation entries are added without touching existing modules.
 
 ## 8.4 Customer Billing & Invoice Foundation
 
@@ -273,6 +274,20 @@ Tokens are never rendered as raw HTML or logged. The access token is short-lived
 - **Filters**: invoices by `search` (invoice/order number, customer name/mobile), `customer`, `order`, derived `status`, and inclusive `date_from` / `date_to`; payments by `payment_method` and inclusive dates.
 - **RBAC**: anonymous → 401; OWNER is view-only (creating an invoice or recording a payment → 403); STAFF creates invoices and records payments.
 - Frontend: new `Invoices` list (search / status / date filters, pagination, STAFF-only Create Invoice) and `InvoiceDetail` (summary, line items, payment history, STAFF-only Record Payment / Settle in Full), a navigation entry, and a non-invasive `View Invoice` / `Create Invoice` button on the order detail page.
+
+## 8.5 Expense Management (Phase 12)
+
+- **Expense records**: `GET/POST /api/v1/expenses/`, detail `GET /api/v1/expenses/{id}/`; filters `date_from`, `date_to`, `category`, `payment_method`, `page` (inclusive date boundaries). Categories: `RENT`, `ELECTRICITY`, `MATERIAL`, `MAINTENANCE`, `SHOP_SUPPLIES`, `TRANSPORT`, `OTHER_EXPENSE`. Payment methods match the project convention: `CASH` / `UPI` / `BANK_TRANSFER` / `OTHER`. Create is STAFF-only and records `recorded_by` server-side; records are never updated or physically deleted.
+- **Expense summary**: `GET /api/v1/expenses/summary/` (OWNER + STAFF, read-only) returns `total_expenses`, `expense_count`, `by_category` and `by_payment_method`, honoring the same filters. Every figure is aggregated server-side from the expense records.
+- **Validation**: `amount > 0` (DB `CheckConstraint` + serializer); category/payment method are controlled choices (anything else → 400); all money uses `Decimal`.
+- Frontend: the `Expenses` page shows summary cards (total expenses, expense count, largest category), date/category/payment-method filters, a Payment Method column, and a STAFF-only Add Expense dialog with a Payment Method select. OWNER sees all information without mutation controls.
+
+## 8.6 Reports & Business Insights (Phase 14)
+
+- **Read-only reporting layer**: `GET /api/v1/reports/summary/` (OWNER + STAFF, read-only) aggregates order counts and status distribution, order revenue, garment quantities, customer activity, tailor workload, income, expenses, net position, payroll paid and salary advances — all derived on the fly from the authoritative modules (orders, customers, tailors, billing payments, expenses, payroll). Reports never create a second source of truth: income and expense figures reuse the same `build_income_summary` / `build_expense_summary` aggregations as the income and expense pages, and the net position is computed server-side (never stored).
+- **Date filtering**: optional inclusive `date_from` / `date_to` apply consistently across every date-based metric (orders by `order_date`, customers by creation date, income/refunds by `payment_date`, expenses by `expense_date`, payroll by `payment_date`, advances by `advance_date`); invalid or reversed ranges → 400 with the standard error contract. Workload and active counts are live shop snapshots, matching the dashboard.
+- **RBAC**: anonymous → 401; both OWNER and STAFF can read; there are no mutation endpoints (no POST/PUT/PATCH/DELETE).
+- Frontend: a `Reports` page with From/To/Apply/Reset date filters, financial stat cards (net position, income, expenses, order revenue), operational cards (orders with status chips and garment quantities, customers, tailor workload, payroll & settlements) and breakdown tables (income by payment type, expenses by category). Loading, error and empty states follow the existing page patterns; React Query keys are invalidated whenever payments, refunds, expenses, orders, work assignments, payroll payments or salary advances change.
 
 ---
 
@@ -342,7 +357,7 @@ saamu/
 │   │   ├── attendance/       # daily tailor attendance records (Phase 6)
 │   │   ├── payroll/          # payroll periods, per-tailor entries + salary configurations (Phase 6/10)
 │   │   ├── payments/         # salary advances + payroll payments/settlement (Phase 7)
-│   │   ├── finance/          # income, expenses + dashboard summary (Phase 8)
+│   │   ├── finance/          # expenses + derived customer-payment income + dashboard summary (Phase 8/12/13)
 │   │   └── billing/          # customer invoices, typed payments + digital bills (Phase 9/11)
 │   ├── config/               # Django project settings
 │   ├── logs/  media/  static/
@@ -398,6 +413,10 @@ saamu/
 - **Phase 9 — Customer Billing & Invoice Foundation:** complete
 - **Phase 10 — Tailor Salary & Payroll:** complete
 - **Phase 11 — Payments & Billing:** complete
-- **Phase 12+ — Business modules (reports, exports, reminders):** pending
+- **Phase 12 — Expense Management:** complete
+- **Phase 13 — Income Management (customer-payment-derived income):** complete
+- **Phase 14 — Reports & Business Insights:** complete
+- **Phase 15 — Production Hardening & Operational Readiness:** complete
+- **Phase 16+ — Business modules (exports, reminders, cloud migration):** pending
 
 Do not treat this document as a feature guide; business functionality is implemented incrementally in later phases and documented in `docs/`.

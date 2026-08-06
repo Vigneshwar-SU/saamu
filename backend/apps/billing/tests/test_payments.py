@@ -275,6 +275,25 @@ def test_payment_pagination(client, staff, invoice):
     assert response.json()["next"] is not None
 
 
+def test_payment_history_queries_are_bounded(client, staff, invoice):
+    """Phase 15 N+1 regression: payment history joins invoice via select_related."""
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    for index in range(6):
+        create_payment(
+            invoice,
+            amount=f"{index + 1}.00",
+            payment_date=TODAY - timedelta(days=index),
+        )
+    with CaptureQueriesContext(connection) as ctx:
+        response = client.get(invoice_payments_url(invoice.id), **_auth(staff))
+    assert response.status_code == 200
+    assert response.json()["count"] == 6
+    assert response.json()["results"][0]["invoice_number"]
+    assert len(ctx) <= 10
+
+
 @pytest.mark.django_db(transaction=True)
 def test_concurrent_payments_cannot_overpay():
     from threading import Thread

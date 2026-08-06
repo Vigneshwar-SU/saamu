@@ -1,11 +1,10 @@
-export const INCOME_CATEGORIES = ['ORDER_PAYMENT', 'OTHER_INCOME'] as const;
+import type { PaymentType } from './billing';
 
-export type IncomeCategory = (typeof INCOME_CATEGORIES)[number];
-
-export const INCOME_CATEGORY_LABELS: Record<IncomeCategory, string> = {
-  ORDER_PAYMENT: 'Order Payment',
-  OTHER_INCOME: 'Other Income',
-};
+export {
+  PAYMENT_TYPES,
+  PAYMENT_TYPE_LABELS,
+} from './billing';
+export type { PaymentType } from './billing';
 
 export const EXPENSE_CATEGORIES = [
   'RENT',
@@ -29,18 +28,34 @@ export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   OTHER_EXPENSE: 'Other Expense',
 };
 
+export const PAYMENT_METHODS = ['CASH', 'UPI', 'BANK_TRANSFER', 'OTHER'] as const;
+
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  CASH: 'Cash',
+  UPI: 'UPI',
+  BANK_TRANSFER: 'Bank Transfer',
+  OTHER: 'Other',
+};
+
 export interface Income {
   id: number;
-  category: IncomeCategory;
-  category_display: string;
+  payment_type: PaymentType;
+  payment_type_display: string;
+  payment_method: PaymentMethod;
+  payment_method_display: string;
   amount: number;
-  income_date: string;
-  description: string;
+  net_amount: number;
+  payment_date: string;
+  invoice_number: string;
+  order_number: string;
+  customer_name: string;
   reference: string;
+  notes: string;
   recorded_by: number | null;
   recorded_by_name: string | null;
   created_at: string;
-  updated_at: string;
 }
 
 export interface Expense {
@@ -49,6 +64,8 @@ export interface Expense {
   category_display: string;
   amount: number;
   expense_date: string;
+  payment_method: PaymentMethod;
+  payment_method_display: string;
   description: string;
   reference: string;
   recorded_by: number | null;
@@ -67,7 +84,8 @@ export interface FinanceListResult<T> {
 export interface IncomeListParams {
   date_from?: string;
   date_to?: string;
-  category?: IncomeCategory | '';
+  payment_method?: PaymentMethod | '';
+  payment_type?: PaymentType | '';
   page?: number;
 }
 
@@ -75,23 +93,77 @@ export interface ExpenseListParams {
   date_from?: string;
   date_to?: string;
   category?: ExpenseCategory | '';
+  payment_method?: PaymentMethod | '';
   page?: number;
-}
-
-export interface IncomePayload {
-  category: IncomeCategory;
-  amount: number;
-  income_date: string;
-  description?: string;
-  reference?: string;
 }
 
 export interface ExpensePayload {
   category: ExpenseCategory;
   amount: number;
   expense_date: string;
+  payment_method: PaymentMethod;
   description?: string;
   reference?: string;
+}
+
+export interface ExpenseSummaryCategory {
+  category: ExpenseCategory;
+  category_display: string;
+  total: number;
+  count: number;
+}
+
+export interface ExpenseSummaryMethod {
+  payment_method: PaymentMethod;
+  payment_method_display: string;
+  total: number;
+  count: number;
+}
+
+export interface ExpenseSummary {
+  success: boolean;
+  total_expenses: number;
+  expense_count: number;
+  by_category: ExpenseSummaryCategory[];
+  by_payment_method: ExpenseSummaryMethod[];
+}
+
+export interface ExpenseSummaryParams {
+  date_from?: string;
+  date_to?: string;
+  category?: ExpenseCategory | '';
+  payment_method?: PaymentMethod | '';
+}
+
+export interface IncomeSummaryMethod {
+  payment_method: PaymentMethod;
+  payment_method_display: string;
+  total: number;
+  count: number;
+}
+
+export interface IncomeSummaryType {
+  payment_type: PaymentType;
+  payment_type_display: string;
+  total: number;
+  count: number;
+}
+
+export interface IncomeSummary {
+  success: boolean;
+  total_income: number;
+  payment_count: number;
+  refund_count: number;
+  total_refunds: number;
+  by_payment_method: IncomeSummaryMethod[];
+  by_payment_type: IncomeSummaryType[];
+}
+
+export interface IncomeSummaryParams {
+  date_from?: string;
+  date_to?: string;
+  payment_method?: PaymentMethod | '';
+  payment_type?: PaymentType | '';
 }
 
 export interface DashboardFinancial {
@@ -132,7 +204,7 @@ export interface DashboardSummary {
   success: boolean;
   financial: DashboardFinancial;
   operational: DashboardOperational;
-  recent_income: Income[];
+  recent_payments: Income[];
   recent_expenses: Expense[];
 }
 

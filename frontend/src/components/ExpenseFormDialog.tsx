@@ -20,8 +20,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import dayjs from 'dayjs';
 import { getApiErrorMessage } from '../utils/apiErrors';
-import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_LABELS } from '../types/finance';
-import type { ExpenseCategory, ExpensePayload } from '../types/finance';
+import {
+  EXPENSE_CATEGORIES,
+  EXPENSE_CATEGORY_LABELS,
+  PAYMENT_METHODS,
+  PAYMENT_METHOD_LABELS,
+} from '../types/finance';
+import type { ExpenseCategory, ExpensePayload, PaymentMethod } from '../types/finance';
 
 const expenseSchema = z.object({
   category: z.string().min(1, 'Select a category'),
@@ -29,6 +34,7 @@ const expenseSchema = z.object({
     .number({ required_error: 'Amount is required' })
     .positive('Amount must be greater than zero'),
   expense_date: z.string().min(1, 'Expense date is required'),
+  payment_method: z.string().min(1, 'Select a payment method'),
   reference: z.string().max(100, 'Reference must be 100 characters or fewer'),
   description: z.string().max(2000, 'Description must be 2000 characters or fewer'),
 });
@@ -59,6 +65,7 @@ export const ExpenseFormDialog: React.FC<ExpenseFormDialogProps> = ({
       category: '',
       amount: 0,
       expense_date: dayjs().format('YYYY-MM-DD'),
+      payment_method: 'CASH',
       reference: '',
       description: '',
     },
@@ -70,6 +77,7 @@ export const ExpenseFormDialog: React.FC<ExpenseFormDialogProps> = ({
         category: '',
         amount: 0,
         expense_date: dayjs().format('YYYY-MM-DD'),
+        payment_method: 'CASH',
         reference: '',
         description: '',
       });
@@ -84,6 +92,7 @@ export const ExpenseFormDialog: React.FC<ExpenseFormDialogProps> = ({
         category: data.category as ExpenseCategory,
         amount: data.amount,
         expense_date: data.expense_date,
+        payment_method: data.payment_method as PaymentMethod,
         reference: data.reference,
         description: data.description,
       });
@@ -154,6 +163,31 @@ export const ExpenseFormDialog: React.FC<ExpenseFormDialogProps> = ({
                 error={!!errors.expense_date}
                 helperText={errors.expense_date?.message}
               />
+            )}
+          />
+
+          <Controller
+            name="payment_method"
+            control={control}
+            render={({ field }) => (
+              <FormControl fullWidth size="small" error={!!errors.payment_method}>
+                <InputLabel>Payment Method *</InputLabel>
+                <Select
+                  {...field}
+                  label="Payment Method *"
+                  value={field.value}
+                  onChange={(event) => field.onChange(event.target.value as PaymentMethod)}
+                >
+                  {PAYMENT_METHODS.map((method) => (
+                    <MenuItem key={method} value={method}>
+                      {PAYMENT_METHOD_LABELS[method]}
+                    </MenuItem>
+                  ))}
+                </Select>
+                {errors.payment_method && (
+                  <FormHelperText>{errors.payment_method.message}</FormHelperText>
+                )}
+              </FormControl>
             )}
           />
 

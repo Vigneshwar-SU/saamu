@@ -68,7 +68,7 @@ export const InvoiceBill: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Box className="no-print" sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} aria-label="breadcrumb">
           <Link underline="hover" color="inherit" href="/dashboard" sx={{ fontSize: '0.85rem' }}>
             Saamu Tailors ERP
@@ -102,6 +102,7 @@ export const InvoiceBill: React.FC = () => {
 
       <Paper
         id="printable-bill"
+        className="print-bill"
         sx={{
           maxWidth: 860,
           width: '100%',

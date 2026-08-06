@@ -5,6 +5,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { theme } from './theme/theme';
 import { AppRoutes } from './routes/AppRoutes';
 import { AuthProvider } from './context/AuthProvider';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import './styles/global.css';
 
 const queryClient = new QueryClient({
@@ -23,7 +24,9 @@ export const App: React.FC = () => {
         <ThemeProvider theme={theme}>
           <CssBaseline />
           <BrowserRouter>
-            <AppRoutes />
+            <ErrorBoundary>
+              <AppRoutes />
+            </ErrorBoundary>
           </BrowserRouter>
         </ThemeProvider>
       </QueryClientProvider>
