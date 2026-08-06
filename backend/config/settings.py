@@ -110,6 +110,17 @@ DATABASES = {
     }
 }
 
+# Backup / restore storage (Phase 16). Defaults to a directory outside the
+# application source tree (the user's home directory) and is overridable with
+# BACKUP_DIR in backend/.env (e.g. D:\\SaamuBackups). Backup artifacts must
+# never live inside the source repository.
+BACKUP_DIR = Path(os.getenv("BACKUP_DIR", str(Path.home() / "SaamuBackups")))
+
+# Optional directory that contains the PostgreSQL client tools (pg_dump,
+# pg_restore, psql). When empty the tools are located on PATH. Example for a
+# local PostgreSQL 18 install: C:\\Program Files\\PostgreSQL\\18\\bin
+PG_BIN = os.getenv("PGBIN", "").strip()
+
 
 # Custom User Model
 AUTH_USER_MODEL = "authentication.User"

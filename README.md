@@ -4,7 +4,7 @@ A custom tailoring management system for **Saamu Tailors**, a family tailoring b
 
 The application digitizes the shop's operations: customer records, orders, measurements, tailoring workflow, tailor workload, payments, income, expenses, digital bills, and delivery/collection tracking.
 
-**Current stage:** Phase 11 (Payments & Billing). Business modules beyond billing are implemented in later phases.
+**Current stage:** Phase 16 (Backup, Restore & Data Portability). Adds a hardened operator workflow for PostgreSQL backup/restore: management commands (`db_backup`, `db_list_backups`, `db_verify`, `db_restore`, `db_cleanup`), configurable backup storage outside the source tree, pre-restore safety backups, restore verification, retention cleanup, and a documented local → cloud PostgreSQL migration path. No new business features; no schema changes; no UI/API surface. Manual verification checklist pending.
 
 ---
 
@@ -316,6 +316,39 @@ npm run format   # prettier --write
 
 ---
 
+## 9.1 Backup & Restore (Phase 16)
+
+Backup/restore is an **operator workflow** (management commands), not a browser
+feature. PostgreSQL-native tooling (`pg_dump` / `pg_restore` / `psql`) is used
+with custom-format dumps stored outside the source tree.
+
+```powershell
+cd backend
+.\.venv\Scripts\activate
+
+python manage.py db_backup              # timestamped backup + verification
+python manage.py db_list_backups        # list backups (newest first)
+python manage.py db_verify --restore-test   # verify + disposable restore test
+python manage.py db_restore --backup saamu_db_<timestamp>.dump   # destructive, requires confirmation
+python manage.py db_cleanup --keep 10   # retention (dry-run by default; --execute to delete)
+```
+
+Key safety rules:
+
+- `BACKUP_DIR` defaults to `%USERPROFILE%\SaamuBackups` (outside the repo) and
+  is configurable in `backend/.env`.
+- `PGBIN` points at the PostgreSQL tool directory when the tools are not on
+  `PATH` (e.g. `C:\Program Files\PostgreSQL\18\bin`).
+- Restore requires explicit confirmation and creates a fresh pre-restore safety
+  backup first.
+- A PostgreSQL dump contains only database data — media/uploads, static/build
+  output, `.env` secrets, logs and source code are backed up separately.
+
+Full procedures: `docs/phase-16/12_PHASE_16_BACKUP_RESTORE_RUNBOOK.md` and
+`docs/phase-16/13_PHASE_16_LOCAL_TO_CLOUD_MIGRATION.md`.
+
+---
+
 ## 10. Environment Configuration
 
 Backend (`backend/.env.example`):
@@ -330,6 +363,8 @@ Backend (`backend/.env.example`):
 | `CORS_ALLOWED_ORIGINS` | Comma-separated frontend origins |
 | `LOG_LEVEL` / `LOG_DIR` | Logging level and directory (defaults: `INFO`, `backend/logs`) |
 | `STATIC_ROOT` / `MEDIA_ROOT` | Optional overrides (project-relative by default, cloud-overridable) |
+| `BACKUP_DIR` | Backup storage location, outside the source tree (default `%USERPROFILE%\SaamuBackups`) |
+| `PGBIN` | Optional directory containing `pg_dump` / `pg_restore` / `psql` (e.g. `C:\Program Files\PostgreSQL\18\bin`) |
 
 Frontend (`frontend/.env.example`):
 
@@ -417,6 +452,7 @@ saamu/
 - **Phase 13 — Income Management (customer-payment-derived income):** complete
 - **Phase 14 — Reports & Business Insights:** complete
 - **Phase 15 — Production Hardening & Operational Readiness:** complete
-- **Phase 16+ — Business modules (exports, reminders, cloud migration):** pending
+- **Phase 16 — Backup, Restore & Data Portability:** complete
+- **Phase 17+ — Business modules (exports, reminders, cloud migration):** pending
 
 Do not treat this document as a feature guide; business functionality is implemented incrementally in later phases and documented in `docs/`.
