@@ -4,7 +4,7 @@ A custom tailoring management system for **Saamu Tailors**, a family tailoring b
 
 The application digitizes the shop's operations: customer records, orders, measurements, tailoring workflow, tailor workload, payments, income, expenses, digital bills, and delivery/collection tracking.
 
-**Current stage:** Phase 18 (Customer Communication & WhatsApp-Ready Delivery). Adds a read-only preparation endpoint `GET /api/v1/communications/messages/prepare/order/<id>/?message_type=...` (OWNER/STAFF) that returns a server-authored plain-text WhatsApp-ready message for one of four templates (order acknowledgement, order status update, ready for collection, payment/balance summary) plus a normalized phone destination and a fixed `wa.me` handoff URL — nothing is ever sent automatically. The Order Detail page gains a reusable Customer Communication panel with message-type selection, a compact preview, Copy WhatsApp Message (with copy-success state) and Open WhatsApp (disabled when no usable number), with loading/error/retry and duplicate-action protection. No provider integration, no credentials, no schema changes. Manual verification checklist pending.
+**Current stage:** Phase 19 (Reminder Review & WhatsApp-Ready Preparation). Adds a read-only reminders workflow on top of the Phase 18 communication foundation: `GET /api/v1/communications/reminders/` (OWNER/STAFF, paginated) derives eligible reminders from existing authoritative order/payment/customer state — `READY_FOR_COLLECTION` for active orders that are `READY` and `BALANCE_OUTSTANDING` for active orders with an invoice and an outstanding balance — and `GET /api/v1/communications/reminders/<TYPE>_<order_id>/prepare/` re-validates eligibility at handoff time and returns the deterministic Phase 18 WhatsApp-ready message, phone destination and `wa.me` URL. Reminders are derived, never stored, so the workflow is idempotent. The new Reminders page is an operator review surface only (preview, Copy WhatsApp Message, Open WhatsApp): nothing is ever sent automatically. No provider integration, no credentials, no schema changes. Manual verification checklist pending.
 
 ---
 
@@ -299,6 +299,14 @@ Tokens are never rendered as raw HTML or logged. The access token is short-lived
 - **Frontend**: a reusable `OrderCommunicationPanel` on the Order Detail page (message-type select, compact preview, Copy WhatsApp Message with a 2-second copied state, Open WhatsApp disabled when no usable number with an explanation, loading/error/retry and duplicate-action protection). The frontend never calculates totals or balances.
 - No WhatsApp Business/Meta Cloud/Twilio integration, no provider credentials, no webhooks, no background senders, no message history — all explicitly deferred.
 
+## 8.8 Reminder Review & WhatsApp-Ready Preparation (Phase 19)
+
+- **Preparation/review workflow, never sending**: `GET /api/v1/communications/reminders/` (OWNER + STAFF, GET-only, read-only, paginated) derives eligible reminders from existing authoritative order/payment/customer state; `GET /api/v1/communications/reminders/<TYPE>_<order_id>/prepare/` re-validates eligibility at handoff time and returns the same `{message, phone_number, whatsapp_url}` shape as the Phase 18 endpoint. Reminders are **derived, never stored**, so repeated reads are idempotent (no new tables, no migration).
+- **Two reminder types**, justified strictly by existing data: `READY_FOR_COLLECTION` (active order with status `READY`, reuses Phase 18 `MESSAGE_TYPE_READY_FOR_COLLECTION`) and `BALANCE_OUTSTANDING` (active order with `order_payment_summary()` → `has_invoice` and `outstanding_balance > 0`, reuses `MESSAGE_TYPE_PAYMENT_BALANCE`). **No invoice → never a balance reminder**. Terminal orders (`COLLECTED`/`CANCELLED`) are excluded from both. Message wording, phone normalization and the `wa.me` URL all come from `apps/billing/communications.py` (`build_order_communication`), so reminders agree byte-for-byte with the Phase 18 order panel.
+- **Stale-safe handoff**: eligibility is re-evaluated on `prepare`; a reminder that is no longer valid (order collected/cancelled, no longer ready, balance settled) returns a 400 `validation_error` with a stable `REASON_*` code instead of sending. Standard `{success:false,error:{code,message,details?}}` contract; anonymous → 401, non-owner/staff → 403, missing order/bad reminder id → 404, POST/PUT/PATCH/DELETE → 405.
+- **Frontend**: a `Reminders` page (sidebar entry) listing every derived candidate with its type, order status chip, customer, server-authored message preview, and Copy WhatsApp Message / Open WhatsApp actions (Open disabled with an explanation when no usable number). The page supports loading/empty/error/retry, pagination, refresh, and per-card duplicate-action protection; it never calculates balances or eligibility — it only renders server-derived state.
+- No automatic WhatsApp/SMS/email sending, no Meta/Twilio/provider SDKs, no webhooks, no credentials, no background senders — the operator always reviews and manually hands off via the browser `wa.me` link.
+
 ---
 
 ## 9. Verification Commands
@@ -403,7 +411,7 @@ saamu/
 │   │   ├── payroll/          # payroll periods, per-tailor entries + salary configurations (Phase 6/10)
 │   │   ├── payments/         # salary advances + payroll payments/settlement (Phase 7)
 │   │   ├── finance/          # expenses + derived customer-payment income + dashboard summary (Phase 8/12/13)
-│   │   └── billing/          # customer invoices, typed payments, digital bills + WhatsApp-ready communication (Phase 9/11/18)
+│   │   └── billing/          # customer invoices, typed payments, digital bills + WhatsApp-ready communication & reminders (Phase 9/11/18/19)
 │   ├── config/               # Django project settings
 │   ├── logs/  media/  static/
 │   ├── manage.py
@@ -465,6 +473,7 @@ saamu/
 - **Phase 16 — Backup, Restore & Data Portability:** complete
 - **Phase 17 — Reports Export (CSV/PDF):** complete
 - **Phase 18 — Customer Communication & WhatsApp-Ready Delivery:** complete
-- **Phase 19+ — Business modules (automated reminders/sending, cloud migration):** pending
+- **Phase 19 — Reminder Review & WhatsApp-Ready Preparation:** complete
+- **Phase 20+ — Business modules (automated sending, cloud migration):** pending
 
 Do not treat this document as a feature guide; business functionality is implemented incrementally in later phases and documented in `docs/`.

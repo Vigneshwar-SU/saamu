@@ -12,6 +12,7 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import PaymentIcon from '@mui/icons-material/Payment';
 import BarChartIcon from '@mui/icons-material/BarChart';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { NavItem } from '../types/navigation';
 
@@ -87,6 +88,12 @@ export const SIDEBAR_ITEMS: NavItem[] = [
     title: 'Payments',
     path: '/payments',
     icon: React.createElement(PaymentIcon),
+  },
+  {
+    id: 'reminders',
+    title: 'Reminders',
+    path: '/reminders',
+    icon: React.createElement(NotificationsActiveIcon),
   },
   {
     id: 'reports',

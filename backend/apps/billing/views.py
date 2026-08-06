@@ -23,6 +23,7 @@ from rest_framework import status as http_status
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -35,6 +36,12 @@ from .communications import (
     build_order_communication,
 )
 from .models import CustomerPayment, Invoice
+from .reminders import (
+    ReminderNotEligible,
+    build_pending_reminders,
+    build_reminder_candidate,
+    parse_reminder_id,
+)
 from .serializers import (
     CustomerPaymentCreateSerializer,
     CustomerPaymentSerializer,
@@ -289,3 +296,60 @@ class CommunicationMessagePrepareView(APIView):
 
         data = build_order_communication(order, message_type)
         return Response({"success": True, "data": data})
+
+
+class ReminderListAPIView(APIView):
+    """List the currently eligible reminder candidates (GET, read-only).
+
+    ``GET /api/v1/communications/reminders/`` derives the pending reminders
+    from authoritative order and payment state and prepares each message via
+    the Phase 18 communication layer. Reminders are never stored, so repeated
+    requests on unchanged state return the identical deterministic set.
+    """
+
+    http_method_names = ["get"]
+    permission_classes = [IsOwnerOrStaff]
+    pagination_class = PageNumberPagination
+
+    def get(self, request):
+        candidates = build_pending_reminders()
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(candidates, request, view=self)
+        return Response(
+            {
+                "success": True,
+                "data": {
+                    "count": paginator.page.paginator.count,
+                    "next": paginator.get_next_link(),
+                    "previous": paginator.get_previous_link(),
+                    "results": page,
+                },
+            }
+        )
+
+
+class ReminderPrepareAPIView(APIView):
+    """Prepare one reminder for review/action (GET, read-only).
+
+    ``GET /api/v1/communications/reminders/<reminder_id>/prepare/`` where
+    ``reminder_id`` is the stable derived id ``<TYPE>_<order_id>`` (e.g.
+    ``READY_FOR_COLLECTION_12``). Current eligibility is re-evaluated before
+    the message is prepared, so a stale reminder (the order changed state since
+    it was listed) yields a clear 400 ``validation_error`` instead of being
+    forced through inconsistent business state.
+    """
+
+    http_method_names = ["get"]
+    permission_classes = [IsOwnerOrStaff]
+
+    def get(self, request, reminder_id):
+        parsed = parse_reminder_id(reminder_id)
+        if parsed is None:
+            raise ValidationError({"reminder_id": "Invalid reminder id."})
+        reminder_type, order_id = parsed
+        order = get_object_or_404(Order.objects.select_related("customer"), pk=order_id)
+        try:
+            candidate = build_reminder_candidate(order, reminder_type)
+        except ReminderNotEligible as exc:
+            raise ValidationError({"reminder_id": f"{exc.message} ({exc.code})."})
+        return Response({"success": True, "data": candidate})
