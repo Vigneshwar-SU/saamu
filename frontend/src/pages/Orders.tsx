@@ -43,7 +43,7 @@ import {
   ORDER_STATUSES,
 } from '../types/orders';
 import type { OrderStatus } from '../types/orders';
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 6;
 
 export const Orders: React.FC = () => {
   const navigate = useNavigate();

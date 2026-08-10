@@ -70,6 +70,7 @@ def test_owner_can_read_shop_details(client, owner):
         "address",
         "phone",
         "established_year",
+        "customer_follow_up_months",
     }
     assert data["name"] == "Saamu Tailors"
     assert data["established_year"] == 1954

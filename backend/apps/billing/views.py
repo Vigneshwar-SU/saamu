@@ -19,6 +19,7 @@ from datetime import date
 from django.db.models import Case, DecimalField, F, OuterRef, Q, Sum, Value, When
 from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import status as http_status
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -28,6 +29,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.authentication.permissions import IsOwnerOrStaff, IsStaffRole
+from apps.common.pagination import SaamuPageNumberPagination
 from apps.orders.models import Order, OrderStatus
 
 from .communications import (
@@ -35,7 +37,14 @@ from .communications import (
     SUPPORTED_MESSAGE_TYPES,
     build_order_communication,
 )
-from .models import CustomerPayment, Invoice, ShopDetails
+from .models import CustomerPayment, Invoice, ManualReminder, ShopDetails
+from .reminder_service import (
+    REMINDER_CATEGORIES,
+    REMINDER_MANUAL,
+    REMINDER_TYPES,
+    build_pending_reminder_candidates,
+    reminder_summary,
+)
 from .reminders import (
     ReminderNotEligible,
     build_pending_reminders,
@@ -46,7 +55,10 @@ from .serializers import (
     CustomerPaymentCreateSerializer,
     CustomerPaymentSerializer,
     InvoiceCreateSerializer,
+    InvoiceEligibleOrderSerializer,
     InvoiceSerializer,
+    ManualReminderCreateSerializer,
+    ManualReminderSerializer,
     ShopDetailsSerializer,
 )
 from .services import build_bill_data, record_customer_payment
@@ -104,6 +116,7 @@ class InvoiceViewSet(viewsets.ModelViewSet):
 
     http_method_names = ["get", "post", "head", "options"]
     serializer_class = InvoiceSerializer
+    pagination_class = SaamuPageNumberPagination
 
     def get_permissions(self):
         if self.action == "create":
@@ -204,6 +217,33 @@ class InvoiceViewSet(viewsets.ModelViewSet):
             status=http_status.HTTP_201_CREATED,
         )
 
+    @action(detail=False, methods=["get"], url_path="available-orders")
+    def available_orders(self, request):
+        """Orders eligible for invoicing (no invoice yet), OWNER or STAFF.
+
+        The Create Invoice flow only ever presents this list, so an
+        already-invoiced order cannot be picked from the UI. The backend stays
+        authoritative: ``invoice__isnull`` excludes every order that already
+        has an invoice, and the same rule is enforced again on creation.
+        ``search`` matches order number, customer name or customer mobile.
+        """
+        search = (request.query_params.get("search") or "").strip()
+        qs = Order.objects.select_related("customer").filter(invoice__isnull=True)
+        if search:
+            qs = qs.filter(
+                Q(order_number__icontains=search)
+                | Q(customer__full_name__icontains=search)
+                | Q(customer__mobile_number__icontains=search)
+            )
+        # This action backs the Create Invoice order picker, not a list page, so
+        # it keeps the global page size instead of the 6-per-page list standard.
+        paginator = PageNumberPagination()
+        page = paginator.paginate_queryset(qs, request, view=self)
+        serializer = InvoiceEligibleOrderSerializer(
+            page, many=True, context=self.get_serializer_context()
+        )
+        return paginator.get_paginated_response(serializer.data)
+
     @action(detail=True, methods=["get", "post"], url_path="payments")
     def payments(self, request, pk=None):
         """Payment history (GET) or record a payment (POST, STAFF)."""
@@ -216,11 +256,14 @@ class InvoiceViewSet(viewsets.ModelViewSet):
                 .all()
             )
             qs = self._apply_payment_filters(qs)
-            page = self.paginate_queryset(qs)
+            # Payment history is a sub-resource, not a list page, so it keeps
+            # the global page size instead of the 6-per-page list standard.
+            paginator = PageNumberPagination()
+            page = paginator.paginate_queryset(qs, request, view=self)
             serializer = CustomerPaymentSerializer(
                 page, many=True, context=self.get_serializer_context()
             )
-            return self.get_paginated_response(serializer.data)
+            return paginator.get_paginated_response(serializer.data)
 
         if not IsStaffRole().has_permission(request, self):
             raise PermissionDenied("Only staff can record customer payments.")
@@ -339,7 +382,7 @@ class ReminderListAPIView(APIView):
 
     http_method_names = ["get"]
     permission_classes = [IsOwnerOrStaff]
-    pagination_class = PageNumberPagination
+    pagination_class = SaamuPageNumberPagination
 
     def get(self, request):
         candidates = build_pending_reminders()
@@ -383,3 +426,204 @@ class ReminderPrepareAPIView(APIView):
         except ReminderNotEligible as exc:
             raise ValidationError({"reminder_id": f"{exc.message} ({exc.code})."})
         return Response({"success": True, "data": candidate})
+
+
+class ReminderV1ListView(APIView):
+    """List the currently eligible Reminders V1 candidates (GET, read-only).
+
+    ``GET /api/v1/reminders/`` derives automatic reminders from authoritative
+    order, payment, measurement, tailor and customer state and merges in the
+    persisted PENDING manual reminders. Filters (all optional): ``type``
+    (one of ``REMINDER_TYPES``), ``category`` (orders/payments/tailors/
+    customers/manual), ``priority`` (manual reminders only), ``date``
+    (YYYY-MM-DD, matches a candidate's primary date) and ``search`` (matches
+    order number, customer name, tailor name, title/description). Results are
+    paginated and deterministically ordered.
+    """
+
+    http_method_names = ["get"]
+    permission_classes = [IsOwnerOrStaff]
+    pagination_class = SaamuPageNumberPagination
+
+    def get(self, request):
+        candidates = build_pending_reminder_candidates()
+        candidates = self._apply_filters(candidates, request)
+        paginator = self.pagination_class()
+        page = paginator.paginate_queryset(candidates, request, view=self)
+        return Response(
+            {
+                "success": True,
+                "data": {
+                    "count": paginator.page.paginator.count,
+                    "next": paginator.get_next_link(),
+                    "previous": paginator.get_previous_link(),
+                    "results": page,
+                },
+            }
+        )
+
+    def _apply_filters(self, candidates, request):
+        reminder_type = (request.query_params.get("type") or "").strip()
+        if reminder_type:
+            if reminder_type not in REMINDER_TYPES:
+                raise ValidationError({"type": "Invalid reminder type filter."})
+            candidates = [c for c in candidates if c["reminder_type"] == reminder_type]
+
+        category = (request.query_params.get("category") or "").strip()
+        if category:
+            if category not in REMINDER_CATEGORIES.values():
+                raise ValidationError({"category": "Invalid reminder category filter."})
+            candidates = [c for c in candidates if c["category"] == category]
+
+        priority = (request.query_params.get("priority") or "").strip()
+        if priority:
+            if priority not in ManualReminder.Priority.values:
+                raise ValidationError({"priority": "Invalid priority filter."})
+            candidates = [c for c in candidates if c["priority"] == priority]
+
+        date_value = _parse_date(request.query_params.get("date"), "date")
+        if date_value:
+            candidates = [c for c in candidates if c["date"] == date_value]
+
+        search = (request.query_params.get("search") or "").strip().lower()
+        if search:
+            matched = []
+            for c in candidates:
+                haystack = " ".join(
+                    part
+                    for part in (
+                        c["title"],
+                        c["description"],
+                        (c["order"] or {}).get("order_number"),
+                        (c["customer"] or {}).get("full_name"),
+                        (c["tailor"] or {}).get("full_name"),
+                    )
+                    if part
+                ).lower()
+                if search in haystack:
+                    matched.append(c)
+            candidates = matched
+        return candidates
+
+
+class ReminderSummaryView(APIView):
+    """Counts of currently eligible reminders per type and category (GET).
+
+    ``GET /api/v1/reminders/summary/`` returns the unfiltered totals so the
+    Reminders page can render its summary cards without pagination affecting
+    the counts.
+    """
+
+    http_method_names = ["get"]
+    permission_classes = [IsOwnerOrStaff]
+
+    def get(self, request):
+        return Response({"success": True, "data": reminder_summary()})
+
+
+class ManualReminderViewSet(viewsets.ModelViewSet):
+    """Manual reminders: OWNER/STAFF reads, STAFF-only mutations.
+
+    Manual reminders are the only persisted reminders. ``complete`` and
+    ``cancel`` transition a PENDING reminder so it leaves the pending queue
+    without ever being physically deleted (rows remain as an audit trail).
+    """
+
+    http_method_names = ["get", "post", "patch", "head", "options"]
+    serializer_class = ManualReminderSerializer
+    pagination_class = SaamuPageNumberPagination
+    MANUAL_MUTATION_ACTIONS = {"create", "partial_update", "complete", "cancel"}
+
+    def get_permissions(self):
+        if self.action in self.MANUAL_MUTATION_ACTIONS:
+            return [IsStaffRole()]
+        return [IsOwnerOrStaff()]
+
+    def get_serializer_class(self):
+        if self.action in {"create", "partial_update"}:
+            return ManualReminderCreateSerializer
+        return ManualReminderSerializer
+
+    def get_queryset(self):
+        qs = ManualReminder.objects.select_related("customer", "order").all()
+        if self.action == "list":
+            qs = self._apply_list_filters(qs)
+        return qs
+
+    def _apply_list_filters(self, qs):
+        status = (self.request.query_params.get("status") or "").strip()
+        if status:
+            if status not in ManualReminder.Status.values:
+                raise ValidationError({"status": "Invalid manual reminder status."})
+            qs = qs.filter(status=status)
+
+        priority = (self.request.query_params.get("priority") or "").strip()
+        if priority:
+            if priority not in ManualReminder.Priority.values:
+                raise ValidationError({"priority": "Invalid priority filter."})
+            qs = qs.filter(priority=priority)
+
+        search = (self.request.query_params.get("search") or "").strip()
+        if search:
+            qs = qs.filter(
+                Q(title__icontains=search)
+                | Q(description__icontains=search)
+                | Q(customer__full_name__icontains=search)
+                | Q(order__order_number__icontains=search)
+            )
+        return qs
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(
+            data=request.data, context=self.get_serializer_context()
+        )
+        serializer.is_valid(raise_exception=True)
+        reminder = serializer.save()
+        return Response(
+            ManualReminderSerializer(
+                reminder, context=self.get_serializer_context()
+            ).data,
+            status=http_status.HTTP_201_CREATED,
+        )
+
+    @action(detail=True, methods=["post"], url_path="complete")
+    def complete(self, request, pk=None):
+        reminder = self.get_object()
+        if reminder.status != ManualReminder.Status.PENDING:
+            raise ValidationError(
+                {"status": "Only PENDING reminders can be completed."}
+            )
+        reminder.status = ManualReminder.Status.COMPLETED
+        reminder.completed_at = timezone.now()
+        reminder.completed_by = request.user
+        reminder.save(
+            update_fields=["status", "completed_at", "completed_by", "updated_at"]
+        )
+        return Response(
+            {
+                "success": True,
+                "message": "Reminder marked as completed.",
+                "reminder": ManualReminderSerializer(
+                    reminder, context=self.get_serializer_context()
+                ).data,
+            }
+        )
+
+    @action(detail=True, methods=["post"], url_path="cancel")
+    def cancel(self, request, pk=None):
+        reminder = self.get_object()
+        if reminder.status != ManualReminder.Status.PENDING:
+            raise ValidationError(
+                {"status": "Only PENDING reminders can be cancelled."}
+            )
+        reminder.status = ManualReminder.Status.CANCELLED
+        reminder.save(update_fields=["status", "updated_at"])
+        return Response(
+            {
+                "success": True,
+                "message": "Reminder cancelled.",
+                "reminder": ManualReminderSerializer(
+                    reminder, context=self.get_serializer_context()
+                ).data,
+            }
+        )

@@ -23,6 +23,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.authentication.permissions import IsOwnerOrStaff, IsStaffRole
+from apps.common.pagination import SaamuPageNumberPagination
 from apps.customers.models import GarmentType
 from apps.orders.models import OrderItem
 
@@ -125,6 +126,7 @@ class TailorViewSet(viewsets.ModelViewSet):
 
     http_method_names = ["get", "post", "patch", "head", "options"]
     serializer_class = TailorSerializer
+    pagination_class = SaamuPageNumberPagination
 
     def get_permissions(self):
         if self.action in TAILOR_MUTATION_ACTIONS:

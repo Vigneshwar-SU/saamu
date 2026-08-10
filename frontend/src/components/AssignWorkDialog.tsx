@@ -38,7 +38,7 @@ const AssignWorkDialog: React.FC<AssignWorkDialogProps> = ({
   defaultTailorId,
   defaultOrderId,
 }) => {
-  const { data: tailorsData } = useTailorList({ scope: 'active' });
+  const { data: tailorsData } = useTailorList({ scope: 'active', page_size: 100 });
   const { data: pieceRatesData } = usePieceRates();
   const createMutation = useCreateWorkAssignment();
 

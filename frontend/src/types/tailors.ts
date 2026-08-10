@@ -23,6 +23,8 @@ export interface TailorListParams {
   search?: string;
   scope?: TailorScope;
   page?: number;
+  /** Larger page size for selector/dropdown consumers of the list endpoint. */
+  page_size?: number;
 }
 
 export interface TailorPayload {

@@ -8,6 +8,7 @@ import {
   CircularProgress,
   LinearProgress,
   Link,
+  Pagination,
   Paper,
   Stack,
   Table,
@@ -44,20 +45,29 @@ import {
 } from '../types/payroll';
 import type { PayrollPeriod, PayrollPeriodPayload } from '../types/payroll';
 
+const PAGE_SIZE = 7;
+
 export const Payroll: React.FC = () => {
   const navigate = useNavigate();
   const { role } = useAuth();
   const isStaff = role === 'STAFF';
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [page, setPage] = useState(1);
 
-  const { data, isLoading, isError, error, isFetching, refetch } = usePayrollPeriodList();
+  const { data, isLoading, isError, error, isFetching, refetch } = usePayrollPeriodList(page);
 
   const createMutation = useCreatePayrollPeriod();
   const calculateMutation = useCalculatePayrollPeriod();
   const finalizeMutation = useFinalizePayrollPeriod();
 
-  const handleCreate = (payload: PayrollPeriodPayload) => createMutation.mutateAsync(payload);
+  const totalPages = data ? Math.max(1, Math.ceil(data.count / PAGE_SIZE)) : 1;
+
+  const handleCreate = async (payload: PayrollPeriodPayload) => {
+    const created = await createMutation.mutateAsync(payload);
+    setPage(1);
+    return created;
+  };
 
   const handleCalculate = async (period: PayrollPeriod) => {
     const confirmed = window.confirm(
@@ -310,6 +320,20 @@ export const Payroll: React.FC = () => {
           </Table>
         </TableContainer>
       </Paper>
+
+      {data && data.count > 0 && (
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="body2" sx={{ color: '#64748B' }}>
+            Showing {data.results.length} of {data.count} periods
+          </Typography>
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={(_event, value) => setPage(value)}
+            color="primary"
+          />
+        </Box>
+      )}
 
       <PayrollPeriodDialog
         open={dialogOpen}

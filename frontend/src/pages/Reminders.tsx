@@ -25,7 +25,7 @@ import { useReminderActions } from '../hooks/useReminderActions';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from '../types/orders';
 import type { ReminderCandidate } from '../types/reminders';
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 6;
 
 const ReminderCard: React.FC<{ reminder: ReminderCandidate }> = ({ reminder }) => {
   const navigate = useNavigate();

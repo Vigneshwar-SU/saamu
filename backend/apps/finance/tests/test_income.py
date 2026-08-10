@@ -294,5 +294,5 @@ def test_income_pagination(client, staff):
 
     response = client.get(income_list_url(), **_auth(staff))
     assert response.json()["count"] == 25
-    assert len(response.json()["results"]) == 20
+    assert len(response.json()["results"]) == 6
     assert response.json()["next"] is not None

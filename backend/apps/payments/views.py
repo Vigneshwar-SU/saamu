@@ -13,6 +13,7 @@ from rest_framework import viewsets
 from rest_framework.exceptions import ValidationError
 
 from apps.authentication.permissions import IsOwnerOrStaff, IsStaffRole
+from apps.common.pagination import SaamuPageNumberPagination
 
 from .models import SalaryAdvance
 from .serializers import SalaryAdvanceSerializer
@@ -23,6 +24,7 @@ class SalaryAdvanceViewSet(viewsets.ModelViewSet):
 
     http_method_names = ["get", "post", "head", "options"]
     serializer_class = SalaryAdvanceSerializer
+    pagination_class = SaamuPageNumberPagination
 
     def get_permissions(self):
         if self.action == "create":

@@ -386,15 +386,21 @@ def test_list_is_paginated(client, staff):
     first = client.get(list_url(), **_auth(staff))
     assert first.status_code == http_status.HTTP_200_OK
     assert first.data["data"]["count"] == 22
-    assert len(first.data["data"]["results"]) == 20
+    assert len(first.data["data"]["results"]) == 6
     assert first.data["data"]["next"] is not None
     assert first.data["data"]["previous"] is None
 
     second = client.get(list_url(), {"page": 2}, **_auth(staff))
     assert second.status_code == http_status.HTTP_200_OK
-    assert len(second.data["data"]["results"]) == 2
-    assert second.data["data"]["next"] is None
+    assert len(second.data["data"]["results"]) == 6
+    assert second.data["data"]["next"] is not None
     assert second.data["data"]["previous"] is not None
+
+    third = client.get(list_url(), {"page": 4}, **_auth(staff))
+    assert third.status_code == http_status.HTTP_200_OK
+    assert len(third.data["data"]["results"]) == 4
+    assert third.data["data"]["next"] is None
+    assert third.data["data"]["previous"] is not None
 
 
 def test_list_is_deterministic(client, staff):

@@ -13,6 +13,10 @@ def invoice_list_url():
     return "/api/v1/invoices/"
 
 
+def available_orders_url():
+    return "/api/v1/invoices/available-orders/"
+
+
 def invoice_detail_url(invoice_id):
     return f"/api/v1/invoices/{invoice_id}/"
 

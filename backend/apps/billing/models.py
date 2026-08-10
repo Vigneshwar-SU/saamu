@@ -30,6 +30,7 @@ from django.db import models
 from django.utils import timezone
 
 from apps.common.models import TimeStampedModel
+from apps.customers.models import Customer
 from apps.orders.models import Order
 
 MAX_PRICE_DIGITS = 12
@@ -52,6 +53,13 @@ class ShopDetails(TimeStampedModel):
     address = models.TextField(blank=True, default="")
     phone = models.CharField(max_length=30, blank=True, default="")
     established_year = models.PositiveIntegerField(default=1954)
+    customer_follow_up_months = models.PositiveSmallIntegerField(
+        default=6,
+        help_text=(
+            "Months of inactivity after which a customer receives a follow-up "
+            "reminder. Used by the Reminders V1 customer follow-up rule."
+        ),
+    )
 
     class Meta:
         verbose_name = "Shop Details"
@@ -292,3 +300,83 @@ class CustomerPayment(TimeStampedModel):
 
     def __str__(self):
         return f"{self.invoice.invoice_number} - {self.amount} ({self.get_payment_type_display()})"
+
+
+class ManualReminder(TimeStampedModel):
+    """A manually-created reminder, the only persisted reminder in Reminders V1.
+
+    Every automatic reminder (overdue orders, due dates, ready-for-pickup,
+    outstanding payments, tailor workload, missing measurements, customer
+    follow-up) is derived on demand and never stored. This model exists so
+    staff can capture follow-ups that the automatic rules cannot express, and
+    to track them to completion (PENDING -> COMPLETED / CANCELLED). Rows are
+    never physically deleted: cancelled reminders remain as an audit trail.
+    """
+
+    class Priority(models.TextChoices):
+        LOW = "LOW", "Low"
+        MEDIUM = "MEDIUM", "Medium"
+        HIGH = "HIGH", "High"
+        URGENT = "URGENT", "Urgent"
+
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        COMPLETED = "COMPLETED", "Completed"
+        CANCELLED = "CANCELLED", "Cancelled"
+
+    title = models.CharField(
+        max_length=200, help_text="Short headline for the reminder."
+    )
+    description = models.TextField(blank=True, max_length=4000)
+    reminder_date = models.DateField(
+        help_text="Date this reminder is due / should be actioned."
+    )
+    priority = models.CharField(
+        max_length=10, choices=Priority.choices, default=Priority.MEDIUM
+    )
+    status = models.CharField(
+        max_length=12, choices=Status.choices, default=Status.PENDING
+    )
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="manual_reminders",
+        help_text="Optional related customer for context.",
+    )
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="manual_reminders",
+        help_text="Optional related order for context.",
+    )
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="created_manual_reminders",
+        null=True,
+        blank=True,
+    )
+    completed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="completed_manual_reminders",
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        ordering = ["-reminder_date", "-id"]
+        verbose_name = "Manual Reminder"
+        verbose_name_plural = "Manual Reminders"
+        indexes = [
+            models.Index(fields=["status", "reminder_date"]),
+            models.Index(fields=["priority"]),
+        ]
+
+    def __str__(self):
+        return f"{self.title} ({self.get_status_display()})"

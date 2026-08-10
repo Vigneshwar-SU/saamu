@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from .models import CustomerPayment, Invoice, InvoiceItem, ShopDetails
+from .models import (
+    CustomerPayment,
+    Invoice,
+    InvoiceItem,
+    ManualReminder,
+    ShopDetails,
+)
 
 
 @admin.register(ShopDetails)
@@ -61,3 +67,27 @@ class CustomerPaymentAdmin(admin.ModelAdmin):
     list_filter = ("payment_type", "payment_method", "payment_date")
     ordering = ("-payment_date",)
     readonly_fields = ("recorded_by", "created_at", "updated_at")
+
+
+@admin.register(ManualReminder)
+class ManualReminderAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "title",
+        "reminder_date",
+        "priority",
+        "status",
+        "customer",
+        "order",
+        "created_by",
+        "created_at",
+    )
+    list_filter = ("status", "priority", "reminder_date")
+    ordering = ("-reminder_date",)
+    readonly_fields = (
+        "created_by",
+        "completed_by",
+        "completed_at",
+        "created_at",
+        "updated_at",
+    )

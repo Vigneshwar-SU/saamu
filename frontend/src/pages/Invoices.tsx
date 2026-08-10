@@ -36,7 +36,7 @@ import { useCreateInvoice, useInvoiceList } from '../hooks/useInvoices';
 import { INVOICE_STATUSES, INVOICE_STATUS_COLORS, INVOICE_STATUS_LABELS } from '../types/billing';
 import type { InvoiceCreatePayload, InvoiceStatus } from '../types/billing';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 6;
 
 export const Invoices: React.FC = () => {
   const navigate = useNavigate();

@@ -22,6 +22,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.authentication.permissions import IsOwnerOrStaff, IsStaffRole
+from apps.common.pagination import SaamuPageNumberPagination
 from apps.customers.models import Customer, Measurement
 from apps.customers.serializers import CustomerSerializer, MeasurementSerializer
 
@@ -47,6 +48,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
     http_method_names = ["get", "post", "patch", "head", "options"]
     serializer_class = CustomerSerializer
+    pagination_class = SaamuPageNumberPagination
 
     def get_permissions(self):
         if self.action in CUSTOMER_MUTATION_ACTIONS:
@@ -56,6 +58,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = Customer.objects.all()
         if self.action == "list":
+            qs = qs.order_by("-created_at", "-id")
             qs = self._apply_list_filters(qs)
         return qs
 

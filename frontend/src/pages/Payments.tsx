@@ -52,7 +52,7 @@ import type {
   PaymentType,
 } from '../types/billing';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 6;
 
 const PAYMENT_TYPE_COLORS: Record<PaymentType, { bg: string; text: string }> = {
   ADVANCE: { bg: '#E0E7FF', text: '#4338CA' },

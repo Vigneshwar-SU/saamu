@@ -380,6 +380,32 @@ def test_owner_and_staff_can_prepare(client, owner, staff):
         )
 
 
+def test_acknowledgement_uses_real_order_and_customer_data(client, owner):
+    """Regression: the Order Detail page flow must not 500.
+
+    Reproduces the exact UI path (OWNER selects Order Acknowledgement) and
+    asserts the prepared message carries the real order/customer values.
+    """
+    order = create_order()
+    invoice = create_invoice(order=order)
+    create_payment(invoice, amount="100.00")
+    response = client.get(
+        prepare_url(order.id),
+        {"message_type": MESSAGE_TYPE_ORDER_ACKNOWLEDGEMENT},
+        **_auth(owner),
+    )
+    assert response.status_code == http_status.HTTP_200_OK
+    data = response.data["data"]
+    message = data["message"]
+    assert f"Hello {order.customer.full_name}," in message
+    assert f"Order Number: {order.order_number}" in message
+    assert f"Total: {format_inr(order.total_amount)}" in message
+    assert "Amount Paid: ₹100.00" in message
+    assert "Balance: ₹350.50" in message
+    assert data["phone_number"] == "919876543210"
+    assert data["whatsapp_url"].startswith("https://wa.me/919876543210?text=")
+
+
 def test_endpoint_is_get_only(client, staff):
     order = create_order()
     for method in ("post", "put", "patch", "delete"):

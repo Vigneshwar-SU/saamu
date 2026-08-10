@@ -22,7 +22,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import dayjs from 'dayjs';
 import { getApiErrorMessage } from '../utils/apiErrors';
-import { useOrder, useOrderList } from '../hooks/useOrders';
+import { useOrder } from '../hooks/useOrders';
+import { useInvoiceEligibleOrders } from '../hooks/useInvoices';
 import { formatCurrency } from '../utils/formatters';
 import type { InvoiceCreatePayload } from '../types/billing';
 
@@ -49,7 +50,9 @@ export const CreateInvoiceDialog: React.FC<CreateInvoiceDialogProps> = ({
   const [orderSearch, setOrderSearch] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState<number | ''>('');
 
-  const { data: ordersData, isLoading: ordersLoading } = useOrderList({ search: orderSearch });
+  const { data: eligibleOrdersData, isLoading: ordersLoading } = useInvoiceEligibleOrders({
+    search: orderSearch,
+  });
   const { data: order } = useOrder(selectedOrderId === '' ? 0 : Number(selectedOrderId));
 
   const {
@@ -80,7 +83,7 @@ export const CreateInvoiceDialog: React.FC<CreateInvoiceDialogProps> = ({
     }
   }, [open, reset]);
 
-  const orders = useMemo(() => ordersData?.results ?? [], [ordersData]);
+  const orders = useMemo(() => eligibleOrdersData?.results ?? [], [eligibleOrdersData]);
 
   const handleOrderChange = (value: number | '') => {
     setSelectedOrderId(value);

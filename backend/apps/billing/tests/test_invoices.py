@@ -7,6 +7,7 @@ from django.db import IntegrityError
 
 from apps.billing.models import Invoice
 from apps.billing.tests.helpers import (
+    available_orders_url,
     create_invoice,
     create_order,
     invoice_detail_url,
@@ -135,7 +136,110 @@ def test_duplicate_invoice_rejected(client, staff, order):
         **_auth(staff),
     )
     assert response.status_code == 400
-    assert "already exists" in response.json()["error"]["message"]
+    assert response.json()["error"]["message"] == "This order already has an invoice."
+
+
+def test_duplicate_invoice_rejected_on_convenience_endpoint(client, staff, order):
+    create_invoice(order)
+    response = client.post(
+        order_invoice_url(order.id), {}, content_type="application/json", **_auth(staff)
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["message"] == "This order already has an invoice."
+
+
+def test_anonymous_cannot_list_available_orders(client):
+    assert client.get(available_orders_url()).status_code == 401
+
+
+def test_available_orders_requires_authentication_roles(client, staff, owner, order):
+    response = client.get(available_orders_url(), **_auth(staff))
+    assert response.status_code == 200
+    response = client.get(available_orders_url(), **_auth(owner))
+    assert response.status_code == 200
+
+
+def test_order_without_invoice_is_available(client, staff, order):
+    response = client.get(available_orders_url(), **_auth(staff))
+    assert response.status_code == 200
+    body = response.json()
+    assert body["count"] == 1
+    result = body["results"][0]
+    assert result["id"] == order.id
+    assert result["order_number"] == order.order_number
+    assert result["customer"]["full_name"] == order.customer.full_name
+    assert result["total_amount"] == 450.5
+
+
+def test_invoiced_order_is_not_available(client, staff, order):
+    create_invoice(order)
+    response = client.get(available_orders_url(), **_auth(staff))
+    assert response.status_code == 200
+    assert response.json()["count"] == 0
+
+
+def test_available_orders_excludes_every_invoiced_order(client, staff, order):
+    create_invoice(order)
+    invoiced_other_order = create_order(create_customer_alt())
+    create_invoice(invoiced_other_order)
+    eligible = create_order(create_customer_alt())
+
+    response = client.get(available_orders_url(), **_auth(staff))
+    body = response.json()
+    assert body["count"] == 1
+    assert body["results"][0]["id"] == eligible.id
+    assert invoiced_other_order.id not in [r["id"] for r in body["results"]]
+
+
+def test_created_invoice_makes_order_disappear_from_available(client, staff, order):
+    response = client.get(available_orders_url(), **_auth(staff))
+    assert response.json()["count"] == 1
+
+    response = client.post(
+        invoice_list_url(),
+        _valid_payload(order),
+        content_type="application/json",
+        **_auth(staff),
+    )
+    assert response.status_code == 201
+
+    response = client.get(available_orders_url(), **_auth(staff))
+    assert response.status_code == 200
+    assert response.json()["count"] == 0
+
+
+def test_available_orders_search_filter(client, staff, customer):
+    first = create_order(customer)
+    second = create_order(create_customer_alt())
+
+    response = client.get(
+        available_orders_url(), {"search": first.order_number}, **_auth(staff)
+    )
+    body = response.json()
+    assert body["count"] == 1
+    assert body["results"][0]["id"] == first.id
+
+    response = client.get(
+        available_orders_url(), {"search": second.customer.full_name}, **_auth(staff)
+    )
+    body = response.json()
+    assert body["count"] == 1
+    assert body["results"][0]["id"] == second.id
+
+    response = client.get(
+        available_orders_url(), {"search": "NO-MATCH-xyz"}, **_auth(staff)
+    )
+    assert response.json()["count"] == 0
+
+
+def test_available_orders_paginated(client, staff):
+    for _ in range(25):
+        create_order()
+    response = client.get(available_orders_url(), **_auth(staff))
+    body = response.json()
+    assert body["count"] == 25
+    assert len(body["results"]) == 20
+    assert body["next"] is not None
 
 
 def test_created_by_comes_from_authenticated_user(client, staff, owner, order):
@@ -401,7 +505,7 @@ def test_invoice_pagination(client, staff):
     response = client.get(invoice_list_url(), **_auth(staff))
     assert response.status_code == 200
     assert response.json()["count"] == 25
-    assert len(response.json()["results"]) == 20
+    assert len(response.json()["results"]) == 6
     assert response.json()["next"] is not None
 
 

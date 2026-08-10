@@ -72,7 +72,7 @@ export const SalaryConfigurationDialog: React.FC<SalaryConfigurationDialogProps>
   config,
 }) => {
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const { data: tailorsData } = useTailorList({ scope: 'all' });
+  const { data: tailorsData } = useTailorList({ scope: 'all', page_size: 100 });
 
   const tailors = useMemo(() => tailorsData?.results ?? [], [tailorsData]);
 

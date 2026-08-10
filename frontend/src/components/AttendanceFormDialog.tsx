@@ -56,7 +56,7 @@ export const AttendanceFormDialog: React.FC<AttendanceFormDialogProps> = ({
   defaultTailorId,
 }) => {
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const { data: tailorsData } = useTailorList({ scope: 'all' });
+  const { data: tailorsData } = useTailorList({ scope: 'all', page_size: 100 });
 
   const activeTailors = useMemo(() => tailorsData?.results ?? [], [tailorsData]);
 

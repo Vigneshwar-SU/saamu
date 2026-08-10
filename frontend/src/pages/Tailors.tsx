@@ -51,7 +51,7 @@ import {
 } from '../hooks/useTailors';
 import type { Tailor, TailorPayload, TailorScope } from '../types/tailors';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 6;
 
 export const Tailors: React.FC = () => {
   const navigate = useNavigate();

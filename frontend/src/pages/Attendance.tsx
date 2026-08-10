@@ -42,7 +42,7 @@ import {
 } from '../types/attendance';
 import type { Attendance, AttendancePayload, AttendanceStatus } from '../types/attendance';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 6;
 
 export const AttendancePage: React.FC = () => {
   const { role } = useAuth();
@@ -56,7 +56,7 @@ export const AttendancePage: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<Attendance | null>(null);
 
-  const { data: tailorsData } = useTailorList({ scope: 'all' });
+  const { data: tailorsData } = useTailorList({ scope: 'all', page_size: 100 });
   const tailors = tailorsData?.results ?? [];
 
   useEffect(() => {

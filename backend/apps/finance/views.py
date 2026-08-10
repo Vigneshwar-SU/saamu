@@ -27,6 +27,7 @@ from rest_framework.views import APIView
 
 from apps.authentication.permissions import IsOwnerOrStaff, IsStaffRole
 from apps.billing.models import CustomerPayment
+from apps.common.pagination import SaamuPageNumberPagination
 
 from .models import Expense
 from .report_exports import build_csv_report, build_pdf_report
@@ -67,6 +68,7 @@ class IncomeViewSet(viewsets.ReadOnlyModelViewSet):
     """
 
     serializer_class = IncomeSerializer
+    pagination_class = SaamuPageNumberPagination
 
     def get_permissions(self):
         return [IsOwnerOrStaff()]
@@ -135,6 +137,7 @@ class ExpenseViewSet(viewsets.ModelViewSet):
 
     http_method_names = ["get", "post", "head", "options"]
     serializer_class = ExpenseSerializer
+    pagination_class = SaamuPageNumberPagination
 
     def get_permissions(self):
         if self.action == "create":

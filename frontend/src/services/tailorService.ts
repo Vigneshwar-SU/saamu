@@ -24,6 +24,7 @@ export const tailorService = {
     if (params.search) query.set('search', params.search);
     if (params.scope && params.scope !== 'active') query.set('scope', params.scope);
     if (params.page && params.page > 1) query.set('page', String(params.page));
+    if (params.page_size) query.set('page_size', String(params.page_size));
     const qs = query.toString();
     const response = await apiClient.get<TailorListResult>(`/tailors/${qs ? `?${qs}` : ''}`);
     return response.data;

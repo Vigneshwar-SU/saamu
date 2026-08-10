@@ -135,12 +135,12 @@ def test_list_returns_paginated_results(client, staff, customer):
     assert response.status_code == 200
     body = response.json()
     assert body["count"] == 25
-    assert len(body["results"]) == 20
+    assert len(body["results"]) == 6
     assert body["next"] is not None
 
     page2 = client.get(order_list_url() + "?page=2", **_auth(staff))
     assert page2.status_code == 200
-    assert len(page2.json()["results"]) == 5
+    assert len(page2.json()["results"]) == 6
 
 
 def test_search_by_order_number(client, staff, customer):

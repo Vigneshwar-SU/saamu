@@ -1,7 +1,9 @@
 """Customer search, pagination, and status-filter tests."""
 
 import pytest
+from django.utils import timezone
 
+from apps.customers.models import Customer
 from apps.customers.tests.helpers import (
     create_customer,
     customer_list_url,
@@ -110,7 +112,7 @@ def test_pagination_returns_first_page(client, staff):
     assert response.status_code == 200
     data = response.json()
     assert data["count"] == 25
-    assert len(data["results"]) == 20
+    assert len(data["results"]) == 6
     assert data["next"] is not None
     assert data["previous"] is None
 
@@ -124,6 +126,85 @@ def test_pagination_second_page(client, staff):
     response = _list(client, staff, "page=2")
     assert response.status_code == 200
     data = response.json()
-    assert len(data["results"]) == 5
-    assert data["next"] is None
+    assert len(data["results"]) == 6
+    assert data["next"] is not None
     assert data["previous"] is not None
+
+
+def test_pagination_exactly_six_per_page(client, staff):
+    for index in range(9):
+        create_customer(
+            full_name=f"Customer {index:02d}", mobile_number=f"900000{index:04d}"
+        )
+
+    first = _list(client, staff, "").json()
+    assert first["count"] == 9
+    assert len(first["results"]) == 6
+    assert first["next"] is not None
+    assert first["previous"] is None
+
+    second = _list(client, staff, "page=2").json()
+    assert len(second["results"]) == 3
+    assert second["next"] is None
+    assert second["previous"] is not None
+
+    page_ids = {item["id"] for item in first["results"]} | {
+        item["id"] for item in second["results"]
+    }
+    assert len(page_ids) == 9
+
+
+def test_newest_customer_appears_first(client, staff):
+    for name, mobile in [
+        ("A", "9000000001"),
+        ("B", "9000000002"),
+        ("C", "9000000003"),
+        ("D", "9000000004"),
+        ("E", "9000000005"),
+        ("F", "9000000006"),
+        ("G", "9000000007"),
+    ]:
+        create_customer(full_name=name, mobile_number=mobile)
+    create_customer(full_name="H", mobile_number="9000000008")
+
+    first = _list(client, staff, "").json()
+    assert first["count"] == 8
+    assert [item["full_name"] for item in first["results"]] == [
+        "H",
+        "G",
+        "F",
+        "E",
+        "D",
+        "C",
+    ]
+    assert first["next"] is not None
+    assert first["previous"] is None
+
+    second = _list(client, staff, "page=2").json()
+    assert [item["full_name"] for item in second["results"]] == ["B", "A"]
+    assert second["next"] is None
+    assert second["previous"] is not None
+
+
+def test_identical_created_at_falls_back_to_id_desc(client, staff):
+    older = create_customer(full_name="Older", mobile_number="9000000001")
+    newer = create_customer(full_name="Newer", mobile_number="9000000002")
+
+    Customer.objects.update(created_at=timezone.now())
+
+    response = _list(client, staff, "")
+    assert response.status_code == 200
+    results = response.json()["results"]
+    assert [item["full_name"] for item in results] == ["Newer", "Older"]
+    assert results[0]["id"] == newer.id
+    assert results[1]["id"] == older.id
+
+
+def test_search_results_are_newest_first(client, staff):
+    create_customer(full_name="Ravi Kumar", mobile_number="9000000001")
+    create_customer(full_name="Ravi Kumar", mobile_number="9000000002")
+
+    response = _list(client, staff, "search=ravi")
+    assert response.status_code == 200
+    mobiles = [item["mobile_number"] for item in response.json()["results"]]
+    assert mobiles == ["9000000002", "9000000001"]

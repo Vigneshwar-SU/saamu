@@ -42,7 +42,7 @@ import {
 } from '../types/finance';
 import type { ExpenseCategory, ExpensePayload, PaymentMethod } from '../types/finance';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 6;
 
 interface StatCardProps {
   label: string;

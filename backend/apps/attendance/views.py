@@ -14,6 +14,7 @@ from rest_framework.exceptions import ValidationError
 
 from apps.attendance.models import Attendance
 from apps.authentication.permissions import IsOwnerOrStaff, IsStaffRole
+from apps.common.pagination import SaamuPageNumberPagination
 
 from .serializers import AttendanceSerializer
 
@@ -25,6 +26,7 @@ class AttendanceViewSet(viewsets.ModelViewSet):
 
     http_method_names = ["get", "post", "patch", "head", "options"]
     serializer_class = AttendanceSerializer
+    pagination_class = SaamuPageNumberPagination
 
     def get_permissions(self):
         if self.action in ATTENDANCE_MUTATION_ACTIONS:

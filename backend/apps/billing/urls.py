@@ -4,13 +4,17 @@ from rest_framework.routers import SimpleRouter
 from .views import (
     CommunicationMessagePrepareView,
     InvoiceViewSet,
+    ManualReminderViewSet,
     ReminderListAPIView,
     ReminderPrepareAPIView,
+    ReminderSummaryView,
+    ReminderV1ListView,
     ShopDetailsView,
 )
 
 router = SimpleRouter()
 router.register("invoices", InvoiceViewSet, basename="invoice")
+router.register("reminders/manual", ManualReminderViewSet, basename="manual-reminder")
 
 urlpatterns = [
     path("", include(router.urls)),
@@ -33,5 +37,11 @@ urlpatterns = [
         "communications/reminders/<str:reminder_id>/prepare/",
         ReminderPrepareAPIView.as_view(),
         name="communication-reminder-prepare",
+    ),
+    path("reminders/", ReminderV1ListView.as_view(), name="reminder-v1-list"),
+    path(
+        "reminders/summary/",
+        ReminderSummaryView.as_view(),
+        name="reminder-v1-summary",
     ),
 ]

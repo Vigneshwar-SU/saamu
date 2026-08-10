@@ -8,6 +8,8 @@ import type {
   CustomerPaymentPayload,
   Invoice,
   InvoiceCreatePayload,
+  InvoiceEligibleOrder,
+  InvoiceEligibleOrderListParams,
   InvoiceListParams,
   PaymentListParams,
   RecordPaymentResponse,
@@ -34,6 +36,15 @@ export const invoiceService = {
 
   async getInvoice(id: number): Promise<Invoice> {
     const response = await apiClient.get<Invoice>(`/invoices/${id}/`);
+    return response.data;
+  },
+
+  async listEligibleOrders(
+    params: InvoiceEligibleOrderListParams = {}
+  ): Promise<BillingListResult<InvoiceEligibleOrder>> {
+    const response = await apiClient.get<BillingListResult<InvoiceEligibleOrder>>(
+      `/invoices/available-orders/${buildQuery({ ...params })}`
+    );
     return response.data;
   },
 

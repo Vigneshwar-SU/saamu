@@ -14,12 +14,15 @@ import type {
   CustomerPaymentPayload,
   Invoice,
   InvoiceCreatePayload,
+  InvoiceEligibleOrder,
+  InvoiceEligibleOrderListParams,
   InvoiceListParams,
   PaymentListParams,
 } from '../types/billing';
 
 const INVOICES_KEY = 'invoices';
 const INVOICE_PAYMENTS_KEY = 'invoice-payments';
+const INVOICE_ELIGIBLE_ORDERS_KEY = 'invoice-eligible-orders';
 export const INVOICE_BILL_KEY = 'invoice-bill';
 
 export const useInvoiceList = (params: InvoiceListParams, enabled = true) => {
@@ -38,12 +41,22 @@ export const useInvoice = (id: number) => {
   });
 };
 
+export const useInvoiceEligibleOrders = (
+  params: InvoiceEligibleOrderListParams = {}
+) => {
+  return useQuery<BillingListResult<InvoiceEligibleOrder>>({
+    queryKey: [INVOICE_ELIGIBLE_ORDERS_KEY, params],
+    queryFn: () => invoiceService.listEligibleOrders(params),
+  });
+};
+
 export const useCreateInvoice = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: InvoiceCreatePayload) => invoiceService.createInvoice(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [INVOICES_KEY] });
+      queryClient.invalidateQueries({ queryKey: [INVOICE_ELIGIBLE_ORDERS_KEY] });
       queryClient.invalidateQueries({ queryKey: ['order'] });
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: [REPORTS_KEY] });
@@ -63,6 +76,7 @@ export const useCreateOrderInvoice = () => {
     }) => invoiceService.createOrderInvoice(orderId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [INVOICES_KEY] });
+      queryClient.invalidateQueries({ queryKey: [INVOICE_ELIGIBLE_ORDERS_KEY] });
       queryClient.invalidateQueries({ queryKey: ['order'] });
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: [REPORTS_KEY] });

@@ -20,6 +20,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from apps.authentication.permissions import IsOwnerOrStaff, IsStaffRole
+from apps.common.pagination import SaamuPageNumberPagination
 from apps.orders.models import Order, OrderStatus, OrderStatusHistory
 from apps.orders.serializers import (
     OrderCreateSerializer,
@@ -37,6 +38,7 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     http_method_names = ["get", "post", "patch", "head", "options"]
     serializer_class = OrderSerializer
+    pagination_class = SaamuPageNumberPagination
 
     def get_permissions(self):
         if self.action in ORDER_MUTATION_ACTIONS:

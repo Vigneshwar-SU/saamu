@@ -12,13 +12,16 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
+from apps.customers.models import Customer
 from apps.customers.serializers import CustomerSerializer
 from apps.orders.models import Order
 
-from .models import CustomerPayment, Invoice, InvoiceItem, ShopDetails
+from .models import CustomerPayment, Invoice, InvoiceItem, ManualReminder, ShopDetails
 from .services import create_invoice_for_order, invoice_summary
 
 MAX_NOTES_LENGTH = 4000
+MAX_REMINDER_TITLE_LENGTH = 200
+MAX_REMINDER_DESCRIPTION_LENGTH = 4000
 
 
 class ShopDetailsSerializer(serializers.ModelSerializer):
@@ -32,7 +35,15 @@ class ShopDetailsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ShopDetails
-        fields = ("id", "name", "tagline", "address", "phone", "established_year")
+        fields = (
+            "id",
+            "name",
+            "tagline",
+            "address",
+            "phone",
+            "established_year",
+            "customer_follow_up_months",
+        )
         read_only_fields = ("id",)
 
     def validate_name(self, value):
@@ -45,6 +56,13 @@ class ShopDetailsSerializer(serializers.ModelSerializer):
         if value < 1000 or value > 2100:
             raise serializers.ValidationError(
                 "Enter a valid year between 1000 and 2100."
+            )
+        return value
+
+    def validate_customer_follow_up_months(self, value):
+        if value < 1 or value > 60:
+            raise serializers.ValidationError(
+                "Follow-up threshold must be between 1 and 60 months."
             )
         return value
 
@@ -150,6 +168,31 @@ class InvoiceSerializer(serializers.ModelSerializer):
         return data
 
 
+class InvoiceEligibleOrderSerializer(serializers.ModelSerializer):
+    """Minimal read-only order summary for the invoice creation dropdown.
+
+    Only orders without an existing invoice are served by the
+    ``available-orders`` endpoint, so the client can never pick an
+    already-invoiced order from the normal flow. The payload stays light:
+    just what the dropdown renders (id, order number, customer) plus the
+    figures shown beside the selection.
+    """
+
+    customer = CustomerSerializer(read_only=True)
+
+    class Meta:
+        model = Order
+        fields = (
+            "id",
+            "order_number",
+            "order_date",
+            "status",
+            "total_amount",
+            "customer",
+        )
+        read_only_fields = fields
+
+
 class InvoiceCreateSerializer(serializers.Serializer):
     """Create an invoice from an existing order.
 
@@ -167,9 +210,7 @@ class InvoiceCreateSerializer(serializers.Serializer):
 
     def validate_order(self, value):
         if Invoice.objects.filter(order=value).exists():
-            raise serializers.ValidationError(
-                "An invoice already exists for this order."
-            )
+            raise serializers.ValidationError("This order already has an invoice.")
         return value
 
     def create(self, validated_data):
@@ -264,3 +305,134 @@ class CustomerPaymentCreateSerializer(serializers.Serializer):
                     "The refunded payment does not belong to this invoice."
                 )
         return value
+
+
+class ManualReminderSerializer(serializers.ModelSerializer):
+    """Read representation of a persisted manual reminder.
+
+    ``customer`` and ``order`` are exposed as lightweight context summaries
+    (never the full nested objects) so the reminders page can render the
+    reminder without additional requests while keeping payloads small.
+    """
+
+    customer = serializers.SerializerMethodField()
+    order = serializers.SerializerMethodField()
+    priority_display = serializers.CharField(
+        source="get_priority_display", read_only=True
+    )
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    created_by_name = serializers.CharField(
+        source="created_by.username", read_only=True, default=None
+    )
+    completed_by_name = serializers.CharField(
+        source="completed_by.username", read_only=True, default=None
+    )
+
+    class Meta:
+        model = ManualReminder
+        fields = (
+            "id",
+            "title",
+            "description",
+            "reminder_date",
+            "priority",
+            "priority_display",
+            "status",
+            "status_display",
+            "customer",
+            "order",
+            "completed_at",
+            "created_by",
+            "created_by_name",
+            "completed_by",
+            "completed_by_name",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = fields
+
+    def get_customer(self, obj):
+        if obj.customer_id is None:
+            return None
+        return {
+            "id": obj.customer.id,
+            "full_name": obj.customer.full_name,
+        }
+
+    def get_order(self, obj):
+        if obj.order_id is None:
+            return None
+        return {
+            "id": obj.order.id,
+            "order_number": obj.order.order_number,
+            "status": obj.order.status,
+        }
+
+
+class ManualReminderCreateSerializer(serializers.Serializer):
+    """Validate and create a persisted manual reminder (STAFF only).
+
+    ``customer`` and ``order`` are optional context links. When an order is
+    supplied without a customer, the order's customer is used so the reminder
+    always carries a coherent context.
+    """
+
+    title = serializers.CharField(max_length=MAX_REMINDER_TITLE_LENGTH)
+    description = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        max_length=MAX_REMINDER_DESCRIPTION_LENGTH,
+    )
+    reminder_date = serializers.DateField()
+    priority = serializers.ChoiceField(
+        choices=ManualReminder.Priority.choices, required=False
+    )
+    customer = serializers.PrimaryKeyRelatedField(
+        queryset=Customer.objects.all(), required=False, allow_null=True
+    )
+    order = serializers.PrimaryKeyRelatedField(
+        queryset=Order.objects.all(), required=False, allow_null=True
+    )
+
+    def validate(self, attrs):
+        customer = attrs.get("customer")
+        order = attrs.get("order")
+        if order is not None and customer is None:
+            attrs["customer"] = order.customer
+        elif (
+            order is not None
+            and customer is not None
+            and order.customer_id != customer.id
+        ):
+            raise serializers.ValidationError(
+                {
+                    "order": (
+                        "The selected order does not belong to the selected customer."
+                    )
+                }
+            )
+        return attrs
+
+    def create(self, validated_data):
+        request = self.context.get("request")
+        return ManualReminder.objects.create(
+            **validated_data,
+            created_by=(
+                request.user if request and request.user.is_authenticated else None
+            ),
+        )
+
+    def update(self, instance, validated_data):
+        editable = (
+            "title",
+            "description",
+            "reminder_date",
+            "priority",
+            "customer",
+            "order",
+        )
+        for field in editable:
+            if field in validated_data:
+                setattr(instance, field, validated_data[field])
+        instance.save(update_fields=editable)
+        return instance

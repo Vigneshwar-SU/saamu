@@ -55,6 +55,20 @@ export interface InvoiceOrder {
   total_amount: number;
 }
 
+export interface InvoiceEligibleOrder {
+  id: number;
+  order_number: string;
+  order_date: string;
+  status: string;
+  total_amount: number;
+  customer: Customer;
+}
+
+export interface InvoiceEligibleOrderListParams {
+  search?: string;
+  page?: number;
+}
+
 export interface Invoice {
   id: number;
   invoice_number: string;

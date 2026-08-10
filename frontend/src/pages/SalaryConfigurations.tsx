@@ -56,7 +56,7 @@ export const SalaryConfigurations: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState<string>('');
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const { data: tailorsData } = useTailorList({ scope: 'all' });
+  const { data: tailorsData } = useTailorList({ scope: 'all', page_size: 100 });
   const { data, isLoading, isError, error, refetch, isFetching } = useSalaryConfigurationList({
     tailor: tailorFilter || undefined,
     salary_model: modelFilter || undefined,

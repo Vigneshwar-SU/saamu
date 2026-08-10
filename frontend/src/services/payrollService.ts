@@ -19,8 +19,13 @@ import type {
 } from '../types/payroll';
 
 export const payrollService = {
-  async listPeriods(): Promise<PayrollPeriodListResult> {
-    const response = await apiClient.get<PayrollPeriodListResult>('/payroll/periods/');
+  async listPeriods(page: number = 1): Promise<PayrollPeriodListResult> {
+    const query = new URLSearchParams();
+    if (page > 1) query.set('page', String(page));
+    const qs = query.toString();
+    const response = await apiClient.get<PayrollPeriodListResult>(
+      `/payroll/periods/${qs ? `?${qs}` : ''}`
+    );
     return response.data;
   },
 

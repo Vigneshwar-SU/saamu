@@ -240,7 +240,7 @@ def test_expense_pagination(client, staff):
     response = client.get(expenses_list_url(), **_auth(staff))
     assert response.status_code == 200
     assert response.json()["count"] == 25
-    assert len(response.json()["results"]) == 20
+    assert len(response.json()["results"]) == 6
     assert response.json()["next"] is not None
 
 

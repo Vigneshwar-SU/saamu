@@ -52,7 +52,7 @@ import type {
   CustomerStatus,
 } from '../types/customers';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 6;
 
 export const Customers: React.FC = () => {
   const navigate = useNavigate();

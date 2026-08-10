@@ -40,7 +40,7 @@ import {
 } from '../types/advances';
 import type { AdvancePayload, AdvanceStatus } from '../types/advances';
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 6;
 
 export const Advances: React.FC = () => {
   const { role } = useAuth();
@@ -53,7 +53,7 @@ export const Advances: React.FC = () => {
   const [page, setPage] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const { data: tailorsData } = useTailorList({ scope: 'all' });
+  const { data: tailorsData } = useTailorList({ scope: 'all', page_size: 100 });
   const tailors = tailorsData?.results ?? [];
 
   useEffect(() => {

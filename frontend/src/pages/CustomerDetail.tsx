@@ -30,6 +30,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
 import { formatDate } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiErrors';
+import { normalizeFullName, normalizeMobileNumber } from '../utils/normalization';
 import { CustomerFormDialog } from '../components/CustomerFormDialog';
 import { MeasurementFormDialog } from '../components/MeasurementFormDialog';
 import {
@@ -186,8 +187,13 @@ export const CustomerDetail: React.FC = () => {
     );
   }
 
-  const renderMeasurementFields = (m: Measurement) => {
-    const fields = MEASUREMENT_FIELDS_BY_GARMENT[garmentTab];
+  const displayName = normalizeFullName(customer.full_name);
+  const displayPrimaryMobile = normalizeMobileNumber(customer.mobile_number);
+  const displayAlternateMobile = customer.alternate_mobile_number
+    ? normalizeMobileNumber(customer.alternate_mobile_number)
+    : '-';
+
+  const renderMeasurementFields = (m: Measurement) => {    const fields = MEASUREMENT_FIELDS_BY_GARMENT[garmentTab];
     return (
       <Box
         sx={{
@@ -224,7 +230,7 @@ export const CustomerDetail: React.FC = () => {
           Customers
         </Link>
         <Typography color="text.primary" sx={{ fontSize: '0.85rem', fontWeight: 600 }}>
-          {customer.full_name}
+          {displayName}
         </Typography>
       </Breadcrumbs>
 
@@ -241,7 +247,7 @@ export const CustomerDetail: React.FC = () => {
           <Box>
             <Stack direction="row" spacing={1} alignItems="center">
               <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                {customer.full_name}
+                {displayName}
               </Typography>
               <Chip
                 label={customer.is_active ? 'Active' : 'Archived'}
@@ -254,7 +260,7 @@ export const CustomerDetail: React.FC = () => {
               />
             </Stack>
             <Typography variant="body2" sx={{ color: '#64748B' }}>
-              Customer #{customer.id} · {customer.mobile_number}
+              Customer #{customer.id} · {displayPrimaryMobile}
             </Typography>
           </Box>
         </Stack>
@@ -297,11 +303,11 @@ export const CustomerDetail: React.FC = () => {
             gap: 3,
           }}
         >
-          <InfoCell icon={<PhoneIcon sx={{ fontSize: 18 }} />} label="Primary Mobile" value={customer.mobile_number} />
+          <InfoCell icon={<PhoneIcon sx={{ fontSize: 18 }} />} label="Primary Mobile" value={displayPrimaryMobile} />
           <InfoCell
             icon={<PhoneIcon sx={{ fontSize: 18 }} />}
             label="Alternate Mobile"
-            value={customer.alternate_mobile_number || '-'}
+            value={displayAlternateMobile}
           />
           <InfoCell icon={<LocationOnIcon sx={{ fontSize: 18 }} />} label="Address" value={customer.address || '-'} />
           <InfoCell icon={<NotesIcon sx={{ fontSize: 18 }} />} label="Notes" value={customer.notes || '-'} />

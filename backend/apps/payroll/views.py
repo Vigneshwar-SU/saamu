@@ -27,6 +27,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from apps.authentication.permissions import IsOwnerOrStaff, IsStaffRole
+from apps.common.pagination import SaamuPageNumberPagination
 from apps.payments.models import PayrollPayment, SalaryAdvance
 from apps.payments.serializers import (
     PayrollPaymentCreateSerializer,
@@ -55,6 +56,18 @@ SETTLEMENT_MUTATION_ACTIONS = {"payments", "settle", "apply_advance"}
 
 _DECIMAL_OUTPUT = DecimalField(max_digits=12, decimal_places=2)
 _INTEGER_OUTPUT = IntegerField()
+
+
+class PayrollPeriodPagination(SaamuPageNumberPagination):
+    """Payroll periods paginate 7 per page (an explicit exception to the
+    application-wide 6-per-page list standard).
+
+    The Payroll page is denser than the other list pages, so it deliberately
+    overrides ``page_size`` while still sharing the standard pagination
+    behaviour (metadata shape, ``page_size`` query override).
+    """
+
+    page_size = 7
 
 
 def _aggregated_subquery(qs, group_by, expression, output_field):
@@ -124,6 +137,7 @@ class SalaryConfigurationViewSet(viewsets.ModelViewSet):
 
     http_method_names = ["get", "post", "patch", "head", "options"]
     serializer_class = TailorSalaryConfigurationSerializer
+    pagination_class = SaamuPageNumberPagination
     queryset = TailorSalaryConfiguration.objects.select_related(
         "tailor", "created_by"
     ).all()
@@ -157,12 +171,22 @@ class PayrollPeriodViewSet(viewsets.ModelViewSet):
 
     http_method_names = ["get", "post", "head", "options"]
     serializer_class = PayrollPeriodSerializer
+    pagination_class = PayrollPeriodPagination
     queryset = _annotated_payroll_periods()
 
     def get_permissions(self):
         if self.action in PAYROLL_PERIOD_MUTATION_ACTIONS:
             return [IsStaffRole()]
         return [IsOwnerOrStaff()]
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.action == "list":
+            # Deterministic newest-first ordering: most recently ended period
+            # first, ``id DESC`` as a stable tie-breaker so pages never skip or
+            # duplicate rows.
+            qs = qs.order_by("-period_end", "-id")
+        return qs
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)

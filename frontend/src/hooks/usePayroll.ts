@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { payrollService } from '../services/payrollService';
 import { DASHBOARD_KEY } from './useFinance';
 import { REPORTS_KEY } from './useReports';
@@ -7,6 +7,7 @@ import type {
   PaymentPayload,
   PayrollEntryListResult,
   PayrollPeriod,
+  PayrollPeriodListResult,
   PayrollPeriodPayload,
   PayrollTailorDetail,
   SettlementResponse,
@@ -16,10 +17,11 @@ const PAYROLL_PERIODS_KEY = 'payroll-periods';
 const PAYROLL_ENTRIES_KEY = 'payroll-entries';
 const PAYMENT_HISTORY_KEY = 'payroll-payment-history';
 
-export const usePayrollPeriodList = () => {
-  return useQuery({
-    queryKey: [PAYROLL_PERIODS_KEY],
-    queryFn: () => payrollService.listPeriods(),
+export const usePayrollPeriodList = (page: number) => {
+  return useQuery<PayrollPeriodListResult>({
+    queryKey: [PAYROLL_PERIODS_KEY, 'list', page],
+    queryFn: () => payrollService.listPeriods(page),
+    placeholderData: keepPreviousData,
   });
 };
 

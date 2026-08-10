@@ -117,7 +117,10 @@ class PayrollPeriod(TimeStampedModel):
     )
 
     class Meta:
-        ordering = ["-period_start", "-id"]
+        # Newest-first by the period end date (the most meaningful payroll
+        # date), with ``id DESC`` as a deterministic tie-breaker so identical
+        # periods never reorder across page requests.
+        ordering = ["-period_end", "-id"]
         verbose_name = "Payroll Period"
         verbose_name_plural = "Payroll Periods"
         constraints = [

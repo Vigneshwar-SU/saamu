@@ -216,7 +216,7 @@ def create_invoice_for_order(*, order, invoice_date=None, notes="", created_by=N
             raise ValidationError({"invoice_date": "Enter a valid date (YYYY-MM-DD)."})
 
     if Invoice.objects.filter(order_id=order.id).exists():
-        raise ValidationError({"order": "An invoice already exists for this order."})
+        raise ValidationError({"order": "This order already has an invoice."})
 
     item_snapshots = []
     subtotal = ZERO
@@ -253,9 +253,7 @@ def create_invoice_for_order(*, order, invoice_date=None, notes="", created_by=N
             # Either a duplicate invoice for this order (raced) or an invoice
             # number collision. The friendly order check takes precedence.
             if Invoice.objects.filter(order_id=order.id).exists():
-                raise ValidationError(
-                    {"order": "An invoice already exists for this order."}
-                )
+                raise ValidationError({"order": "This order already has an invoice."})
             if attempt >= 2:
                 raise
 
