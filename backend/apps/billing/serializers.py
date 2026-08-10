@@ -15,10 +15,38 @@ from rest_framework import serializers
 from apps.customers.serializers import CustomerSerializer
 from apps.orders.models import Order
 
-from .models import CustomerPayment, Invoice, InvoiceItem
+from .models import CustomerPayment, Invoice, InvoiceItem, ShopDetails
 from .services import create_invoice_for_order, invoice_summary
 
 MAX_NOTES_LENGTH = 4000
+
+
+class ShopDetailsSerializer(serializers.ModelSerializer):
+    """Read/update representation of the singleton shop profile.
+
+    Only the supported shop identity fields are exposed. Validation mirrors
+    the model constraints so the Settings UI can never store an empty name or
+    an implausible establishment year, keeping the shop block on the digital
+    bill real and consistent.
+    """
+
+    class Meta:
+        model = ShopDetails
+        fields = ("id", "name", "tagline", "address", "phone", "established_year")
+        read_only_fields = ("id",)
+
+    def validate_name(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("Shop name is required.")
+        return value
+
+    def validate_established_year(self, value):
+        if value < 1000 or value > 2100:
+            raise serializers.ValidationError(
+                "Enter a valid year between 1000 and 2100."
+            )
+        return value
 
 
 class InvoiceItemSerializer(serializers.ModelSerializer):

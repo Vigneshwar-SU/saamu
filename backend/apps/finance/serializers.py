@@ -25,11 +25,18 @@ class IncomeSerializer(serializers.ModelSerializer):
     payment_method_display = serializers.CharField(
         source="get_payment_method_display", read_only=True
     )
+    invoice_id = serializers.IntegerField(read_only=True)
     invoice_number = serializers.CharField(
         source="invoice.invoice_number", read_only=True
     )
+    order_id = serializers.IntegerField(
+        source="invoice.order_id", read_only=True
+    )
     order_number = serializers.CharField(
         source="invoice.order.order_number", read_only=True
+    )
+    customer_id = serializers.IntegerField(
+        source="invoice.order.customer_id", read_only=True
     )
     customer_name = serializers.CharField(
         source="invoice.order.customer.full_name", read_only=True
@@ -49,8 +56,11 @@ class IncomeSerializer(serializers.ModelSerializer):
             "amount",
             "net_amount",
             "payment_date",
+            "invoice_id",
             "invoice_number",
+            "order_id",
             "order_number",
+            "customer_id",
             "customer_name",
             "reference",
             "notes",

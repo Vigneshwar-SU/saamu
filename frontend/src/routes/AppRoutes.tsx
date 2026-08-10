@@ -3,6 +3,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { MainLayout } from '../layouts/MainLayout';
 import { Login } from '../pages/Login';
+import { ForgotPassword } from '../pages/ForgotPassword';
+import { ResetPassword } from '../pages/ResetPassword';
 import { Customers } from '../pages/Customers';
 import { CustomerDetail } from '../pages/CustomerDetail';
 import { Orders } from '../pages/Orders';
@@ -22,13 +24,16 @@ import { InvoiceDetail } from '../pages/InvoiceDetail';
 import { InvoiceBill } from '../pages/InvoiceBill';
 import { Reports } from '../pages/Reports';
 import { Reminders } from '../pages/Reminders';
-import { Payments, Settings } from '../pages/Placeholders';
+import { Payments } from '../pages/Payments';
+import { Settings } from '../pages/Settings';
 
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
       {/* Public Auth Routes */}
       <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password/:uid/:token" element={<ResetPassword />} />
 
       {/* Authenticated ERP Routes */}
       <Route element={<ProtectedRoute />}>

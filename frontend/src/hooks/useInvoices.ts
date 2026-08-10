@@ -20,7 +20,7 @@ import type {
 
 const INVOICES_KEY = 'invoices';
 const INVOICE_PAYMENTS_KEY = 'invoice-payments';
-const INVOICE_BILL_KEY = 'invoice-bill';
+export const INVOICE_BILL_KEY = 'invoice-bill';
 
 export const useInvoiceList = (params: InvoiceListParams, enabled = true) => {
   return useQuery<BillingListResult<Invoice>>({

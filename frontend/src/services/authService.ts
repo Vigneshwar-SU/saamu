@@ -4,6 +4,8 @@ import type {
   LoginRequest,
   LoginResponse,
   LogoutResponse,
+  MessageResponse,
+  PasswordResetConfirmPayload,
   RefreshResponse,
 } from '../types/api';
 
@@ -22,5 +24,13 @@ export const authService = {
 
   logout(refreshToken: string) {
     return apiClient.post<LogoutResponse>('/auth/logout/', { refresh: refreshToken });
+  },
+
+  requestPasswordReset(email: string) {
+    return apiClient.post<MessageResponse>('/auth/password-reset/', { email });
+  },
+
+  confirmPasswordReset(payload: PasswordResetConfirmPayload) {
+    return apiClient.post<MessageResponse>('/auth/password-reset/confirm/', payload);
   },
 };

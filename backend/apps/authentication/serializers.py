@@ -65,3 +65,34 @@ class LogoutSerializer(serializers.Serializer):
                 {"refresh": "Refresh token is invalid or has already been blacklisted."}
             ) from exc
         return attrs
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """Public request for a password reset link (email only).
+
+    Only the email is accepted; nothing in the response reveals whether the
+    address belongs to an account.
+    """
+
+    email = serializers.EmailField(max_length=254)
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    """Validate the reset-link payload before the service applies the change.
+
+    Password strength is validated server-side by Django's password validators
+    in ``apps.authentication.password_reset.reset_password`` (after the token is
+    verified), so weak passwords are rejected with authoritative messages.
+    """
+
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    new_password = serializers.CharField(trim_whitespace=False)
+    confirm_password = serializers.CharField(trim_whitespace=False)
+
+    def validate(self, attrs):
+        if attrs["new_password"] != attrs["confirm_password"]:
+            raise serializers.ValidationError(
+                {"confirm_password": "Passwords do not match."}
+            )
+        return attrs

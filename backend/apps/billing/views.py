@@ -35,7 +35,7 @@ from .communications import (
     SUPPORTED_MESSAGE_TYPES,
     build_order_communication,
 )
-from .models import CustomerPayment, Invoice
+from .models import CustomerPayment, Invoice, ShopDetails
 from .reminders import (
     ReminderNotEligible,
     build_pending_reminders,
@@ -47,8 +47,38 @@ from .serializers import (
     CustomerPaymentSerializer,
     InvoiceCreateSerializer,
     InvoiceSerializer,
+    ShopDetailsSerializer,
 )
 from .services import build_bill_data, record_customer_payment
+
+
+class ShopDetailsView(APIView):
+    """Shop/business profile endpoint for the Settings module.
+
+    ``GET /api/v1/settings/shop-details/`` returns the database-backed
+    ``ShopDetails`` singleton (OWNER or STAFF) and ``PUT`` updates it (STAFF
+    only), so shop identity is managed through one authoritative source and is
+    never mocked on the client. OWNER remains view-only; STAFF manages the shop
+    profile, matching the READ -> OWNER+STAFF / MUTATE -> STAFF permission
+    model used across billing and payroll configuration.
+    """
+
+    http_method_names = ["get", "put", "head", "options"]
+
+    def get_permissions(self):
+        if self.request.method == "PUT":
+            return [IsStaffRole()]
+        return [IsOwnerOrStaff()]
+
+    def get(self, request):
+        return Response(ShopDetailsSerializer(ShopDetails.shop_details()).data)
+
+    def put(self, request):
+        details = ShopDetails.shop_details()
+        serializer = ShopDetailsSerializer(details, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
 
 def _parse_date(value, field_name):

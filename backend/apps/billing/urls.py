@@ -6,6 +6,7 @@ from .views import (
     InvoiceViewSet,
     ReminderListAPIView,
     ReminderPrepareAPIView,
+    ShopDetailsView,
 )
 
 router = SimpleRouter()
@@ -13,6 +14,11 @@ router.register("invoices", InvoiceViewSet, basename="invoice")
 
 urlpatterns = [
     path("", include(router.urls)),
+    path(
+        "settings/shop-details/",
+        ShopDetailsView.as_view(),
+        name="settings-shop-details",
+    ),
     path(
         "communications/messages/prepare/order/<int:order_id>/",
         CommunicationMessagePrepareView.as_view(),

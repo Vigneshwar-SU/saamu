@@ -85,8 +85,11 @@ def test_income_list_shows_payment_details(client, staff):
     assert data["payment_method_display"] == "UPI"
     assert data["amount"] == 500.0
     assert data["net_amount"] == 500.0
+    assert data["invoice_id"] == payment.invoice_id
     assert data["invoice_number"] == payment.invoice.invoice_number
+    assert data["order_id"] == payment.invoice.order_id
     assert data["order_number"] == payment.invoice.order.order_number
+    assert data["customer_id"] == payment.invoice.order.customer_id
     assert data["customer_name"] == payment.invoice.order.customer.full_name
     assert data["reference"] == "PAY-REF-1"
 

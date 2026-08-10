@@ -44,3 +44,15 @@ export interface LogoutResponse {
   success: boolean;
   message?: string;
 }
+
+export interface MessageResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface PasswordResetConfirmPayload {
+  uid: string;
+  token: string;
+  new_password: string;
+  confirm_password: string;
+}

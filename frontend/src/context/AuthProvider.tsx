@@ -8,7 +8,9 @@ import {
 } from '../services/authToken';
 import { setOnAuthExpired } from '../services/apiClient';
 import { AuthContext, AuthContextValue } from './authContext';
-import type { AuthUser, LoginRequest } from '../types/api';
+import type { AuthUser, LoginRequest, UserRole } from '../types/api';
+
+const ACCOUNT_TYPE_MISMATCH_MESSAGE = 'Selected account type does not match this account.';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -51,11 +53,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => setOnAuthExpired(null);
   }, []);
 
-  const login = useCallback(async (credentials: LoginRequest, remember = false) => {
-    const response = await authService.login(credentials);
-    setTokens(response.data.access, response.data.refresh, remember);
-    setUser(response.data.user);
-  }, []);
+  const login = useCallback(
+    async (credentials: LoginRequest, remember = false, expectedRole?: UserRole) => {
+      const response = await authService.login(credentials);
+      // The backend user role is authoritative. The selected Account Type is
+      // only a UX aid; if it does not match the authenticated role the session
+      // is rejected before any token is stored.
+      if (expectedRole && response.data.user.role !== expectedRole) {
+        throw new Error(ACCOUNT_TYPE_MISMATCH_MESSAGE);
+      }
+      setTokens(response.data.access, response.data.refresh, remember);
+      setUser(response.data.user);
+    },
+    []
+  );
 
   const logout = useCallback(async () => {
     const refreshToken = getRefreshToken();

@@ -1,5 +1,6 @@
 import logging
 
+from django.conf import settings
 from django.db import connection
 from django.http import JsonResponse
 from rest_framework import status as http_status
@@ -23,7 +24,14 @@ class HealthCheckView(APIView):
         try:
             connection.ensure_connection()
         except Exception:
-            logger.exception("Database connectivity check failed during health check.")
+            # Production logs never include the connection error detail, which
+            # can contain database host/user information. Development keeps the
+            # traceback for diagnosis (and the secret-redaction logging filter
+            # still applies to it).
+            logger.error(
+                "Database connectivity check failed during health check.",
+                exc_info=settings.DEBUG,
+            )
             database_status = "unavailable"
 
         return Response(

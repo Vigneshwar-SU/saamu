@@ -4,7 +4,7 @@ A custom tailoring management system for **Saamu Tailors**, a family tailoring b
 
 The application digitizes the shop's operations: customer records, orders, measurements, tailoring workflow, tailor workload, payments, income, expenses, digital bills, and delivery/collection tracking.
 
-**Current stage:** Phase 19 (Reminder Review & WhatsApp-Ready Preparation). Adds a read-only reminders workflow on top of the Phase 18 communication foundation: `GET /api/v1/communications/reminders/` (OWNER/STAFF, paginated) derives eligible reminders from existing authoritative order/payment/customer state — `READY_FOR_COLLECTION` for active orders that are `READY` and `BALANCE_OUTSTANDING` for active orders with an invoice and an outstanding balance — and `GET /api/v1/communications/reminders/<TYPE>_<order_id>/prepare/` re-validates eligibility at handoff time and returns the deterministic Phase 18 WhatsApp-ready message, phone destination and `wa.me` URL. Reminders are derived, never stored, so the workflow is idempotent. The new Reminders page is an operator review surface only (preview, Copy WhatsApp Message, Open WhatsApp): nothing is ever sent automatically. No provider integration, no credentials, no schema changes. Manual verification checklist pending.
+**Current stage:** Phase 21 (Production Hardening & Deployment Readiness). Hardens the application for a future production/cloud deployment without performing any cloud migration. Production security is environment-driven and explicit: `CSRF_TRUSTED_ORIGINS`, secure cookies (`SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`), HTTPS/HSTS settings (`SECURE_SSL_REDIRECT`, `SECURE_HSTS_*`, `SECURE_PROXY_SSL_HEADER`) and always-on safe headers (`SECURE_CONTENT_TYPE_NOSNIFF`, `SECURE_REFERRER_POLICY`, `X_FRAME_OPTIONS`), all testable via pure helpers in `config/configuration_validation.py`. With `DEBUG=False`, the fail-fast production validation (Phase 20) now also rejects malformed CSRF/CORS origins and loopback CORS origins. DRF renders JSON only in production (no browsable API surface). A secret-redaction logging filter (`config/logging_filters.py`) strips passwords, tokens, authorization headers and URL-embedded credentials from every log line, and the health endpoint never logs connection-error detail in production. Errors never expose stack traces or secrets. No new business API, no schema change, nothing deployed — readiness only. Manual verification checklist pending.
 
 ---
 
@@ -307,6 +307,23 @@ Tokens are never rendered as raw HTML or logged. The access token is short-lived
 - **Frontend**: a `Reminders` page (sidebar entry) listing every derived candidate with its type, order status chip, customer, server-authored message preview, and Copy WhatsApp Message / Open WhatsApp actions (Open disabled with an explanation when no usable number). The page supports loading/empty/error/retry, pagination, refresh, and per-card duplicate-action protection; it never calculates balances or eligibility — it only renders server-derived state.
 - No automatic WhatsApp/SMS/email sending, no Meta/Twilio/provider SDKs, no webhooks, no credentials, no background senders — the operator always reviews and manually hands off via the browser `wa.me` link.
 
+## 8.9 Cloud Migration Readiness & Deployment Foundation (Phase 20)
+
+- **Environment-driven database configuration**: the `DATABASES["default"]` dictionary is built by `config/configuration_validation.py:build_database_config` from `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_HOST`, `DATABASE_PORT`. PostgreSQL is the only engine; local defaults (`saamu_db` / `postgres` / `localhost` / `5432`) keep the shop's existing installation working unchanged, and any cloud PostgreSQL target is reachable by changing only these environment values — no provider-specific assumptions, no hard-coded host or Windows-only path required to start.
+- **Explicit production validation**: with `DEBUG=False` (production mode), `config/settings.py` calls `validate_production_configuration` at startup and fails fast with `ImproperlyConfigured` until `SECRET_KEY` is real, `ALLOWED_HOSTS` is non-empty, and every database setting is provided explicitly (the development `SECRET_KEY` and `postgres` password are rejected). Errors name only the configuration **category** — the password, connection details and secret values never appear in the message.
+- **File/data boundaries preserved**: PostgreSQL data (Phase 16 `db_backup`/`db_restore`), media/uploads, static/build output, `.env` secrets, logs and source code remain separate; backups stay outside the source tree and Django never serves them. Phase 16's `db_backup`/`db_list_backups`/`db_verify`/`db_restore`/`db_cleanup` are unchanged and read the same env-driven settings, so local backup/restore continues to work.
+- **No new API, no UI, no schema**: the existing public read-only `GET /api/v1/health/` already covers readiness; no browser-facing backup/restore/migration/command endpoints were added (destructive operations remain explicit operator procedures via management commands). No models were changed and no migration was introduced.
+- **Documentation**: `backend/.env.example` documents the production configuration section with safe placeholders; the local → cloud runbook and operator checklist are in `docs/phase-20/12_PHASE_20_LOCAL_TO_CLOUD_RUNBOOK.md` and `docs/phase-20/13_PHASE_20_PRODUCTION_READINESS_CHECKLIST.md`. Cloud deployment itself remains an operator-controlled step; manual verification is NOT STARTED.
+
+## 8.10 Production Hardening & Deployment Readiness (Phase 21)
+
+- **Explicit, environment-driven security settings**: `config/configuration_validation.py:build_security_settings` parses `CSRF_TRUSTED_ORIGINS`, `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, `SESSION_COOKIE_HTTPONLY`, `SESSION_COOKIE_SAMESITE`, `SECURE_SSL_REDIRECT`, `SECURE_HSTS_SECONDS`, `SECURE_HSTS_INCLUDE_SUBDOMAINS`, `SECURE_HSTS_PRELOAD`, `SECURE_PROXY_SSL_HEADER` and `USE_X_FORWARDED_HOST` from the environment. Local development keeps its convenient HTTP defaults (secure cookies/HSTS off); production values are configured explicitly. HSTS stays disabled (0 s) until the HTTPS/domain topology is ready. Always-on safe headers (`SECURE_CONTENT_TYPE_NOSNIFF`, `SECURE_REFERRER_POLICY=same-origin`, `X_FRAME_OPTIONS=DENY`) apply in every environment.
+- **Extended production validation**: with `DEBUG=False` the Phase 20 fail-fast validation now also requires any provided CSRF/CORS origin to be a valid absolute origin (scheme://host[:port], no path) and rejects `localhost`/loopback CORS origins. Messages still name only the configuration category and never expose values.
+- **JSON-only production API**: DRF renderers are JSON-only in production (no browsable API surface); the browsable API is a development convenience only.
+- **Secret-safe logging**: `config/logging_filters.py:SanitizeSecretsFilter` is attached to every logging handler and redacts `key=value` secret pairs (password, secret, token, api_key, authorization, PGPASSWORD, ...), `Bearer` tokens, and credentials embedded in URLs — including exception tracebacks. The health endpoint logs connection failures without the exception detail in production (`exc_info` only when `DEBUG`).
+- **No new API, no UI, no schema**: the public read-only `GET /api/v1/health/` remains the readiness probe and exposes only `{status, application, version, database}` — no secrets, no connection strings, no filesystem paths. No browser-facing deployment/backup/migration/command endpoints were added. No models changed; no migration introduced.
+- **Deployment readiness documentation**: the production deployment runbook, smoke-test & rollback procedure, security-hardening checklist and environment configuration reference are in `docs/phase-21/12_PHASE_21_PRODUCTION_DEPLOYMENT_RUNBOOK.md`, `13_PHASE_21_SMOKE_TEST_AND_ROLLBACK.md`, `14_PHASE_21_SECURITY_HARDENING_CHECKLIST.md` and `15_PHASE_21_ENVIRONMENT_CONFIGURATION_REFERENCE.md`. Nothing is deployed; manual verification is NOT STARTED.
+
 ---
 
 ## 9. Verification Commands
@@ -377,6 +394,9 @@ Backend (`backend/.env.example`):
 | `DEBUG` | Set to `False` in production |
 | `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_HOST`, `DATABASE_PORT` | PostgreSQL connection |
 | `ALLOWED_HOSTS` | Comma-separated allowed hosts |
+| `CSRF_TRUSTED_ORIGINS` | Comma-separated trusted HTTPS origins (explicit in production) |
+| `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE` | Secure-cookie flags (set to `True` in production behind HTTPS) |
+| `SECURE_SSL_REDIRECT`, `SECURE_HSTS_SECONDS`, `SECURE_HSTS_INCLUDE_SUBDOMAINS`, `SECURE_HSTS_PRELOAD`, `SECURE_PROXY_SSL_HEADER` | HTTPS/HSTS/proxy settings (production only; HSTS off by default) |
 | `TIME_ZONE` | e.g. `Asia/Kolkata` |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated frontend origins |
 | `LOG_LEVEL` / `LOG_DIR` | Logging level and directory (defaults: `INFO`, `backend/logs`) |
@@ -474,6 +494,8 @@ saamu/
 - **Phase 17 — Reports Export (CSV/PDF):** complete
 - **Phase 18 — Customer Communication & WhatsApp-Ready Delivery:** complete
 - **Phase 19 — Reminder Review & WhatsApp-Ready Preparation:** complete
-- **Phase 20+ — Business modules (automated sending, cloud migration):** pending
+- **Phase 20 — Cloud Migration Readiness & Deployment Foundation:** complete
+- **Phase 21 — Production Hardening & Deployment Readiness:** complete
+- **Phase 22+ — Business modules (automated sending, actual cloud deployment):** pending
 
 Do not treat this document as a feature guide; business functionality is implemented incrementally in later phases and documented in `docs/`.

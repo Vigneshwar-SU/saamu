@@ -48,8 +48,11 @@ export interface Income {
   amount: number;
   net_amount: number;
   payment_date: string;
+  invoice_id: number;
   invoice_number: string;
+  order_id: number;
   order_number: string;
+  customer_id: number;
   customer_name: string;
   reference: string;
   notes: string;

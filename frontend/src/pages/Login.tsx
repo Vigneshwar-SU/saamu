@@ -5,12 +5,17 @@ import {
   Typography,
   TextField,
   Button,
+  FormControl,
   FormControlLabel,
+  FormHelperText,
   Checkbox,
+  InputLabel,
   InputAdornment,
   IconButton,
+  MenuItem,
   Link,
   Alert,
+  Select,
   Stack,
   Container,
   Paper,
@@ -27,9 +32,13 @@ import { z } from 'zod';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
 import { getApiErrorMessage } from '../utils/apiErrors';
+import { USER_ROLES, type UserRole } from '../types/api';
 
 // Zod Validation Schema
 const loginSchema = z.object({
+  accountType: z.enum(USER_ROLES, {
+    required_error: 'Please select an account type',
+  }),
   username: z.string().min(1, 'Username or Email is required'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   rememberMe: z.boolean().optional(),
@@ -51,6 +60,7 @@ export const Login: React.FC = () => {
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
+      accountType: 'OWNER',
       username: '',
       password: '',
       rememberMe: false,
@@ -70,7 +80,8 @@ export const Login: React.FC = () => {
     try {
       await login(
         { username: data.username.trim(), password: data.password },
-        Boolean(data.rememberMe)
+        Boolean(data.rememberMe),
+        data.accountType
       );
       // Redirect happens via the isAuthenticated effect above.
     } catch (error) {
@@ -154,6 +165,29 @@ export const Login: React.FC = () => {
 
             <form onSubmit={handleSubmit(onSubmit)} noValidate>
               <Stack spacing={2.5}>
+                {/* Account Type Input */}
+                <Controller
+                  name="accountType"
+                  control={control}
+                  render={({ field }) => (
+                    <FormControl fullWidth variant="outlined" error={!!errors.accountType}>
+                      <InputLabel>Account Type</InputLabel>
+                      <Select
+                        {...field}
+                        label="Account Type"
+                        value={field.value}
+                        onChange={(event) => field.onChange(event.target.value as UserRole)}
+                      >
+                        <MenuItem value="OWNER">Owner</MenuItem>
+                        <MenuItem value="STAFF">Staff</MenuItem>
+                      </Select>
+                      {errors.accountType && (
+                        <FormHelperText>{errors.accountType.message}</FormHelperText>
+                      )}
+                    </FormControl>
+                  )}
+                />
+
                 {/* Username Input */}
                 <Controller
                   name="username"
@@ -233,7 +267,7 @@ export const Login: React.FC = () => {
                     variant="body2"
                     onClick={(e) => {
                       e.preventDefault();
-                      alert('Password reset functionality placeholder');
+                      navigate('/forgot-password');
                     }}
                     sx={{
                       color: '#2563EB',
