@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { payrollService } from '../services/payrollService';
 import type {
   SalaryConfigurationListParams,
@@ -12,6 +12,7 @@ export const useSalaryConfigurationList = (params: SalaryConfigurationListParams
   return useQuery<TailorSalaryConfigurationListResult>({
     queryKey: [SALARY_CONFIGURATIONS_KEY, params],
     queryFn: () => payrollService.listSalaryConfigurations(params),
+    placeholderData: keepPreviousData,
   });
 };
 

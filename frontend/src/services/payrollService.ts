@@ -109,6 +109,7 @@ export const payrollService = {
     params: SalaryConfigurationListParams = {}
   ): Promise<TailorSalaryConfigurationListResult> {
     const query = new URLSearchParams();
+    if (params.page && params.page > 1) query.set('page', String(params.page));
     if (params.tailor) query.set('tailor', String(params.tailor));
     if (params.salary_model) query.set('salary_model', params.salary_model);
     if (params.is_active !== undefined) query.set('is_active', String(params.is_active));

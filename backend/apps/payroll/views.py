@@ -152,6 +152,12 @@ class SalaryConfigurationViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        if self.action == "list":
+            # Deterministic newest-first ordering: most recently started
+            # configuration first (the same "latest wins" rule payroll
+            # resolution uses), with ``id DESC`` as a stable tie-breaker so
+            # paginated pages never skip or duplicate rows.
+            qs = qs.order_by("-effective_from", "-id")
         tailor = (self.request.query_params.get("tailor") or "").strip()
         if tailor:
             qs = qs.filter(tailor_id=tailor)

@@ -94,6 +94,7 @@ export interface SalaryConfigurationPayload {
 }
 
 export interface SalaryConfigurationListParams {
+  page?: number;
   tailor?: number;
   salary_model?: SalaryModel | '';
   is_active?: boolean;

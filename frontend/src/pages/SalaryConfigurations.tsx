@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Box,
@@ -10,6 +10,7 @@ import {
   InputLabel,
   Link,
   MenuItem,
+  Pagination,
   Paper,
   Select,
   Stack,
@@ -45,6 +46,8 @@ import type {
   TailorSalaryConfiguration,
 } from '../types/payroll';
 
+const PAGE_SIZE = 6;
+
 export const SalaryConfigurations: React.FC = () => {
   const { role } = useAuth();
   const isStaff = role === 'STAFF';
@@ -54,15 +57,25 @@ export const SalaryConfigurations: React.FC = () => {
   const [tailorFilter, setTailorFilter] = useState<number>(0);
   const [modelFilter, setModelFilter] = useState<SalaryModel | ''>('');
   const [activeFilter, setActiveFilter] = useState<string>('');
+  const [page, setPage] = useState(1);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const { data: tailorsData } = useTailorList({ scope: 'all', page_size: 100 });
   const { data, isLoading, isError, error, refetch, isFetching } = useSalaryConfigurationList({
+    page: page > 1 ? page : undefined,
     tailor: tailorFilter || undefined,
     salary_model: modelFilter || undefined,
     is_active:
       activeFilter === 'true' ? true : activeFilter === 'false' ? false : undefined,
   });
+
+  const totalPages = data ? Math.max(1, Math.ceil(data.count / PAGE_SIZE)) : 1;
+
+  useEffect(() => {
+    if (data && page > totalPages) {
+      setPage(1);
+    }
+  }, [data, page, totalPages]);
 
   const createMutation = useCreateSalaryConfiguration();
   const updateMutation = useUpdateSalaryConfiguration();
@@ -78,6 +91,7 @@ export const SalaryConfigurations: React.FC = () => {
       await updateMutation.mutateAsync({ id: editingConfig.id, payload });
     } else {
       await createMutation.mutateAsync(payload);
+      setPage(1);
     }
   };
 
@@ -158,7 +172,10 @@ export const SalaryConfigurations: React.FC = () => {
           <Select
             label="Tailor"
             value={tailorFilter}
-            onChange={(event) => setTailorFilter(event.target.value as number)}
+            onChange={(event) => {
+              setTailorFilter(event.target.value as number);
+              setPage(1);
+            }}
           >
             <MenuItem value={0}>All Tailors</MenuItem>
             {tailors.map((tailor) => (
@@ -173,7 +190,10 @@ export const SalaryConfigurations: React.FC = () => {
           <Select
             label="Salary Model"
             value={modelFilter}
-            onChange={(event) => setModelFilter(event.target.value as SalaryModel | '')}
+            onChange={(event) => {
+              setModelFilter(event.target.value as SalaryModel | '');
+              setPage(1);
+            }}
           >
             <MenuItem value="">All Models</MenuItem>
             {SALARY_MODELS.map((model) => (
@@ -188,7 +208,10 @@ export const SalaryConfigurations: React.FC = () => {
           <Select
             label="Status"
             value={activeFilter}
-            onChange={(event) => setActiveFilter(event.target.value)}
+            onChange={(event) => {
+              setActiveFilter(event.target.value);
+              setPage(1);
+            }}
           >
             <MenuItem value="">All Status</MenuItem>
             <MenuItem value="true">Active</MenuItem>
@@ -326,6 +349,20 @@ export const SalaryConfigurations: React.FC = () => {
           </Table>
         </TableContainer>
       </Paper>
+
+      {data && data.count > 0 && (
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="body2" sx={{ color: '#64748B' }}>
+            Showing {data.results.length} of {data.count} configurations
+          </Typography>
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={(_event, value) => setPage(value)}
+            color="primary"
+          />
+        </Box>
+      )}
 
       {isFetching && <Typography variant="caption" sx={{ color: '#94A3B8' }}>Refreshing…</Typography>}
 
