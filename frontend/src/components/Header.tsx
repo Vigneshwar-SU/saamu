@@ -1,22 +1,24 @@
 import React from 'react';
 import {
   AppBar,
-  Toolbar,
-  Typography,
-  IconButton,
-  Box,
   Avatar,
+  Box,
+  Chip,
+  IconButton,
   Menu,
   MenuItem,
+  Toolbar,
   Tooltip,
-  Chip,
+  Typography,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import ContentCutIcon from '@mui/icons-material/ContentCut';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
+import { useHealth } from '../hooks/useHealth';
+import { BrandMark } from './ui/BrandMark';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -32,6 +34,7 @@ function getInitials(username: string | undefined): string {
 export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const navigate = useNavigate();
   const { user, role, logout } = useAuth();
+  const { data: health } = useHealth();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -54,107 +57,89 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
       elevation={0}
       sx={{
         backgroundColor: '#FFFFFF',
-        color: '#0F172A',
-        borderBottom: '1px solid #E2E8F0',
+        color: '#242424',
+        borderBottom: '1px solid #E7E0D0',
         zIndex: (theme) => theme.zIndex.drawer + 1,
       }}
     >
-      <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 2, sm: 3 } }}>
+      <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 2, sm: 3 }, minHeight: 64 }}>
         {/* Left Side: Toggle & Brand */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <IconButton
             edge="start"
             color="inherit"
             aria-label="open drawer"
             onClick={onToggleSidebar}
-            sx={{ color: '#475569' }}
           >
             <MenuIcon />
           </IconButton>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Box
+          <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1.5 }}>
+            <BrandMark size={36} />
+            <Typography
               sx={{
-                width: 38,
-                height: 38,
-                borderRadius: '10px',
-                backgroundColor: '#1E3A8A',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#FFFFFF',
+                fontWeight: 800,
+                fontSize: '1rem',
+                lineHeight: 1.2,
+                color: '#242424',
+                letterSpacing: '-0.01em',
               }}
             >
-              <ContentCutIcon fontSize="small" />
-            </Box>
-            <Box>
-              <Typography
-                variant="h6"
-                sx={{
-                  fontWeight: 700,
-                  fontSize: '1.1rem',
-                  lineHeight: 1.2,
-                  color: '#1E3A8A',
-                  letterSpacing: '-0.01em',
-                }}
-              >
-                SAAMU TAILORS
-              </Typography>
-              <Typography variant="caption" sx={{ color: '#64748B', display: 'block', lineHeight: 1 }}>
-                Management System
-              </Typography>
-            </Box>
+              Saamu Tailors
+            </Typography>
           </Box>
         </Box>
 
-        {/* Right Side: Status Badge, Notifications, User Profile */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        {/* Right Side: Role chip, Server status, User profile */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           {role && (
             <Chip
               label={role}
               size="small"
-              variant="outlined"
               sx={{
                 fontWeight: 700,
                 fontSize: '0.72rem',
-                borderColor: '#2563EB',
-                color: '#1D4ED8',
-                backgroundColor: '#EFF6FF',
+                backgroundColor: '#F5EBD2',
+                color: '#7A5E0C',
+                border: '1px solid #E8D79A',
                 display: { xs: 'none', sm: 'inline-flex' },
               }}
             />
           )}
 
           <Chip
-            label="Local Server"
+            label={health?.status === 'ok' ? 'Backend: Online' : 'Backend: Offline'}
             size="small"
-            color="success"
-            variant="outlined"
+            icon={
+              <CheckCircleIcon
+                sx={{ fontSize: 14, color: health?.status === 'ok' ? '#2E7D52' : '#B3402F' }}
+              />
+            }
             sx={{
               fontWeight: 600,
-              fontSize: '0.75rem',
-              borderColor: '#22C55E',
-              color: '#15803D',
+              fontSize: '0.72rem',
+              backgroundColor: health?.status === 'ok' ? '#E7F1EA' : '#FBE9E6',
+              color: health?.status === 'ok' ? '#1F5C3C' : '#8F2F22',
               display: { xs: 'none', md: 'inline-flex' },
             }}
           />
 
           <Tooltip title="Notifications">
-            <IconButton sx={{ color: '#475569' }}>
+            <IconButton aria-label="notifications">
               <NotificationsNoneIcon />
             </IconButton>
           </Tooltip>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
             <Tooltip title="Account settings">
               <IconButton onClick={handleMenuOpen} size="small" sx={{ ml: 0.5 }}>
                 <Avatar
                   sx={{
-                    width: 36,
-                    height: 36,
-                    backgroundColor: '#2563EB',
+                    width: 38,
+                    height: 38,
                     fontSize: '0.9rem',
-                    fontWeight: 600,
+                    fontWeight: 700,
+                    backgroundColor: '#A98216',
                   }}
                 >
                   {getInitials(user?.username)}
@@ -165,8 +150,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
               <Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.2 }}>
                 {user?.username ?? 'Not signed in'}
               </Typography>
-              <Typography variant="caption" sx={{ color: '#64748B' }}>
-                {role ? `${role} Account` : 'Unauthenticated'}
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                {role ? `${role} account` : 'Unauthenticated'}
               </Typography>
             </Box>
           </Box>
@@ -180,18 +165,30 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
             PaperProps={{
               elevation: 2,
               sx: {
-                minWidth: 180,
+                minWidth: 200,
                 mt: 1.5,
                 borderRadius: '12px',
-                border: '1px solid #E2E8F0',
+                border: '1px solid #E7E0D0',
+                boxShadow: '0 12px 28px -8px rgba(58, 48, 20, 0.18)',
               },
             }}
           >
-            <MenuItem onClick={() => { handleMenuClose(); navigate('/settings'); }}>
-              <AccountCircleIcon sx={{ mr: 1.5, color: '#64748B', fontSize: 20 }} />
+            <Box sx={{ px: 2, py: 1 }}>
+              <Typography sx={{ fontWeight: 700 }}>{user?.username ?? 'Not signed in'}</Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                {role ? `${role} account` : ''}
+              </Typography>
+            </Box>
+            <MenuItem
+              onClick={() => {
+                handleMenuClose();
+                navigate('/settings');
+              }}
+            >
+              <AccountCircleIcon sx={{ mr: 1.5, color: 'text.secondary', fontSize: 20 }} />
               Profile Settings
             </MenuItem>
-            <MenuItem onClick={handleLogout} sx={{ color: '#EF4444' }}>
+            <MenuItem onClick={handleLogout} sx={{ color: '#B3402F' }}>
               Sign Out
             </MenuItem>
           </Menu>
@@ -200,3 +197,5 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
     </AppBar>
   );
 };
+
+export default Header;

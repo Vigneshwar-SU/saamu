@@ -2,16 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Box,
-  Breadcrumbs,
   Button,
   CircularProgress,
-  Link,
-  Paper,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import SettingsIcon from '@mui/icons-material/Settings';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import PersonIcon from '@mui/icons-material/Person';
@@ -22,6 +18,9 @@ import { useAuth } from '../context/useAuth';
 import { useShopDetails, useUpdateShopDetails } from '../hooks/useSettings';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import type { ShopDetailsPayload } from '../types/settings';
+import { PageHeader } from '../components/ui/PageHeader';
+import { SectionCard } from '../components/ui/SectionCard';
+import { ErrorState } from '../components/ui/ErrorState';
 
 const shopDetailsSchema = z.object({
   name: z
@@ -104,95 +103,27 @@ export const Settings: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} aria-label="breadcrumb">
-        <Link underline="hover" color="inherit" href="/dashboard" sx={{ fontSize: '0.85rem' }}>
-          Saamu Tailors ERP
-        </Link>
-        <Typography color="text.primary" sx={{ fontSize: '0.85rem', fontWeight: 600 }}>
-          Settings
-        </Typography>
-      </Breadcrumbs>
-
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Box
-          sx={{
-            width: 48,
-            height: 48,
-            borderRadius: '12px',
-            backgroundColor: '#EFF6FF',
-            color: '#1E3A8A',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <SettingsIcon />
-        </Box>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 700 }}>
-            Settings
-          </Typography>
-          <Typography variant="body2" sx={{ color: '#64748B' }}>
-            Manage the business profile and review the current account.
-          </Typography>
-        </Box>
-      </Box>
+      <PageHeader
+        title="Settings"
+        subtitle="Manage the business profile and review the current account."
+        icon={<SettingsIcon />}
+        crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Settings' }]}
+      />
 
       <Stack spacing={3}>
-        <Paper sx={{ p: 3, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
-            <Box
-              sx={{
-                width: 36,
-                height: 36,
-                borderRadius: '10px',
-                backgroundColor: '#F1F5F9',
-                color: '#475569',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <PersonIcon fontSize="small" />
-            </Box>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              Current Account
-            </Typography>
-          </Stack>
+        <SectionCard title="Current Account" icon={<PersonIcon />}>
           <Stack spacing={1}>
             <AccountRow label="Username" value={user?.username ?? '—'} />
             <AccountRow
               label="Role"
               value={role === 'OWNER' ? 'Owner' : role === 'STAFF' ? 'Staff' : '—'}
             />
-            <AccountRow
-              label="Status"
-              value={user?.is_active ? 'Active' : 'Inactive'}
-            />
+            <AccountRow label="Status" value={user?.is_active ? 'Active' : 'Inactive'} />
           </Stack>
-        </Paper>
+        </SectionCard>
 
-        <Paper sx={{ p: 3, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
-            <Box
-              sx={{
-                width: 36,
-                height: 36,
-                borderRadius: '10px',
-                backgroundColor: '#F1F5F9',
-                color: '#475569',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <StorefrontIcon fontSize="small" />
-            </Box>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              Shop Details
-            </Typography>
-          </Stack>
-          <Typography variant="body2" sx={{ color: '#64748B', mb: 2 }}>
+        <SectionCard title="Shop Details" icon={<StorefrontIcon />}>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
             This profile appears on the digital bill and customer communications.
           </Typography>
 
@@ -208,14 +139,7 @@ export const Settings: React.FC = () => {
             </Box>
           ) : isError ? (
             <Box sx={{ textAlign: 'center', py: 4 }}>
-              <Alert severity="error" sx={{ display: 'inline-flex' }}>
-                {getApiErrorMessage(error)}
-              </Alert>
-              <Box sx={{ mt: 1.5 }}>
-                <Button size="small" variant="outlined" onClick={() => refetch()}>
-                  Retry
-                </Button>
-              </Box>
+              <ErrorState message={getApiErrorMessage(error)} onRetry={() => refetch()} />
             </Box>
           ) : (
             <>
@@ -313,7 +237,6 @@ export const Settings: React.FC = () => {
                       disabled={isSubmitting || !isDirty}
                       startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
                       onClick={handleSubmit(onSubmit)}
-                      sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
                     >
                       {isSubmitting ? 'Saving…' : 'Save Changes'}
                     </Button>
@@ -322,7 +245,7 @@ export const Settings: React.FC = () => {
               </Stack>
             </>
           )}
-        </Paper>
+        </SectionCard>
       </Stack>
     </Box>
   );
@@ -330,10 +253,10 @@ export const Settings: React.FC = () => {
 
 const AccountRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-    <Typography variant="body2" sx={{ color: '#64748B', fontWeight: 500 }}>
+    <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
       {label}
     </Typography>
-    <Typography variant="body2" sx={{ fontWeight: 600, color: '#0F172A' }}>
+    <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
       {value}
     </Typography>
   </Box>

@@ -2,29 +2,20 @@ import React, { useMemo, useState } from 'react';
 import {
   Alert,
   Box,
-  Breadcrumbs,
   Button,
-  Chip,
-  CircularProgress,
   FormControl,
-  IconButton,
   InputLabel,
-  Link,
   MenuItem,
-  Paper,
   Select,
   Stack,
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
   Tooltip,
   Typography,
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
 import EditIcon from '@mui/icons-material/Edit';
 import ArchiveIcon from '@mui/icons-material/Archive';
@@ -53,44 +44,14 @@ import {
 } from '../hooks/useTailors';
 import { NEXT_ASSIGNMENT_STATUS, WORK_ASSIGNMENT_STATUS_LABELS } from '../types/tailors';
 import type { TailorPayload, WorkAssignment, WorkAssignmentStatus } from '../types/tailors';
-
-const InfoCell: React.FC<{
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}> = ({ icon, label, value }) => (
-  <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
-    <Box
-      sx={{
-        width: 36,
-        height: 36,
-        borderRadius: '10px',
-        backgroundColor: '#F1F5F9',
-        color: '#475569',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-      }}
-    >
-      {icon}
-    </Box>
-    <Box>
-      <Typography
-        variant="caption"
-        sx={{ color: '#94A3B8', textTransform: 'uppercase', fontSize: '0.68rem', fontWeight: 600 }}
-      >
-        {label}
-      </Typography>
-      <Typography
-        variant="body2"
-        sx={{ fontWeight: 500, color: '#0F172A', whiteSpace: 'pre-wrap' }}
-      >
-        {value}
-      </Typography>
-    </Box>
-  </Box>
-);
+import { PageHeader } from '../components/ui/PageHeader';
+import { SectionCard } from '../components/ui/SectionCard';
+import { InfoField } from '../components/ui/InfoField';
+import { StatusBadge } from '../components/ui/StatusBadge';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { ErrorState } from '../components/ui/ErrorState';
+import { TableCard } from '../components/ui/TableCard';
+import { TableStateRow } from '../components/ui/TableStateRow';
 
 const statusChip = (status: WorkAssignmentStatus) => <WorkAssignmentStatusChip status={status} />;
 
@@ -105,7 +66,7 @@ export const TailorDetail: React.FC = () => {
   const { data: earnings } = useTailorEarnings(tailorId);
 
   const [statusFilter, setStatusFilter] = useState<WorkAssignmentStatus | ''>('');
-  const { data: assignmentsData } = useWorkAssignmentList({
+  const { data: assignmentsData, isLoading: assignmentsLoading } = useWorkAssignmentList({
     tailor: tailorId,
     status: statusFilter,
   });
@@ -118,6 +79,7 @@ export const TailorDetail: React.FC = () => {
 
   const [editOpen, setEditOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<WorkAssignment | null>(null);
   const [progressOpen, setProgressOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -125,11 +87,8 @@ export const TailorDetail: React.FC = () => {
   const assignments = useMemo(() => assignmentsData?.results ?? [], [assignmentsData]);
 
   const handleArchive = async () => {
+    setArchiveOpen(false);
     if (!tailor) return;
-    const confirmed = window.confirm(
-      `Archive tailor "${tailor.name}"? The profile and work history are kept and can be restored later.`
-    );
-    if (!confirmed) return;
     setActionError(null);
     try {
       await archiveMutation.mutateAsync(tailorId);
@@ -155,7 +114,7 @@ export const TailorDetail: React.FC = () => {
   if (isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
-        <CircularProgress />
+        <Typography color="text.secondary">Loading tailor…</Typography>
       </Box>
     );
   }
@@ -163,10 +122,7 @@ export const TailorDetail: React.FC = () => {
   if (isError || !tailor) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, py: 8 }}>
-        <Alert severity="error">{getApiErrorMessage(error)}</Alert>
-        <Button variant="outlined" onClick={() => refetch()}>
-          Retry
-        </Button>
+        <ErrorState message={getApiErrorMessage(error)} onRetry={() => refetch()} />
         <Button color="inherit" onClick={() => navigate('/tailors')}>
           Back to Tailors
         </Button>
@@ -176,94 +132,40 @@ export const TailorDetail: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} aria-label="breadcrumb">
-        <Link underline="hover" color="inherit" href="/dashboard" sx={{ fontSize: '0.85rem' }}>
-          Saamu Tailors ERP
-        </Link>
-        <Link underline="hover" color="inherit" href="/tailors" sx={{ fontSize: '0.85rem' }}>
-          Tailors
-        </Link>
-        <Typography color="text.primary" sx={{ fontSize: '0.85rem', fontWeight: 600 }}>
-          {tailor.name}
-        </Typography>
-      </Breadcrumbs>
-
       {actionError && <Alert severity="error">{actionError}</Alert>}
 
-      <Box
-        sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}
-      >
-        <Stack direction="row" spacing={1.5} alignItems="flex-start">
-          <Tooltip title="Back to tailors">
-            <IconButton
-              onClick={() => navigate('/tailors')}
-              sx={{ border: '1px solid #E2E8F0', borderRadius: '10px', color: '#475569' }}
-            >
-              <ArrowBackIcon />
-            </IconButton>
-          </Tooltip>
-          <Box>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                {tailor.name}
-              </Typography>
-              <Chip
-                label={tailor.is_active ? 'Active' : 'Archived'}
-                size="small"
-                sx={{
-                  fontWeight: 600,
-                  backgroundColor: tailor.is_active ? '#DCFCE7' : '#F1F5F9',
-                  color: tailor.is_active ? '#15803D' : '#475569',
-                }}
-              />
+      <PageHeader
+        title={tailor.name}
+        subtitle={`Tailor #${tailor.id} · Joined ${formatDate(tailor.created_at)}`}
+        icon={<StraightenIcon />}
+        backTo="/tailors"
+        crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Tailors', to: '/tailors' }, { label: tailor.name }]}
+        actions={
+          isStaff && (
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              {tailor.is_active ? (
+                <>
+                  <Button variant="outlined" startIcon={<EditIcon />} onClick={() => setEditOpen(true)}>
+                    Edit
+                  </Button>
+                  <Button variant="contained" startIcon={<PersonAddAltIcon />} onClick={() => setAssignOpen(true)}>
+                    Assign Work
+                  </Button>
+                  <Button variant="outlined" color="error" startIcon={<ArchiveIcon />} onClick={() => setArchiveOpen(true)}>
+                    Archive
+                  </Button>
+                </>
+              ) : (
+                <Button variant="outlined" startIcon={<UnarchiveIcon />} onClick={handleRestore}>
+                  Restore
+                </Button>
+              )}
             </Stack>
-            <Typography variant="body2" sx={{ color: '#64748B' }}>
-              Tailor #{tailor.id} · Joined {formatDate(tailor.created_at)}
-            </Typography>
-          </Box>
-        </Stack>
+          )
+        }
+      />
 
-        {isStaff && (
-          <Stack direction="row" spacing={1}>
-            {tailor.is_active ? (
-              <>
-                <Button
-                  variant="outlined"
-                  startIcon={<EditIcon />}
-                  onClick={() => setEditOpen(true)}
-                >
-                  Edit
-                </Button>
-                <Button
-                  variant="contained"
-                  startIcon={<PersonAddAltIcon />}
-                  onClick={() => setAssignOpen(true)}
-                  sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
-                >
-                  Assign Work
-                </Button>
-                <Button
-                  variant="outlined"
-                  color="error"
-                  startIcon={<ArchiveIcon />}
-                  onClick={handleArchive}
-                >
-                  Archive
-                </Button>
-              </>
-            ) : (
-              <Button variant="outlined" startIcon={<UnarchiveIcon />} onClick={handleRestore}>
-                Restore
-              </Button>
-            )}
-          </Stack>
-        )}
-      </Box>
-
-      <Paper sx={{ p: 3, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2.5 }}>
-          Profile
-        </Typography>
+      <SectionCard title="Profile" icon={<StraightenIcon />}>
         <Box
           sx={{
             display: 'grid',
@@ -271,29 +173,14 @@ export const TailorDetail: React.FC = () => {
             gap: 3,
           }}
         >
-          <InfoCell
-            icon={<StraightenIcon sx={{ fontSize: 18 }} />}
-            label="Mobile Number"
-            value={tailor.mobile_number || '-'}
-          />
-          <InfoCell
-            icon={<PaymentsIcon sx={{ fontSize: 18 }} />}
-            label="Active"
-            value={tailor.is_active ? 'Yes' : 'No'}
-          />
-          <InfoCell
-            icon={<EditIcon sx={{ fontSize: 18 }} />}
-            label="Notes"
-            value={tailor.notes || '-'}
-          />
+          <InfoField label="Status" value={<StatusBadge label={tailor.is_active ? 'Active' : 'Archived'} tone={tailor.is_active ? 'success' : 'neutral'} />} strong />
+          <InfoField label="Mobile Number" value={tailor.mobile_number || '-'} />
+          <InfoField label="Notes" value={tailor.notes || '-'} />
         </Box>
-      </Paper>
+      </SectionCard>
 
       {earnings && (
-        <Paper sx={{ p: 3, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2.5 }}>
-            Workload &amp; Earnings
-          </Typography>
+        <SectionCard title="Workload & Earnings" icon={<PaymentsIcon />}>
           <Box
             sx={{
               display: 'grid',
@@ -301,38 +188,14 @@ export const TailorDetail: React.FC = () => {
               gap: 3,
             }}
           >
-            <InfoCell
-              icon={<StraightenIcon sx={{ fontSize: 18 }} />}
-              label="Total Assigned"
-              value={formatPieces(earnings.workload.assigned_quantity)}
-            />
-            <InfoCell
-              icon={<CheckCircleIcon sx={{ fontSize: 18 }} />}
-              label="Total Completed"
-              value={formatPieces(earnings.workload.completed_quantity)}
-            />
-            <InfoCell
-              icon={<PaymentsIcon sx={{ fontSize: 18 }} />}
-              label="Total Outstanding"
-              value={formatPieces(earnings.workload.outstanding_quantity)}
-            />
-            <InfoCell
-              icon={<PaymentsIcon sx={{ fontSize: 18 }} />}
-              label="Total Earned"
-              value={formatCurrency(earnings.workload.earned_amount)}
-            />
+            <InfoField label="Total Assigned" value={formatPieces(earnings.workload.assigned_quantity)} />
+            <InfoField label="Total Completed" value={formatPieces(earnings.workload.completed_quantity)} />
+            <InfoField label="Total Outstanding" value={formatPieces(earnings.workload.outstanding_quantity)} />
+            <InfoField label="Total Earned" value={formatCurrency(earnings.workload.earned_amount)} strong />
           </Box>
           {earnings.garment_breakdown.length > 0 && (
             <Box sx={{ mt: 2.5 }}>
-              <Typography
-                variant="caption"
-                sx={{
-                  color: '#94A3B8',
-                  textTransform: 'uppercase',
-                  fontSize: '0.68rem',
-                  fontWeight: 600,
-                }}
-              >
+              <Typography variant="caption" sx={{ color: 'text.disabled', textTransform: 'uppercase', fontSize: '0.68rem', fontWeight: 600 }}>
                 By Garment
               </Typography>
               <Box
@@ -349,60 +212,29 @@ export const TailorDetail: React.FC = () => {
                     sx={{
                       p: 1.5,
                       borderRadius: '10px',
-                      border: '1px solid #E2E8F0',
-                      backgroundColor: '#F8FAFC',
+                      border: '1px solid #E7E0D0',
+                      backgroundColor: '#FBF6EA',
                     }}
                   >
-                    <Typography sx={{ fontWeight: 600, color: '#0F172A' }}>
+                    <Typography sx={{ fontWeight: 600, color: 'text.primary' }}>
                       {entry.garment_type}
                     </Typography>
-                    <Typography variant="body2" sx={{ color: '#64748B' }}>
-                      {formatPieces(entry.completed_quantity)} ·{' '}
-                      {formatCurrency(entry.earned_amount)}
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                      {formatPieces(entry.completed_quantity)} · {formatCurrency(entry.earned_amount)}
                     </Typography>
                   </Box>
                 ))}
               </Box>
             </Box>
           )}
-        </Paper>
+        </SectionCard>
       )}
 
-      <Paper sx={{ borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-        <Box
-          sx={{
-            px: 3,
-            py: 2,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: 2,
-          }}
-        >
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Box
-              sx={{
-                width: 40,
-                height: 40,
-                borderRadius: '10px',
-                backgroundColor: '#EFF6FF',
-                color: '#1E3A8A',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <PersonAddAltIcon fontSize="small" />
-            </Box>
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                Work Assignments
-              </Typography>
-              <Typography variant="caption" sx={{ color: '#64748B' }}>
-                Piece-rate work assigned to this tailor
-              </Typography>
-            </Box>
-          </Stack>
+      <SectionCard
+        title="Work Assignments"
+        subtitle="Piece-rate work assigned to this tailor"
+        icon={<PersonAddAltIcon />}
+        action={
           <FormControl size="small" sx={{ minWidth: 150 }}>
             <InputLabel>Status</InputLabel>
             <Select
@@ -416,43 +248,34 @@ export const TailorDetail: React.FC = () => {
               <MenuItem value="COMPLETED">Completed</MenuItem>
             </Select>
           </FormControl>
-        </Box>
-        <TableContainer>
+        }
+        noPadding
+      >
+        <TableCard sx={{ border: 'none', borderRadius: 0 }}>
           <Table size="medium">
             <TableHead>
-              <TableRow sx={{ backgroundColor: '#F8FAFC' }}>
-                <TableCell sx={{ fontWeight: 700 }}>Order</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Garment</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 700 }}>
-                  Assigned
-                </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 700 }}>
-                  Completed
-                </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 700 }}>
-                  Outstanding
-                </TableCell>
-                <TableCell align="right" sx={{ fontWeight: 700 }}>
-                  Rate
-                </TableCell>
-                <TableCell align="right" sx={{ fontWeight: 700 }}>
-                  Earned
-                </TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 700 }}>
-                  Actions
-                </TableCell>
+              <TableRow>
+                <TableCell>Order</TableCell>
+                <TableCell>Garment</TableCell>
+                <TableCell align="center">Assigned</TableCell>
+                <TableCell align="center">Completed</TableCell>
+                <TableCell align="center">Outstanding</TableCell>
+                <TableCell align="right">Rate</TableCell>
+                <TableCell align="right">Earned</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {assignments.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9} align="center" sx={{ py: 6 }}>
-                    <Typography sx={{ color: '#64748B' }}>
-                      {statusFilter ? 'No assignments match this status.' : 'No work assigned yet.'}
-                    </Typography>
-                  </TableCell>
-                </TableRow>
+              {assignmentsLoading ? (
+                <TableStateRow colSpan={9} state="loading" />
+              ) : assignments.length === 0 ? (
+                <TableStateRow
+                  colSpan={9}
+                  state="empty"
+                  emptyTitle={statusFilter ? 'No assignments match this status' : 'No work assigned yet'}
+                  emptyMessage={statusFilter ? 'Try a different status filter.' : 'Assign pieces to this tailor to get started.'}
+                />
               ) : (
                 assignments.map((assignment) => {
                   const nextStatus = NEXT_ASSIGNMENT_STATUS[assignment.status];
@@ -471,7 +294,7 @@ export const TailorDetail: React.FC = () => {
                         <Typography sx={{ fontWeight: 600 }}>
                           {assignment.order_item.garment_type}
                         </Typography>
-                        <Typography variant="caption" sx={{ color: '#94A3B8' }}>
+                        <Typography variant="caption" sx={{ color: 'text.disabled' }}>
                           {assignment.order_item.customer_name}
                         </Typography>
                       </TableCell>
@@ -486,10 +309,8 @@ export const TailorDetail: React.FC = () => {
                         </Typography>
                       </TableCell>
                       <TableCell align="center">
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#B45309' }}>
-                          {formatPieces(
-                            assignment.assigned_quantity - assignment.completed_quantity
-                          )}
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#8F4A00' }}>
+                          {formatPieces(assignment.assigned_quantity - assignment.completed_quantity)}
                         </Typography>
                       </TableCell>
                       <TableCell align="right">
@@ -498,7 +319,7 @@ export const TailorDetail: React.FC = () => {
                         </Typography>
                       </TableCell>
                       <TableCell align="right">
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#15803D' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#1F5C3C' }}>
                           {formatCurrency(assignment.earned_amount)}
                         </Typography>
                       </TableCell>
@@ -558,8 +379,8 @@ export const TailorDetail: React.FC = () => {
               )}
             </TableBody>
           </Table>
-        </TableContainer>
-      </Paper>
+        </TableCard>
+      </SectionCard>
 
       <TailorFormDialog
         open={editOpen}
@@ -585,6 +406,18 @@ export const TailorDetail: React.FC = () => {
           });
         }}
       />
+      <ConfirmDialog
+        open={archiveOpen}
+        title="Archive Tailor"
+        message={`Archive tailor "${tailor.name}"? The profile and work history are kept and can be restored later.`}
+        confirmLabel="Archive"
+        tone="error"
+        loading={archiveMutation.isPending}
+        onConfirm={handleArchive}
+        onCancel={() => setArchiveOpen(false)}
+      />
     </Box>
   );
 };
+
+export default TailorDetail;

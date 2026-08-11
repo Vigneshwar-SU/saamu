@@ -187,7 +187,7 @@ export const AddAdvanceDialog: React.FC<AddAdvanceDialogProps> = ({
           variant="contained"
           disabled={isSubmitting}
           startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
-          sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
+          
         >
           Save Advance
         </Button>

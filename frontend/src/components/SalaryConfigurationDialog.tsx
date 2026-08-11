@@ -297,7 +297,7 @@ export const SalaryConfigurationDialog: React.FC<SalaryConfigurationDialogProps>
           variant="contained"
           disabled={isSubmitting}
           startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
-          sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
+          
         >
           {config ? 'Save Changes' : 'Add Configuration'}
         </Button>

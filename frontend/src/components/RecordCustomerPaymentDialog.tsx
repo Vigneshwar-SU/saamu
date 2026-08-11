@@ -191,7 +191,7 @@ export const RecordCustomerPaymentDialog: React.FC<RecordCustomerPaymentDialogPr
         <Stack spacing={2.5} sx={{ mt: 0.5 }}>
           {submitError && <Alert severity="error">{submitError}</Alert>}
 
-          <Paper sx={{ p: 2, borderRadius: '12px', border: '1px solid #E2E8F0', backgroundColor: '#F8FAFC' }}>
+          <Paper sx={{ p: 2, borderRadius: '12px', border: '1px solid #E7E0D0', backgroundColor: '#FBF6EA' }}>
             <Stack spacing={1}>
               <InvoiceRow label="Invoice Number" value={invoice.invoice_number} />
               <InvoiceRow label="Invoice Total" value={formatCurrency(invoice.total_amount)} />
@@ -377,9 +377,9 @@ export const RecordCustomerPaymentDialog: React.FC<RecordCustomerPaymentDialogPr
         <Button
           onClick={handleSubmit(onSubmit)}
           variant="contained"
+          color={refundMode ? 'error' : 'primary'}
           disabled={isSubmitting}
           startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
-          sx={{ backgroundColor: refundMode ? '#B91C1C' : '#1E3A8A', '&:hover': { backgroundColor: refundMode ? '#DC2626' : '#1D4ED8' } }}
         >
           {refundMode ? 'Record Refund' : settleInFull ? 'Settle in Full' : 'Record Payment'}
         </Button>
@@ -396,13 +396,13 @@ const InvoiceRow: React.FC<{ label: string; value: string; emphasis?: boolean }>
   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
     <Typography
       variant="body2"
-      sx={{ color: emphasis ? '#0F172A' : '#64748B', fontWeight: emphasis ? 700 : 500 }}
+      sx={{ color: emphasis ? '#242424' : '#6B6B6B', fontWeight: emphasis ? 700 : 500 }}
     >
       {label}
     </Typography>
     <Typography
       variant="body2"
-      sx={{ fontWeight: emphasis ? 800 : 600, color: emphasis ? '#1E3A8A' : '#0F172A' }}
+      sx={{ fontWeight: emphasis ? 800 : 600, color: emphasis ? '#7A5E0C' : '#242424' }}
     >
       {value}
     </Typography>

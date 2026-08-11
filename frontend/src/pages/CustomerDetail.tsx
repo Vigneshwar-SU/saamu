@@ -1,30 +1,19 @@
 import React, { useState } from 'react';
 import {
-  Alert,
   Box,
-  Breadcrumbs,
   Button,
   Chip,
   CircularProgress,
   Divider,
-  IconButton,
-  Link,
-  Paper,
   Stack,
   Tab,
   Tabs,
-  Tooltip,
   Typography,
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import EditIcon from '@mui/icons-material/Edit';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import UnarchiveIcon from '@mui/icons-material/Unarchive';
 import PhoneIcon from '@mui/icons-material/Phone';
-import LocationOnIcon from '@mui/icons-material/LocationOn';
-import NotesIcon from '@mui/icons-material/Notes';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import StraightenIcon from '@mui/icons-material/Straighten';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
@@ -54,44 +43,19 @@ import type {
   MeasurementFieldName,
   MeasurementPayload,
 } from '../types/customers';
+import { PageHeader } from '../components/ui/PageHeader';
+import { SectionCard } from '../components/ui/SectionCard';
+import { InfoField } from '../components/ui/InfoField';
+import { StatusBadge } from '../components/ui/StatusBadge';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { ErrorState } from '../components/ui/ErrorState';
+import { EmptyState } from '../components/ui/EmptyState';
 
 interface MeasurementDialogState {
   open: boolean;
   garment: GarmentType;
   base: Measurement | null;
 }
-
-const InfoCell: React.FC<{
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}> = ({ icon, label, value }) => (
-  <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
-    <Box
-      sx={{
-        width: 36,
-        height: 36,
-        borderRadius: '10px',
-        backgroundColor: '#F1F5F9',
-        color: '#475569',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-      }}
-    >
-      {icon}
-    </Box>
-    <Box>
-      <Typography variant="caption" sx={{ color: '#94A3B8', textTransform: 'uppercase', fontSize: '0.68rem', fontWeight: 600 }}>
-        {label}
-      </Typography>
-      <Typography variant="body2" sx={{ fontWeight: 500, color: '#0F172A', whiteSpace: 'pre-wrap' }}>
-        {value}
-      </Typography>
-    </Box>
-  </Box>
-);
 
 export const CustomerDetail: React.FC = () => {
   const { id } = useParams();
@@ -115,6 +79,7 @@ export const CustomerDetail: React.FC = () => {
   const updateMeasurement = useUpdateMeasurement(customerId);
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
   const [garmentTab, setGarmentTab] = useState<GarmentType>('SHIRT');
   const [measurementDialog, setMeasurementDialog] = useState<MeasurementDialogState>({
     open: false,
@@ -145,11 +110,8 @@ export const CustomerDetail: React.FC = () => {
   };
 
   const handleArchive = async () => {
+    setArchiveDialogOpen(false);
     if (!customer) return;
-    const confirmed = window.confirm(
-      `Archive customer "${customer.full_name}"? The profile is kept and can be restored later.`
-    );
-    if (!confirmed) return;
     try {
       await archiveMutation.mutateAsync(customerId);
     } catch (archiveError) {
@@ -176,10 +138,7 @@ export const CustomerDetail: React.FC = () => {
   if (isError || !customer) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, py: 8 }}>
-        <Alert severity="error">{getApiErrorMessage(error)}</Alert>
-        <Button variant="outlined" onClick={() => refetch()}>
-          Retry
-        </Button>
+        <ErrorState message={getApiErrorMessage(error)} onRetry={() => refetch()} />
         <Button color="inherit" onClick={() => navigate('/customers')}>
           Back to Customers
         </Button>
@@ -193,7 +152,8 @@ export const CustomerDetail: React.FC = () => {
     ? normalizeMobileNumber(customer.alternate_mobile_number)
     : '-';
 
-  const renderMeasurementFields = (m: Measurement) => {    const fields = MEASUREMENT_FIELDS_BY_GARMENT[garmentTab];
+  const renderMeasurementFields = (m: Measurement) => {
+    const fields = MEASUREMENT_FIELDS_BY_GARMENT[garmentTab];
     return (
       <Box
         sx={{
@@ -208,10 +168,10 @@ export const CustomerDetail: React.FC = () => {
       >
         {fields.map((field: MeasurementFieldName) => (
           <Box key={field}>
-            <Typography variant="caption" sx={{ color: '#94A3B8', display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 600 }}>
+            <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 600 }}>
               {MEASUREMENT_FIELD_LABELS[field]}
             </Typography>
-            <Typography sx={{ fontWeight: 600, color: '#0F172A' }}>
+            <Typography sx={{ fontWeight: 600, color: 'text.primary' }}>
               {m[field] == null ? '-' : `${m[field]} in`}
             </Typography>
           </Box>
@@ -222,80 +182,38 @@ export const CustomerDetail: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} aria-label="breadcrumb">
-        <Link underline="hover" color="inherit" href="/dashboard" sx={{ fontSize: '0.85rem' }}>
-          Saamu Tailors ERP
-        </Link>
-        <Link underline="hover" color="inherit" href="/customers" sx={{ fontSize: '0.85rem' }}>
-          Customers
-        </Link>
-        <Typography color="text.primary" sx={{ fontSize: '0.85rem', fontWeight: 600 }}>
-          {displayName}
-        </Typography>
-      </Breadcrumbs>
-
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}>
-        <Stack direction="row" spacing={1.5} alignItems="flex-start">
-          <Tooltip title="Back to customers">
-            <IconButton
-              onClick={() => navigate('/customers')}
-              sx={{ border: '1px solid #E2E8F0', borderRadius: '10px', color: '#475569' }}
-            >
-              <ArrowBackIcon />
-            </IconButton>
-          </Tooltip>
-          <Box>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                {displayName}
-              </Typography>
-              <Chip
-                label={customer.is_active ? 'Active' : 'Archived'}
-                size="small"
-                sx={{
-                  fontWeight: 600,
-                  backgroundColor: customer.is_active ? '#DCFCE7' : '#F1F5F9',
-                  color: customer.is_active ? '#15803D' : '#64748B',
-                }}
-              />
+      <PageHeader
+        title={displayName}
+        subtitle={`Customer #${customer.id} · ${displayPrimaryMobile}`}
+        icon={<StraightenIcon />}
+        backTo="/customers"
+        crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Customers', to: '/customers' }, { label: displayName }]}
+        actions={
+          isStaff && (
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              <Button variant="outlined" startIcon={<EditIcon />} onClick={() => setEditDialogOpen(true)}>
+                Edit
+              </Button>
+              {customer.is_active ? (
+                <Button variant="outlined" color="error" startIcon={<ArchiveIcon />} onClick={() => setArchiveDialogOpen(true)}>
+                  Archive
+                </Button>
+              ) : (
+                <Button
+                  variant="outlined"
+                  sx={{ color: '#1F5C3C', borderColor: '#86EFAC' }}
+                  startIcon={<UnarchiveIcon />}
+                  onClick={handleRestore}
+                >
+                  Restore
+                </Button>
+              )}
             </Stack>
-            <Typography variant="body2" sx={{ color: '#64748B' }}>
-              Customer #{customer.id} · {displayPrimaryMobile}
-            </Typography>
-          </Box>
-        </Stack>
+          )
+        }
+      />
 
-        {isStaff && (
-          <Stack direction="row" spacing={1}>
-            <Button
-              variant="outlined"
-              startIcon={<EditIcon />}
-              onClick={() => setEditDialogOpen(true)}
-            >
-              Edit
-            </Button>
-            {customer.is_active ? (
-              <Button variant="outlined" color="error" startIcon={<ArchiveIcon />} onClick={handleArchive}>
-                Archive
-              </Button>
-            ) : (
-              <Button
-                variant="outlined"
-                sx={{ color: '#15803D', borderColor: '#86EFAC' }}
-                startIcon={<UnarchiveIcon />}
-                onClick={handleRestore}
-              >
-                Restore
-              </Button>
-            )}
-          </Stack>
-        )}
-      </Box>
-
-      <Paper sx={{ p: 3, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2.5 }}>
-          Profile Details
-        </Typography>
+      <SectionCard title="Profile Details" icon={<PhoneIcon />}>
         <Box
           sx={{
             display: 'grid',
@@ -303,47 +221,22 @@ export const CustomerDetail: React.FC = () => {
             gap: 3,
           }}
         >
-          <InfoCell icon={<PhoneIcon sx={{ fontSize: 18 }} />} label="Primary Mobile" value={displayPrimaryMobile} />
-          <InfoCell
-            icon={<PhoneIcon sx={{ fontSize: 18 }} />}
-            label="Alternate Mobile"
-            value={displayAlternateMobile}
-          />
-          <InfoCell icon={<LocationOnIcon sx={{ fontSize: 18 }} />} label="Address" value={customer.address || '-'} />
-          <InfoCell icon={<NotesIcon sx={{ fontSize: 18 }} />} label="Notes" value={customer.notes || '-'} />
-          <InfoCell icon={<CalendarTodayIcon sx={{ fontSize: 18 }} />} label="Created" value={formatDate(customer.created_at)} />
-          <InfoCell icon={<CalendarTodayIcon sx={{ fontSize: 18 }} />} label="Last Updated" value={formatDate(customer.updated_at)} />
+          <InfoField label="Status" value={<StatusBadge label={customer.is_active ? 'Active' : 'Archived'} tone={customer.is_active ? 'success' : 'neutral'} />} strong />
+          <InfoField label="Primary Mobile" value={displayPrimaryMobile} />
+          <InfoField label="Alternate Mobile" value={displayAlternateMobile} />
+          <InfoField label="Address" value={customer.address || '-'} />
+          <InfoField label="Notes" value={customer.notes || '-'} />
+          <InfoField label="Created" value={formatDate(customer.created_at)} />
+          <InfoField label="Last Updated" value={formatDate(customer.updated_at)} />
         </Box>
-      </Paper>
+      </SectionCard>
 
-      <Paper sx={{ borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-        <Box sx={{ px: 3, py: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Box
-              sx={{
-                width: 40,
-                height: 40,
-                borderRadius: '10px',
-                backgroundColor: '#EFF6FF',
-                color: '#1E3A8A',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <StraightenIcon fontSize="small" />
-            </Box>
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                Measurement Chart
-              </Typography>
-              <Typography variant="caption" sx={{ color: '#64748B' }}>
-                All measurements are recorded in inches
-              </Typography>
-            </Box>
-          </Stack>
-        </Box>
-
+      <SectionCard
+        title="Measurement Chart"
+        subtitle="All measurements are recorded in inches"
+        icon={<StraightenIcon />}
+        noPadding
+      >
         <Tabs
           value={garmentTab}
           onChange={(_event, value: GarmentType) => setGarmentTab(value)}
@@ -364,10 +257,7 @@ export const CustomerDetail: React.FC = () => {
             </Box>
           ) : measurementsError ? (
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, py: 4 }}>
-              <Alert severity="error">{getApiErrorMessage(measurementsError)}</Alert>
-              <Button variant="outlined" onClick={() => refetchMeasurements()}>
-                Retry
-              </Button>
+              <ErrorState message={getApiErrorMessage(measurementsError)} onRetry={() => refetchMeasurements()} />
             </Box>
           ) : currentMeasurement ? (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -382,7 +272,7 @@ export const CustomerDetail: React.FC = () => {
                   <Chip
                     label="Current"
                     size="small"
-                    sx={{ fontWeight: 600, backgroundColor: '#DCFCE7', color: '#15803D' }}
+                    sx={{ fontWeight: 600, backgroundColor: '#E7F1EA', color: '#1F5C3C' }}
                   />
                 </Stack>
                 {isStaff && (
@@ -399,21 +289,21 @@ export const CustomerDetail: React.FC = () => {
               {renderMeasurementFields(currentMeasurement)}
             </Box>
           ) : (
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, py: 6 }}>
-              <Typography sx={{ color: '#64748B' }}>
-                No {garmentTab} measurements recorded yet.
-              </Typography>
-              {isStaff && (
-                <Button
-                  variant="contained"
-                  startIcon={<StraightenIcon />}
-                  onClick={() => openMeasurementDialog(garmentTab, null)}
-                  sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
-                >
-                  Add {garmentTab} Measurements
-                </Button>
-              )}
-            </Box>
+            <EmptyState
+              title={`No ${garmentTab} measurements yet`}
+              message={`Record the customer's ${garmentTab} measurements to get started.`}
+              action={
+                isStaff ? (
+                  <Button
+                    variant="contained"
+                    startIcon={<StraightenIcon />}
+                    onClick={() => openMeasurementDialog(garmentTab, null)}
+                  >
+                    Add {garmentTab} Measurements
+                  </Button>
+                ) : undefined
+              }
+            />
           )}
 
           {historyMeasurements.length > 0 && (
@@ -423,10 +313,10 @@ export const CustomerDetail: React.FC = () => {
               </Typography>
               <Stack spacing={1.5}>
                 {historyMeasurements.map((m) => (
-                  <Paper key={m.id} variant="outlined" sx={{ p: 2, borderRadius: '10px' }}>
+                  <Box key={m.id} sx={{ p: 2, borderRadius: '10px', border: '1px solid #E7E0D0', backgroundColor: '#FBF6EA' }}>
                     <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
                       <Chip label={`Version ${m.version}`} size="small" variant="outlined" sx={{ fontWeight: 600 }} />
-                      <Typography variant="caption" sx={{ color: '#94A3B8' }}>
+                      <Typography variant="caption" sx={{ color: 'text.disabled' }}>
                         Recorded {formatDate(m.updated_at)}
                       </Typography>
                     </Stack>
@@ -443,13 +333,13 @@ export const CustomerDetail: React.FC = () => {
                         </Button>
                       </Box>
                     )}
-                  </Paper>
+                  </Box>
                 ))}
               </Stack>
             </Box>
           )}
         </Box>
-      </Paper>
+      </SectionCard>
 
       <CustomerFormDialog
         open={editDialogOpen}
@@ -466,6 +356,19 @@ export const CustomerDetail: React.FC = () => {
         onClose={closeMeasurementDialog}
         submit={handleMeasurementSubmit}
       />
+
+      <ConfirmDialog
+        open={archiveDialogOpen}
+        title="Archive Customer"
+        message={`Archive customer "${displayName}"? The profile is kept and can be restored later.`}
+        confirmLabel="Archive"
+        tone="error"
+        loading={archiveMutation.isPending}
+        onConfirm={handleArchive}
+        onCancel={() => setArchiveDialogOpen(false)}
+      />
     </Box>
   );
 };
+
+export default CustomerDetail;

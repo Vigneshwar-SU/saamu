@@ -1,32 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   Box,
-  Breadcrumbs,
-  Button,
-  Card,
-  CardContent,
-  Chip,
-  CircularProgress,
   FormControl,
   InputLabel,
-  LinearProgress,
-  Link,
   MenuItem,
-  Pagination,
-  Paper,
   Select,
   Stack,
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
   TextField,
   Typography,
 } from '@mui/material';
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiErrors';
@@ -38,35 +25,16 @@ import {
   PAYMENT_TYPE_LABELS,
 } from '../types/finance';
 import type { PaymentMethod, PaymentType } from '../types/finance';
+import { PageHeader } from '../components/ui/PageHeader';
+import { FilterBar } from '../components/ui/FilterBar';
+import { TableCard } from '../components/ui/TableCard';
+import { TableStateRow } from '../components/ui/TableStateRow';
+import { AppPagination } from '../components/ui/AppPagination';
+import { StatCard } from '../components/ui/StatCard';
+import { SectionCard } from '../components/ui/SectionCard';
+import { StatusBadge } from '../components/ui/StatusBadge';
 
 const PAGE_SIZE = 6;
-
-interface StatCardProps {
-  label: string;
-  value: string;
-  sublabel?: string;
-  accent: string;
-}
-
-const StatCard: React.FC<StatCardProps> = ({ label, value, sublabel, accent }) => {
-  return (
-    <Card sx={{ borderRadius: '12px', border: '1px solid #E2E8F0', boxShadow: 'none' }}>
-      <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-        <Typography variant="body2" sx={{ color: '#64748B', fontWeight: 500 }}>
-          {label}
-        </Typography>
-        <Typography variant="h5" sx={{ fontWeight: 700, color: accent }}>
-          {value}
-        </Typography>
-        {sublabel && (
-          <Typography variant="caption" sx={{ color: '#94A3B8' }}>
-            {sublabel}
-          </Typography>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
 
 export const Income: React.FC = () => {
   const [dateFrom, setDateFrom] = useState('');
@@ -94,45 +62,14 @@ export const Income: React.FC = () => {
   const summaryQuery = useIncomeSummary(filterParams);
   const summary = summaryQuery.data;
 
-  const totalPages = data ? Math.max(1, Math.ceil(data.count / PAGE_SIZE)) : 1;
-
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} aria-label="breadcrumb">
-        <Link underline="hover" color="inherit" href="/dashboard" sx={{ fontSize: '0.85rem' }}>
-          Saamu Tailors ERP
-        </Link>
-        <Typography color="text.primary" sx={{ fontSize: '0.85rem', fontWeight: 600 }}>
-          Income
-        </Typography>
-      </Breadcrumbs>
-
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: '12px',
-              backgroundColor: '#EFF6FF',
-              color: '#1E3A8A',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <AccountBalanceWalletIcon />
-          </Box>
-          <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700 }}>
-              Income
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#64748B' }}>
-              Track income from customer payments. Refunds reduce net income.
-            </Typography>
-          </Box>
-        </Box>
-      </Box>
+      <PageHeader
+        title="Income"
+        subtitle="Track income from customer payments. Refunds reduce net income."
+        icon={<AccountBalanceWalletIcon />}
+        crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Income' }]}
+      />
 
       <Box
         sx={{
@@ -145,24 +82,25 @@ export const Income: React.FC = () => {
           label="Total Income"
           value={formatCurrency(summary?.total_income ?? 0)}
           sublabel="Net customer receipts in the selected range"
-          accent="#15803D"
+          icon={<AccountBalanceWalletIcon />}
+          tone="success"
         />
         <StatCard
           label="Payments"
           value={String(summary?.payment_count ?? 0)}
           sublabel="Customer payments in the selected range"
-          accent="#1E3A8A"
+          tone="gold"
         />
         <StatCard
           label="Refunds"
           value={formatCurrency(summary?.total_refunds ?? 0)}
           sublabel={`${summary?.refund_count ?? 0} refund(s) in the selected range`}
-          accent="#B91C1C"
+          tone="error"
         />
       </Box>
 
-      <Paper sx={{ p: 2, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+      <FilterBar>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} flexWrap="wrap">
           <TextField
             label="From"
             type="date"
@@ -212,115 +150,74 @@ export const Income: React.FC = () => {
             </Select>
           </FormControl>
         </Stack>
-      </Paper>
+      </FilterBar>
 
-      <Paper sx={{ borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-        {isFetching && !isLoading && <LinearProgress sx={{ height: 3 }} />}
-        <TableContainer>
-          <Table size="medium">
-            <TableHead>
-              <TableRow sx={{ backgroundColor: '#F8FAFC' }}>
-                <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Method</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Amount</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Customer</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Invoice</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Recorded By</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
-                    <CircularProgress size={28} />
-                  </TableCell>
-                </TableRow>
-              ) : isError ? (
-                <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                    <Alert severity="error" sx={{ display: 'inline-flex' }}>
-                      {getApiErrorMessage(error)}
-                    </Alert>
-                    <Box sx={{ mt: 1.5 }}>
-                      <Button size="small" variant="outlined" onClick={() => refetch()}>
-                        Retry
-                      </Button>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ) : data && data.results.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
-                    <Typography sx={{ color: '#64748B' }}>
-                      No customer payments found.
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                data?.results.map((income) => {
-                  const isRefund = income.payment_type === 'REFUND';
-                  return (
-                    <TableRow
-                      key={income.id}
-                      hover
-                      sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                    >
-                      <TableCell>
-                        <Typography variant="body2">{formatDate(income.payment_date)}</Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={income.payment_type_display}
-                          size="small"
-                          sx={{
-                            fontWeight: 600,
-                            backgroundColor: isRefund ? '#FEE2E2' : '#DCFCE7',
-                            color: isRefund ? '#B91C1C' : '#15803D',
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{income.payment_method_display}</Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography
-                          variant="body2"
-                          sx={{ fontWeight: 600, color: isRefund ? '#B91C1C' : '#15803D' }}
-                        >
-                          {formatCurrency(income.net_amount)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{income.customer_name}</Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{income.invoice_number}</Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{income.recorded_by_name || '-'}</Typography>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+      <TableCard loading={isFetching && !isLoading}>
+        <Table size="medium">
+          <TableHead>
+            <TableRow>
+              <TableCell>Date</TableCell>
+              <TableCell>Type</TableCell>
+              <TableCell>Method</TableCell>
+              <TableCell>Amount</TableCell>
+              <TableCell>Customer</TableCell>
+              <TableCell>Invoice</TableCell>
+              <TableCell>Recorded By</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {isLoading ? (
+              <TableStateRow colSpan={7} state="loading" />
+            ) : isError ? (
+              <TableStateRow
+                colSpan={7}
+                state="error"
+                errorMessage={getApiErrorMessage(error)}
+                onRetry={() => refetch()}
+              />
+            ) : data && data.results.length === 0 ? (
+              <TableStateRow colSpan={7} state="empty" emptyTitle="No customer payments found" />
+            ) : (
+              data?.results.map((income) => {
+                const isRefund = income.payment_type === 'REFUND';
+                return (
+                  <TableRow key={income.id} hover>
+                    <TableCell>
+                      <Typography variant="body2">{formatDate(income.payment_date)}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge label={income.payment_type_display} tone={isRefund ? 'error' : 'success'} />
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">{income.payment_method_display}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography
+                        variant="body2"
+                        sx={{ fontWeight: 600, color: isRefund ? '#8F2F22' : '#1F5C3C' }}
+                      >
+                        {formatCurrency(income.net_amount)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">{income.customer_name}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">{income.invoice_number}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">{income.recorded_by_name || '-'}</Typography>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </TableCard>
 
       {data && data.count > 0 && (
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="body2" sx={{ color: '#64748B' }}>
-            Showing {data.results.length} of {data.count} records
-          </Typography>
-          <Pagination
-            count={totalPages}
-            page={page}
-            onChange={(_event, value) => setPage(value)}
-            color="primary"
-          />
-        </Box>
+        <AppPagination page={page} count={data.count} pageSize={PAGE_SIZE} onChange={setPage} />
       )}
 
       <Box
@@ -330,93 +227,65 @@ export const Income: React.FC = () => {
           gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' },
         }}
       >
-        <Paper sx={{ borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-          <Box
-            sx={{ px: 2, py: 1.5, backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}
-          >
-            <Typography sx={{ fontWeight: 700 }}>Income by Payment Method</Typography>
-          </Box>
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>Method</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Net Income</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Payments</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {summary && summary.by_payment_method.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={3} align="center" sx={{ py: 3 }}>
-                      <Typography variant="body2" sx={{ color: '#64748B' }}>
-                        No payments in the selected range.
-                      </Typography>
+        <SectionCard title="Income by Payment Method" noPadding>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Method</TableCell>
+                <TableCell>Net Income</TableCell>
+                <TableCell>Payments</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {summary && summary.by_payment_method.length === 0 ? (
+                <TableStateRow colSpan={3} state="empty" emptyTitle="No payments in the selected range" />
+              ) : (
+                summary?.by_payment_method.map((row) => (
+                  <TableRow key={row.payment_method}>
+                    <TableCell>{row.payment_method_display}</TableCell>
+                    <TableCell sx={{ fontWeight: 600, color: row.total < 0 ? '#8F2F22' : '#1F5C3C' }}>
+                      {formatCurrency(row.total)}
                     </TableCell>
+                    <TableCell>{row.count}</TableCell>
                   </TableRow>
-                ) : (
-                  summary?.by_payment_method.map((row) => (
-                    <TableRow key={row.payment_method}>
-                      <TableCell>{row.payment_method_display}</TableCell>
-                      <TableCell
-                        sx={{ fontWeight: 600, color: row.total < 0 ? '#B91C1C' : '#15803D' }}
-                      >
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </SectionCard>
+
+        <SectionCard title="Income by Payment Type" noPadding>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Type</TableCell>
+                <TableCell>Net Income</TableCell>
+                <TableCell>Count</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {summary && summary.by_payment_type.length === 0 ? (
+                <TableStateRow colSpan={3} state="empty" emptyTitle="No payments in the selected range" />
+              ) : (
+                summary?.by_payment_type.map((row) => {
+                  const isRefund = row.payment_type === 'REFUND';
+                  return (
+                    <TableRow key={row.payment_type}>
+                      <TableCell>{row.payment_type_display}</TableCell>
+                      <TableCell sx={{ fontWeight: 600, color: isRefund ? '#8F2F22' : '#1F5C3C' }}>
                         {formatCurrency(row.total)}
                       </TableCell>
                       <TableCell>{row.count}</TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
-
-        <Paper sx={{ borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-          <Box
-            sx={{ px: 2, py: 1.5, backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}
-          >
-            <Typography sx={{ fontWeight: 700 }}>Income by Payment Type</Typography>
-          </Box>
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Net Income</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Count</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {summary && summary.by_payment_type.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={3} align="center" sx={{ py: 3 }}>
-                      <Typography variant="body2" sx={{ color: '#64748B' }}>
-                        No payments in the selected range.
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  summary?.by_payment_type.map((row) => {
-                    const isRefund = row.payment_type === 'REFUND';
-                    return (
-                      <TableRow key={row.payment_type}>
-                        <TableCell>{row.payment_type_display}</TableCell>
-                        <TableCell
-                          sx={{ fontWeight: 600, color: isRefund ? '#B91C1C' : '#15803D' }}
-                        >
-                          {formatCurrency(row.total)}
-                        </TableCell>
-                        <TableCell>{row.count}</TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </SectionCard>
       </Box>
     </Box>
   );
 };
+
+export default Income;

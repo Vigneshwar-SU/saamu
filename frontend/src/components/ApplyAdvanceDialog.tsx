@@ -75,12 +75,12 @@ export const ApplyAdvanceDialog: React.FC<ApplyAdvanceDialogProps> = ({
         <Stack spacing={2.5} sx={{ mt: 0.5 }}>
           {submitError && <Alert severity="error">{submitError}</Alert>}
 
-          <Paper sx={{ p: 2, borderRadius: '12px', border: '1px solid #E2E8F0', backgroundColor: '#F8FAFC' }}>
-            <Typography variant="body2" sx={{ color: '#64748B' }}>
+          <Paper sx={{ p: 2, borderRadius: '12px', border: '1px solid #E7E0D0', backgroundColor: '#FBF6EA' }}>
+            <Typography variant="body2" sx={{ color: '#6B6B6B' }}>
               Current outstanding payable:{' '}
-              <strong style={{ color: '#1E3A8A' }}>{formatCurrency(outstandingPayable)}</strong>
+              <strong style={{ color: '#7A5E0C' }}>{formatCurrency(outstandingPayable)}</strong>
             </Typography>
-            <Typography variant="caption" sx={{ color: '#94A3B8' }}>
+            <Typography variant="caption" sx={{ color: '#A29B8E' }}>
               An advance reduces the outstanding payable. It cannot make the balance negative.
             </Typography>
           </Paper>
@@ -127,7 +127,7 @@ export const ApplyAdvanceDialog: React.FC<ApplyAdvanceDialogProps> = ({
           variant="contained"
           disabled={!selectedAdvanceId || submitting || isLoading}
           startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : undefined}
-          sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
+          
         >
           Apply Advance
         </Button>

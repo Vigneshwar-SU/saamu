@@ -2,26 +2,18 @@ import React, { useState } from 'react';
 import {
   Alert,
   Box,
-  Breadcrumbs,
   Button,
-  Card,
-  CardContent,
   Chip,
-  CircularProgress,
   LinearProgress,
-  Link,
-  Paper,
   Stack,
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
   TextField,
   Typography,
 } from '@mui/material';
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
@@ -35,78 +27,16 @@ import { getApiErrorMessage } from '../utils/apiErrors';
 import { downloadBlob } from '../utils/download';
 import { useReportsSummary, useReportExport } from '../hooks/useReports';
 import type { ReportExportFormat } from '../hooks/useReports';
-import {
-  ORDER_STATUSES,
-  ORDER_STATUS_LABELS,
-  ORDER_STATUS_COLORS,
-} from '../types/orders';
-import {
-  EXPENSE_CATEGORY_LABELS,
-  PAYMENT_TYPE_LABELS,
-} from '../types/finance';
+import { ORDER_STATUSES, ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '../types/orders';
+import { EXPENSE_CATEGORY_LABELS, PAYMENT_TYPE_LABELS } from '../types/finance';
 import type { ReportsSummary } from '../types/reports';
-
-interface StatCardProps {
-  label: string;
-  value: string;
-  sublabel?: string;
-  accent: string;
-}
-
-const StatCard: React.FC<StatCardProps> = ({ label, value, sublabel, accent }) => {
-  return (
-    <Card sx={{ borderRadius: '12px', border: '1px solid #E2E8F0', boxShadow: 'none' }}>
-      <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-        <Typography variant="body2" sx={{ color: '#64748B', fontWeight: 500 }}>
-          {label}
-        </Typography>
-        <Typography variant="h5" sx={{ fontWeight: 700, color: accent }}>
-          {value}
-        </Typography>
-        {sublabel && (
-          <Typography variant="caption" sx={{ color: '#94A3B8' }}>
-            {sublabel}
-          </Typography>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
-
-interface SectionCardProps {
-  title: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}
-
-const SectionCard: React.FC<SectionCardProps> = ({ title, icon, children }) => {
-  return (
-    <Paper
-      sx={{
-        borderRadius: '12px',
-        border: '1px solid #E2E8F0',
-        overflow: 'hidden',
-        backgroundColor: '#FFFFFF',
-      }}
-    >
-      <Box
-        sx={{
-          px: 2,
-          py: 1.5,
-          backgroundColor: '#F8FAFC',
-          borderBottom: '1px solid #E2E8F0',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-        }}
-      >
-        <Box sx={{ color: '#1E3A8A', display: 'flex' }}>{icon}</Box>
-        <Typography sx={{ fontWeight: 700 }}>{title}</Typography>
-      </Box>
-      {children}
-    </Paper>
-  );
-};
+import { PageHeader } from '../components/ui/PageHeader';
+import { FilterBar } from '../components/ui/FilterBar';
+import { StatCard } from '../components/ui/StatCard';
+import { SectionCard } from '../components/ui/SectionCard';
+import { TableCard } from '../components/ui/TableCard';
+import { TableStateRow } from '../components/ui/TableStateRow';
+import { ErrorState } from '../components/ui/ErrorState';
 
 const emptySummary: ReportsSummary = {
   success: true,
@@ -126,7 +56,15 @@ const emptySummary: ReportsSummary = {
     garment_quantities: {},
   },
   customers: { active_customers: 0, new_customers: 0, customers_with_orders: 0 },
-  tailors: { active_tailors: 0, workload: { assigned_quantity: 0, completed_quantity: 0, outstanding_quantity: 0, earned_amount: 0 } },
+  tailors: {
+    active_tailors: 0,
+    workload: {
+      assigned_quantity: 0,
+      completed_quantity: 0,
+      outstanding_quantity: 0,
+      earned_amount: 0,
+    },
+  },
   financial: {
     income: {
       total_income: 0,
@@ -160,14 +98,7 @@ export const Reports: React.FC = () => {
     date_to: appliedTo || undefined,
   };
 
-  const {
-    data,
-    isLoading,
-    isError,
-    error,
-    isFetching,
-    refetch,
-  } = useReportsSummary(filterParams);
+  const { data, isLoading, isError, error, isFetching, refetch } = useReportsSummary(filterParams);
 
   const summary = data ?? emptySummary;
 
@@ -206,44 +137,15 @@ export const Reports: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} aria-label="breadcrumb">
-        <Link underline="hover" color="inherit" href="/dashboard" sx={{ fontSize: '0.85rem' }}>
-          Saamu Tailors ERP
-        </Link>
-        <Typography color="text.primary" sx={{ fontSize: '0.85rem', fontWeight: 600 }}>
-          Reports
-        </Typography>
-      </Breadcrumbs>
+      <PageHeader
+        title="Reports"
+        subtitle="Business insights across orders, customers, tailor workload, and finances."
+        icon={<BarChartIcon />}
+        crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Reports' }]}
+      />
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: '12px',
-              backgroundColor: '#EFF6FF',
-              color: '#1E3A8A',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <BarChartIcon />
-          </Box>
-          <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700 }}>
-              Reports
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#64748B' }}>
-              Business insights across orders, customers, tailor workload, and finances.
-            </Typography>
-          </Box>
-        </Box>
-      </Box>
-
-      <Paper sx={{ p: 2, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+      <FilterBar>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center" flexWrap="wrap">
           <TextField
             label="From"
             type="date"
@@ -260,25 +162,15 @@ export const Reports: React.FC = () => {
             size="small"
             InputLabelProps={{ shrink: true }}
           />
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={applyFilters}
-            disabled={isFetching}
-          >
+          <Button variant="contained" onClick={applyFilters} disabled={isFetching}>
             Apply
           </Button>
-          <Button
-            variant="outlined"
-            onClick={resetFilters}
-            disabled={isFetching || (!appliedFrom && !appliedTo)}
-          >
+          <Button variant="outlined" onClick={resetFilters} disabled={isFetching || (!appliedFrom && !appliedTo)}>
             Reset
           </Button>
           <Box sx={{ flexGrow: 1 }} />
           <Button
-            variant="contained"
-            color="secondary"
+            variant="outlined"
             startIcon={<FileDownloadIcon />}
             onClick={() => handleExport('csv')}
             disabled={exportMutation.isPending}
@@ -286,8 +178,7 @@ export const Reports: React.FC = () => {
             {exportMutation.isPending ? 'Exporting…' : 'Export CSV'}
           </Button>
           <Button
-            variant="contained"
-            color="secondary"
+            variant="outlined"
             startIcon={<PictureAsPdfIcon />}
             onClick={() => handleExport('pdf')}
             disabled={exportMutation.isPending}
@@ -306,33 +197,22 @@ export const Reports: React.FC = () => {
           )}
         </Stack>
         {exportError && (
-          <Alert
-            severity="error"
-            onClose={() => setExportError(null)}
-            sx={{ mt: 2 }}
-          >
+          <Alert severity="error" onClose={() => setExportError(null)} sx={{ mt: 2 }}>
             Export failed: {exportError}
           </Alert>
         )}
-      </Paper>
+      </FilterBar>
 
       {isFetching && !isLoading && <LinearProgress sx={{ height: 3 }} />}
 
       {isLoading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-          <CircularProgress size={32} />
-        </Box>
+        <FilterBar sx={{ py: 8, textAlign: 'center' }}>
+          <Typography color="text.secondary">Loading reports…</Typography>
+        </FilterBar>
       ) : isError ? (
-        <Paper sx={{ p: 4, textAlign: 'center', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-          <Alert severity="error" sx={{ display: 'inline-flex' }}>
-            {getApiErrorMessage(error)}
-          </Alert>
-          <Box sx={{ mt: 2 }}>
-            <Button size="small" variant="outlined" onClick={() => refetch()}>
-              Retry
-            </Button>
-          </Box>
-        </Paper>
+        <FilterBar>
+          <ErrorState message={getApiErrorMessage(error)} onRetry={() => refetch()} />
+        </FilterBar>
       ) : (
         <>
           <Box
@@ -346,25 +226,25 @@ export const Reports: React.FC = () => {
               label="Net Position"
               value={formatCurrency(netPosition)}
               sublabel="Income minus expenses in the selected range"
-              accent={netPosition < 0 ? '#B91C1C' : '#15803D'}
+              tone={netPosition < 0 ? 'error' : 'success'}
             />
             <StatCard
               label="Income"
               value={formatCurrency(summary.financial.income.total_income)}
               sublabel={`${summary.financial.income.payment_count} payment(s), ${summary.financial.income.refund_count} refund(s)`}
-              accent="#1E3A8A"
+              tone="gold"
             />
             <StatCard
               label="Expenses"
               value={formatCurrency(summary.financial.expenses.total_expenses)}
               sublabel={`${summary.financial.expenses.expense_count} expense(s)`}
-              accent="#B91C1C"
+              tone="error"
             />
             <StatCard
               label="Order Revenue"
               value={formatCurrency(summary.financial.order_revenue)}
               sublabel="Billed value of orders placed"
-              accent="#7C3AED"
+              tone="info"
             />
           </Box>
 
@@ -376,15 +256,15 @@ export const Reports: React.FC = () => {
             }}
           >
             <SectionCard title="Orders" icon={<ShoppingBagIcon />}>
-              <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Stack spacing={2}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2" sx={{ color: '#64748B' }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     Total orders
                   </Typography>
                   <Typography sx={{ fontWeight: 700 }}>{summary.orders.total}</Typography>
                 </Box>
                 <Box>
-                  <Typography variant="body2" sx={{ color: '#64748B', mb: 1 }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1 }}>
                     Status distribution
                   </Typography>
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -397,23 +277,19 @@ export const Reports: React.FC = () => {
                           key={status}
                           label={`${ORDER_STATUS_LABELS[status]}: ${count}`}
                           size="small"
-                          sx={{
-                            fontWeight: 600,
-                            backgroundColor: color.bg,
-                            color: color.text,
-                          }}
+                          sx={{ fontWeight: 600, backgroundColor: color.bg, color: color.text }}
                         />
                       );
                     })}
                     {summary.orders.total === 0 && (
-                      <Typography variant="body2" sx={{ color: '#94A3B8' }}>
+                      <Typography variant="body2" sx={{ color: 'text.disabled' }}>
                         No orders in the selected range.
                       </Typography>
                     )}
                   </Stack>
                 </Box>
                 <Box>
-                  <Typography variant="body2" sx={{ color: '#64748B', mb: 1 }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1 }}>
                     Garment quantities
                   </Typography>
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -428,83 +304,77 @@ export const Reports: React.FC = () => {
                     ))}
                   </Stack>
                 </Box>
-              </CardContent>
+              </Stack>
             </SectionCard>
 
             <SectionCard title="Customers" icon={<GroupsIcon />}>
-              <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Stack spacing={1.25}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2" sx={{ color: '#64748B' }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     Active customers
                   </Typography>
-                  <Typography sx={{ fontWeight: 700 }}>
-                    {summary.customers.active_customers}
-                  </Typography>
+                  <Typography sx={{ fontWeight: 700 }}>{summary.customers.active_customers}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2" sx={{ color: '#64748B' }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     New customers in range
                   </Typography>
                   <Typography sx={{ fontWeight: 700 }}>{summary.customers.new_customers}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2" sx={{ color: '#64748B' }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     Customers with orders in range
                   </Typography>
-                  <Typography sx={{ fontWeight: 700 }}>
-                    {summary.customers.customers_with_orders}
-                  </Typography>
+                  <Typography sx={{ fontWeight: 700 }}>{summary.customers.customers_with_orders}</Typography>
                 </Box>
-              </CardContent>
+              </Stack>
             </SectionCard>
 
             <SectionCard title="Tailor Workload" icon={<HandymanIcon />}>
-              <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Stack spacing={1.25}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2" sx={{ color: '#64748B' }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     Active tailors
                   </Typography>
                   <Typography sx={{ fontWeight: 700 }}>{summary.tailors.active_tailors}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2" sx={{ color: '#64748B' }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     Assigned pieces
                   </Typography>
-                  <Typography sx={{ fontWeight: 700 }}>
-                    {summary.tailors.workload.assigned_quantity}
-                  </Typography>
+                  <Typography sx={{ fontWeight: 700 }}>{summary.tailors.workload.assigned_quantity}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2" sx={{ color: '#64748B' }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     Completed pieces
                   </Typography>
-                  <Typography sx={{ fontWeight: 700, color: '#15803D' }}>
+                  <Typography sx={{ fontWeight: 700, color: '#1F5C3C' }}>
                     {summary.tailors.workload.completed_quantity}
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2" sx={{ color: '#64748B' }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     Outstanding pieces
                   </Typography>
-                  <Typography sx={{ fontWeight: 700, color: '#B45309' }}>
+                  <Typography sx={{ fontWeight: 700, color: '#8F4A00' }}>
                     {summary.tailors.workload.outstanding_quantity}
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2" sx={{ color: '#64748B' }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     Earnings earned
                   </Typography>
                   <Typography sx={{ fontWeight: 700 }}>
                     {formatCurrency(summary.tailors.workload.earned_amount)}
                   </Typography>
                 </Box>
-              </CardContent>
+              </Stack>
             </SectionCard>
 
             <SectionCard title="Payroll & Settlements" icon={<AccountBalanceWalletIcon />}>
-              <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Stack spacing={1.25}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2" sx={{ color: '#64748B' }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     Payroll paid in range
                   </Typography>
                   <Typography sx={{ fontWeight: 700 }}>
@@ -512,14 +382,14 @@ export const Reports: React.FC = () => {
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2" sx={{ color: '#64748B' }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     Salary advances in range
                   </Typography>
                   <Typography sx={{ fontWeight: 700 }}>
                     {formatCurrency(summary.financial.salary_advances)}
                   </Typography>
                 </Box>
-              </CardContent>
+              </Stack>
             </SectionCard>
           </Box>
 
@@ -530,34 +400,26 @@ export const Reports: React.FC = () => {
               gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' },
             }}
           >
-            <SectionCard title="Income by Payment Type" icon={<TrendingUpIcon />}>
-              <TableContainer>
+            <SectionCard title="Income by Payment Type" icon={<TrendingUpIcon />} noPadding>
+              <TableCard sx={{ border: 'none', borderRadius: 0 }}>
                 <Table size="small">
                   <TableHead>
                     <TableRow>
-                      <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>Net Income</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>Count</TableCell>
+                      <TableCell>Type</TableCell>
+                      <TableCell>Net Income</TableCell>
+                      <TableCell>Count</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {summary.financial.income.by_payment_type.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={3} align="center" sx={{ py: 3 }}>
-                          <Typography variant="body2" sx={{ color: '#64748B' }}>
-                            No payments in the selected range.
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
+                      <TableStateRow colSpan={3} state="empty" emptyTitle="No payments in the selected range" />
                     ) : (
                       summary.financial.income.by_payment_type.map((row) => {
                         const isRefund = row.payment_type === 'REFUND';
                         return (
                           <TableRow key={row.payment_type}>
                             <TableCell>{PAYMENT_TYPE_LABELS[row.payment_type]}</TableCell>
-                            <TableCell
-                              sx={{ fontWeight: 600, color: isRefund ? '#B91C1C' : '#15803D' }}
-                            >
+                            <TableCell sx={{ fontWeight: 600, color: isRefund ? '#8F2F22' : '#1F5C3C' }}>
                               {formatCurrency(row.total)}
                             </TableCell>
                             <TableCell>{row.count}</TableCell>
@@ -567,33 +429,27 @@ export const Reports: React.FC = () => {
                     )}
                   </TableBody>
                 </Table>
-              </TableContainer>
+              </TableCard>
             </SectionCard>
 
-            <SectionCard title="Expenses by Category" icon={<AccountBalanceWalletIcon />}>
-              <TableContainer>
+            <SectionCard title="Expenses by Category" icon={<AccountBalanceWalletIcon />} noPadding>
+              <TableCard sx={{ border: 'none', borderRadius: 0 }}>
                 <Table size="small">
                   <TableHead>
                     <TableRow>
-                      <TableCell sx={{ fontWeight: 700 }}>Category</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>Total</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>Count</TableCell>
+                      <TableCell>Category</TableCell>
+                      <TableCell>Total</TableCell>
+                      <TableCell>Count</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {summary.financial.expenses.by_category.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={3} align="center" sx={{ py: 3 }}>
-                          <Typography variant="body2" sx={{ color: '#64748B' }}>
-                            No expenses in the selected range.
-                          </Typography>
-                        </TableCell>
-                      </TableRow>
+                      <TableStateRow colSpan={3} state="empty" emptyTitle="No expenses in the selected range" />
                     ) : (
                       summary.financial.expenses.by_category.map((row) => (
                         <TableRow key={row.category}>
                           <TableCell>{EXPENSE_CATEGORY_LABELS[row.category]}</TableCell>
-                          <TableCell sx={{ fontWeight: 600, color: '#B91C1C' }}>
+                          <TableCell sx={{ fontWeight: 600, color: '#8F2F22' }}>
                             {formatCurrency(row.total)}
                           </TableCell>
                           <TableCell>{row.count}</TableCell>
@@ -602,7 +458,7 @@ export const Reports: React.FC = () => {
                     )}
                   </TableBody>
                 </Table>
-              </TableContainer>
+              </TableCard>
             </SectionCard>
           </Box>
         </>
@@ -610,3 +466,5 @@ export const Reports: React.FC = () => {
     </Box>
   );
 };
+
+export default Reports;

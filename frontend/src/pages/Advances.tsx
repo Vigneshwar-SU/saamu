@@ -1,30 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   Box,
-  Breadcrumbs,
   Button,
-  Chip,
-  CircularProgress,
   FormControl,
   InputLabel,
-  LinearProgress,
-  Link,
   MenuItem,
-  Pagination,
-  Paper,
   Select,
   Stack,
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
   TextField,
   Typography,
 } from '@mui/material';
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import AddCardIcon from '@mui/icons-material/AddCard';
 import { useAuth } from '../context/useAuth';
@@ -34,11 +24,16 @@ import { AddAdvanceDialog } from '../components/AddAdvanceDialog';
 import { useAdvanceList, useCreateAdvance } from '../hooks/useAdvances';
 import { useTailorList } from '../hooks/useTailors';
 import {
-  ADVANCE_STATUS_COLORS,
   ADVANCE_STATUS_LABELS,
   ADVANCE_STATUSES,
 } from '../types/advances';
 import type { AdvancePayload, AdvanceStatus } from '../types/advances';
+import { PageHeader } from '../components/ui/PageHeader';
+import { FilterBar } from '../components/ui/FilterBar';
+import { TableCard } from '../components/ui/TableCard';
+import { TableStateRow } from '../components/ui/TableStateRow';
+import { AppPagination } from '../components/ui/AppPagination';
+import { StatusBadge } from '../components/ui/StatusBadge';
 
 const PAGE_SIZE = 6;
 
@@ -70,60 +65,26 @@ export const Advances: React.FC = () => {
 
   const createMutation = useCreateAdvance();
 
-  const totalPages = data ? Math.max(1, Math.ceil(data.count / PAGE_SIZE)) : 1;
-
   const handleCreate = (payload: AdvancePayload) => createMutation.mutateAsync(payload);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} aria-label="breadcrumb">
-        <Link underline="hover" color="inherit" href="/dashboard" sx={{ fontSize: '0.85rem' }}>
-          Saamu Tailors ERP
-        </Link>
-        <Typography color="text.primary" sx={{ fontSize: '0.85rem', fontWeight: 600 }}>
-          Advances
-        </Typography>
-      </Breadcrumbs>
+      <PageHeader
+        title="Advances"
+        subtitle="Track tailor salary advances and deductions."
+        icon={<AccountBalanceWalletIcon />}
+        crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Advances' }]}
+        actions={
+          isStaff && (
+            <Button variant="contained" startIcon={<AddCardIcon />} onClick={() => setDialogOpen(true)}>
+              Add Advance
+            </Button>
+          )
+        }
+      />
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: '12px',
-              backgroundColor: '#EFF6FF',
-              color: '#1E3A8A',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <AccountBalanceWalletIcon />
-          </Box>
-          <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700 }}>
-              Advances
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#64748B' }}>
-              Track tailor salary advances and deductions.
-            </Typography>
-          </Box>
-        </Box>
-        {isStaff && (
-          <Button
-            variant="contained"
-            startIcon={<AddCardIcon />}
-            onClick={() => setDialogOpen(true)}
-            sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
-          >
-            Add Advance
-          </Button>
-        )}
-      </Box>
-
-      <Paper sx={{ p: 2, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+      <FilterBar>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} flexWrap="wrap">
           <TextField
             label="From"
             type="date"
@@ -172,103 +133,72 @@ export const Advances: React.FC = () => {
             </Select>
           </FormControl>
         </Stack>
-      </Paper>
+      </FilterBar>
 
-      <Paper sx={{ borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-        {isFetching && !isLoading && <LinearProgress sx={{ height: 3 }} />}
-        <TableContainer>
-          <Table size="medium">
-            <TableHead>
-              <TableRow sx={{ backgroundColor: '#F8FAFC' }}>
-                <TableCell sx={{ fontWeight: 700 }}>Tailor</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Amount</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Notes</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Recorded By</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
-                    <CircularProgress size={28} />
+      <TableCard loading={isFetching && !isLoading}>
+        <Table size="medium">
+          <TableHead>
+            <TableRow>
+              <TableCell>Tailor</TableCell>
+              <TableCell>Amount</TableCell>
+              <TableCell>Date</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Notes</TableCell>
+              <TableCell>Recorded By</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {isLoading ? (
+              <TableStateRow colSpan={6} state="loading" />
+            ) : isError ? (
+              <TableStateRow
+                colSpan={6}
+                state="error"
+                errorMessage={getApiErrorMessage(error)}
+                onRetry={() => refetch()}
+              />
+            ) : data && data.results.length === 0 ? (
+              <TableStateRow colSpan={6} state="empty" emptyTitle="No advances found" />
+            ) : (
+              data?.results.map((advance) => (
+                <TableRow key={advance.id} hover>
+                  <TableCell>
+                    <Typography sx={{ fontWeight: 600 }}>{advance.tailor.name}</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+                      #{advance.tailor.id}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {formatCurrency(advance.amount)}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{formatDate(advance.advance_date)}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge
+                      label={ADVANCE_STATUS_LABELS[advance.status]}
+                      tone={advance.status === 'OUTSTANDING' ? 'warning' : 'neutral'}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ maxWidth: 260 }}>
+                      {advance.notes || '-'}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{advance.recorded_by_name || '-'}</Typography>
                   </TableCell>
                 </TableRow>
-              ) : isError ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                    <Alert severity="error" sx={{ display: 'inline-flex' }}>
-                      {getApiErrorMessage(error)}
-                    </Alert>
-                    <Box sx={{ mt: 1.5 }}>
-                      <Button size="small" variant="outlined" onClick={() => refetch()}>
-                        Retry
-                      </Button>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ) : data && data.results.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
-                    <Typography sx={{ color: '#64748B' }}>No advances found.</Typography>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                data?.results.map((advance) => {
-                  const colors = ADVANCE_STATUS_COLORS[advance.status];
-                  return (
-                    <TableRow key={advance.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                      <TableCell>
-                        <Typography sx={{ fontWeight: 600 }}>{advance.tailor.name}</Typography>
-                        <Typography variant="caption" sx={{ color: '#94A3B8' }}>
-                          #{advance.tailor.id}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {formatCurrency(advance.amount)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{formatDate(advance.advance_date)}</Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={ADVANCE_STATUS_LABELS[advance.status]}
-                          size="small"
-                          sx={{ fontWeight: 600, backgroundColor: colors.bg, color: colors.text }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ maxWidth: 260 }}>
-                          {advance.notes || '-'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{advance.recorded_by_name || '-'}</Typography>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </TableCard>
 
       {data && data.count > 0 && (
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="body2" sx={{ color: '#64748B' }}>
-            Showing {data.results.length} of {data.count} records
-          </Typography>
-          <Pagination
-            count={totalPages}
-            page={page}
-            onChange={(_event, value) => setPage(value)}
-            color="primary"
-          />
-        </Box>
+        <AppPagination page={page} count={data.count} pageSize={PAGE_SIZE} onChange={setPage} />
       )}
 
       <AddAdvanceDialog
@@ -279,3 +209,5 @@ export const Advances: React.FC = () => {
     </Box>
   );
 };
+
+export default Advances;

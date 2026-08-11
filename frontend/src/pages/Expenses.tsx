@@ -1,32 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   Box,
-  Breadcrumbs,
   Button,
-  Card,
-  CardContent,
-  Chip,
-  CircularProgress,
   FormControl,
   InputLabel,
-  LinearProgress,
-  Link,
   MenuItem,
-  Pagination,
-  Paper,
   Select,
   Stack,
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
   TextField,
   Typography,
 } from '@mui/material';
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import AddCardIcon from '@mui/icons-material/AddCard';
 import { useAuth } from '../context/useAuth';
@@ -41,35 +29,15 @@ import {
   PAYMENT_METHOD_LABELS,
 } from '../types/finance';
 import type { ExpenseCategory, ExpensePayload, PaymentMethod } from '../types/finance';
+import { PageHeader } from '../components/ui/PageHeader';
+import { FilterBar } from '../components/ui/FilterBar';
+import { TableCard } from '../components/ui/TableCard';
+import { TableStateRow } from '../components/ui/TableStateRow';
+import { AppPagination } from '../components/ui/AppPagination';
+import { StatCard } from '../components/ui/StatCard';
+import { StatusBadge } from '../components/ui/StatusBadge';
 
 const PAGE_SIZE = 6;
-
-interface StatCardProps {
-  label: string;
-  value: string;
-  sublabel?: string;
-  accent: string;
-}
-
-const StatCard: React.FC<StatCardProps> = ({ label, value, sublabel, accent }) => {
-  return (
-    <Card sx={{ borderRadius: '12px', border: '1px solid #E2E8F0', boxShadow: 'none' }}>
-      <CardContent sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-        <Typography variant="body2" sx={{ color: '#64748B', fontWeight: 500 }}>
-          {label}
-        </Typography>
-        <Typography variant="h5" sx={{ fontWeight: 700, color: accent }}>
-          {value}
-        </Typography>
-        {sublabel && (
-          <Typography variant="caption" sx={{ color: '#94A3B8' }}>
-            {sublabel}
-          </Typography>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
 
 export const Expenses: React.FC = () => {
   const { role } = useAuth();
@@ -102,57 +70,23 @@ export const Expenses: React.FC = () => {
 
   const createMutation = useCreateExpense();
 
-  const totalPages = data ? Math.max(1, Math.ceil(data.count / PAGE_SIZE)) : 1;
-
   const handleCreate = (payload: ExpensePayload) => createMutation.mutateAsync(payload);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} aria-label="breadcrumb">
-        <Link underline="hover" color="inherit" href="/dashboard" sx={{ fontSize: '0.85rem' }}>
-          Saamu Tailors ERP
-        </Link>
-        <Typography color="text.primary" sx={{ fontSize: '0.85rem', fontWeight: 600 }}>
-          Expenses
-        </Typography>
-      </Breadcrumbs>
-
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: '12px',
-              backgroundColor: '#EFF6FF',
-              color: '#1E3A8A',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <ReceiptLongIcon />
-          </Box>
-          <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700 }}>
-              Expenses
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#64748B' }}>
-              Record and track shop expenses.
-            </Typography>
-          </Box>
-        </Box>
-        {isStaff && (
-          <Button
-            variant="contained"
-            startIcon={<AddCardIcon />}
-            onClick={() => setDialogOpen(true)}
-            sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
-          >
-            Add Expense
-          </Button>
-        )}
-      </Box>
+      <PageHeader
+        title="Expenses"
+        subtitle="Record and track shop expenses."
+        icon={<ReceiptLongIcon />}
+        crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Expenses' }]}
+        actions={
+          isStaff && (
+            <Button variant="contained" startIcon={<AddCardIcon />} onClick={() => setDialogOpen(true)}>
+              Add Expense
+            </Button>
+          )
+        }
+      />
 
       <Box
         sx={{
@@ -165,13 +99,14 @@ export const Expenses: React.FC = () => {
           label="Total Expenses"
           value={formatCurrency(summaryQuery.data?.total_expenses ?? 0)}
           sublabel="Sum of expenses in the selected range"
-          accent="#B91C1C"
+          icon={<ReceiptLongIcon />}
+          tone="error"
         />
         <StatCard
           label="Expense Count"
           value={String(summaryQuery.data?.expense_count ?? 0)}
           sublabel="Records in the selected range"
-          accent="#1E3A8A"
+          tone="gold"
         />
         <StatCard
           label="Largest Category"
@@ -183,12 +118,12 @@ export const Expenses: React.FC = () => {
               : '-'
           }
           sublabel="Top expense category in the selected range"
-          accent="#0F766E"
+          tone="info"
         />
       </Box>
 
-      <Paper sx={{ p: 2, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+      <FilterBar>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} flexWrap="wrap">
           <TextField
             label="From"
             type="date"
@@ -238,101 +173,70 @@ export const Expenses: React.FC = () => {
             </Select>
           </FormControl>
         </Stack>
-      </Paper>
+      </FilterBar>
 
-      <Paper sx={{ borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-        {isFetching && !isLoading && <LinearProgress sx={{ height: 3 }} />}
-        <TableContainer>
-          <Table size="medium">
-            <TableHead>
-              <TableRow sx={{ backgroundColor: '#F8FAFC' }}>
-                <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Category</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Amount</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Payment Method</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Reference</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Description</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Recorded By</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
-                    <CircularProgress size={28} />
+      <TableCard loading={isFetching && !isLoading}>
+        <Table size="medium">
+          <TableHead>
+            <TableRow>
+              <TableCell>Date</TableCell>
+              <TableCell>Category</TableCell>
+              <TableCell>Amount</TableCell>
+              <TableCell>Payment Method</TableCell>
+              <TableCell>Reference</TableCell>
+              <TableCell>Description</TableCell>
+              <TableCell>Recorded By</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {isLoading ? (
+              <TableStateRow colSpan={7} state="loading" />
+            ) : isError ? (
+              <TableStateRow
+                colSpan={7}
+                state="error"
+                errorMessage={getApiErrorMessage(error)}
+                onRetry={() => refetch()}
+              />
+            ) : data && data.results.length === 0 ? (
+              <TableStateRow colSpan={7} state="empty" emptyTitle="No expense records found" />
+            ) : (
+              data?.results.map((expense) => (
+                <TableRow key={expense.id} hover>
+                  <TableCell>
+                    <Typography variant="body2">{formatDate(expense.expense_date)}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge label={expense.category_display} tone="neutral" />
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {formatCurrency(expense.amount)}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{expense.payment_method_display}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{expense.reference || '-'}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ maxWidth: 260 }}>
+                      {expense.description || '-'}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{expense.recorded_by_name || '-'}</Typography>
                   </TableCell>
                 </TableRow>
-              ) : isError ? (
-                <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                    <Alert severity="error" sx={{ display: 'inline-flex' }}>
-                      {getApiErrorMessage(error)}
-                    </Alert>
-                    <Box sx={{ mt: 1.5 }}>
-                      <Button size="small" variant="outlined" onClick={() => refetch()}>
-                        Retry
-                      </Button>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ) : data && data.results.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
-                    <Typography sx={{ color: '#64748B' }}>No expense records found.</Typography>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                data?.results.map((expense) => (
-                  <TableRow key={expense.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                    <TableCell>
-                      <Typography variant="body2">{formatDate(expense.expense_date)}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={expense.category_display}
-                        size="small"
-                        sx={{ fontWeight: 600, backgroundColor: '#FEE2E2', color: '#B91C1C' }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {formatCurrency(expense.amount)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{expense.payment_method_display}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{expense.reference || '-'}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ maxWidth: 260 }}>
-                        {expense.description || '-'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{expense.recorded_by_name || '-'}</Typography>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </TableCard>
 
       {data && data.count > 0 && (
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="body2" sx={{ color: '#64748B' }}>
-            Showing {data.results.length} of {data.count} records
-          </Typography>
-          <Pagination
-            count={totalPages}
-            page={page}
-            onChange={(_event, value) => setPage(value)}
-            color="primary"
-          />
-        </Box>
+        <AppPagination page={page} count={data.count} pageSize={PAGE_SIZE} onChange={setPage} />
       )}
 
       <ExpenseFormDialog
@@ -343,3 +247,5 @@ export const Expenses: React.FC = () => {
     </Box>
   );
 };
+
+export default Expenses;

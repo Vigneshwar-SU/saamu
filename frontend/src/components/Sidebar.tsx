@@ -1,20 +1,22 @@
 import React from 'react';
 import {
+  Box,
+  Divider,
   Drawer,
   List,
   ListItem,
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Box,
   Typography,
-  Divider,
   useMediaQuery,
 } from '@mui/material';
 import type { Theme } from '@mui/material/styles';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { SIDEBAR_ITEMS } from '../constants/navigation';
+import { NAV_GROUPS, SIDEBAR_ITEMS } from '../constants/navigation';
 import { useAuth } from '../context/useAuth';
+import { BrandMark } from './ui/BrandMark';
+import type { NavItem } from '../types/navigation';
 
 interface SidebarProps {
   open: boolean;
@@ -22,93 +24,168 @@ interface SidebarProps {
   drawerWidth?: number;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ open, onClose, drawerWidth = 260 }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ open, onClose, drawerWidth = 272 }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('md'));
 
   const visibleItems = SIDEBAR_ITEMS.filter(
     (item) => !item.roles || (role != null && item.roles.includes(role))
   );
 
+  const isActive = (item: NavItem) =>
+    location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
+
   const handleNavigate = (path: string) => {
     navigate(path);
+    if (isMobile) onClose();
   };
 
   const drawerContent = (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', py: 2 }}>
-      <Box sx={{ px: 3, pb: 2 }}>
-        <Typography
-          variant="caption"
-          sx={{
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            color: '#94A3B8',
-            fontSize: '0.7rem',
-          }}
-        >
-          Navigation Menu
-        </Typography>
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        backgroundColor: '#FFFFFF',
+      }}
+    >
+      {/* Brand */}
+      <Box sx={{ px: 2.5, py: 2.25, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        <BrandMark size={42} />
+        <Box sx={{ minWidth: 0 }}>
+          <Typography
+            sx={{
+              fontWeight: 800,
+              fontSize: '1.05rem',
+              lineHeight: 1.2,
+              color: '#242424',
+              letterSpacing: '-0.01em',
+            }}
+          >
+            Saamu Tailors
+          </Typography>
+          <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1 }}>
+            Management System
+          </Typography>
+        </Box>
       </Box>
 
-      <List sx={{ flexGrow: 1, px: 1.5, py: 0 }}>
-        {visibleItems.map((item) => {
-          const isActive = location.pathname === item.path;
+      <Divider sx={{ mx: 2.5 }} />
+
+      {/* Navigation */}
+      <Box sx={{ flexGrow: 1, overflowY: 'auto', py: 1.5 }}>
+        {NAV_GROUPS.map((group) => {
+          const groupItems = visibleItems.filter((item) => item.group?.id === group.id);
+          if (groupItems.length === 0) return null;
           return (
-            <ListItem key={item.id} disablePadding sx={{ mb: 0.5 }}>
-              <ListItemButton
-                onClick={() => handleNavigate(item.path)}
-                selected={isActive}
+            <Box key={group.id} sx={{ px: 1.5, mb: 0.5 }}>
+              <Typography
+                variant="caption"
                 sx={{
-                  borderRadius: '10px',
-                  py: 1.2,
-                  px: 2,
-                  color: isActive ? '#1E3A8A' : '#475569',
-                  backgroundColor: isActive ? '#EFF6FF' : 'transparent',
-                  fontWeight: isActive ? 600 : 400,
-                  '&.Mui-selected': {
-                    backgroundColor: '#EFF6FF',
-                    color: '#1E3A8A',
-                    '&:hover': {
-                      backgroundColor: '#DBEAFE',
-                    },
-                  },
-                  '&:hover': {
-                    backgroundColor: '#F1F5F9',
-                  },
+                  px: 1.5,
+                  pt: 1,
+                  pb: 0.5,
+                  display: 'block',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  color: '#A29B8E',
+                  fontSize: '0.68rem',
                 }}
               >
-                <ListItemIcon
-                  sx={{
-                    minWidth: 40,
-                    color: isActive ? '#1E3A8A' : '#64748B',
-                  }}
-                >
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText
-                  primary={item.title}
-                  primaryTypographyProps={{
-                    fontSize: '0.9rem',
-                    fontWeight: isActive ? 600 : 500,
-                  }}
-                />
-              </ListItemButton>
-            </ListItem>
+                {group.label}
+              </Typography>
+              <List sx={{ py: 0 }}>
+                {groupItems.map((item) => {
+                  const active = isActive(item);
+                  return (
+                    <ListItem key={item.id} disablePadding sx={{ mb: 0.25 }}>
+                      <ListItemButton
+                        onClick={() => handleNavigate(item.path)}
+                        selected={active}
+                        sx={{
+                          borderRadius: '10px',
+                          py: 1.05,
+                          px: 1.75,
+                          color: active ? '#7A5E0C' : '#5A5448',
+                          fontWeight: active ? 600 : 500,
+                          position: 'relative',
+                          '&::before': {
+                            content: '""',
+                            position: 'absolute',
+                            left: 0,
+                            top: '22%',
+                            bottom: '22%',
+                            width: 3,
+                            borderRadius: 2,
+                            backgroundColor: active ? '#A98216' : 'transparent',
+                          },
+                          '&.Mui-selected': {
+                            backgroundColor: '#F5EBD2',
+                            '&:hover': {
+                              backgroundColor: '#E8D79A',
+                            },
+                          },
+                          '&:hover': {
+                            backgroundColor: '#FBF6EA',
+                          },
+                        }}
+                      >
+                        <ListItemIcon
+                          sx={{
+                            minWidth: 38,
+                            color: active ? '#A98216' : '#8A7E66',
+                          }}
+                        >
+                          {item.icon}
+                        </ListItemIcon>
+                        <ListItemText
+                          primary={item.title}
+                          primaryTypographyProps={{
+                            fontSize: '0.9rem',
+                            fontWeight: active ? 600 : 500,
+                          }}
+                        />
+                        {item.badge && (
+                          <Box
+                            component="span"
+                            sx={{
+                              minWidth: 22,
+                              height: 22,
+                              px: 0.75,
+                              borderRadius: '8px',
+                              backgroundColor: '#C9A227',
+                              color: '#FFFFFF',
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            {item.badge}
+                          </Box>
+                        )}
+                      </ListItemButton>
+                    </ListItem>
+                  );
+                })}
+              </List>
+            </Box>
           );
         })}
-      </List>
+      </Box>
 
-      <Divider sx={{ my: 2, mx: 2 }} />
-
-      <Box sx={{ px: 3, py: 1 }}>
-        <Typography variant="caption" sx={{ color: '#94A3B8', display: 'block' }}>
-          Saamu Tailors v1.0
+      {/* Footer / user summary */}
+      <Divider sx={{ mx: 2.5 }} />
+      <Box sx={{ px: 2.5, py: 2 }}>
+        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+          Signed in as <strong>{user?.username ?? '—'}</strong>
         </Typography>
-        <Typography variant="caption" sx={{ color: '#CBD5E1', display: 'block' }}>
-          ERP Foundation Sprint
+        <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 0.25 }}>
+          Saamu Tailors v1.0
         </Typography>
       </Box>
     </Box>
@@ -127,15 +204,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ open, onClose, drawerWidth = 2
           '& .MuiDrawer-paper': {
             boxSizing: 'border-box',
             width: drawerWidth,
-            backgroundColor: '#FFFFFF',
-            borderRight: '1px solid #E2E8F0',
+            borderRight: '1px solid #E7E0D0',
           },
         }}
       >
         {drawerContent}
       </Drawer>
 
-      {/* Desktop Permanent Drawer */}
+      {/* Desktop Persistent Drawer */}
       <Drawer
         variant="persistent"
         open={open}
@@ -153,8 +229,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ open, onClose, drawerWidth = 2
             width: drawerWidth,
             top: '64px',
             height: 'calc(100% - 64px)',
-            backgroundColor: '#FFFFFF',
-            borderRight: '1px solid #E2E8F0',
+            borderRight: '1px solid #E7E0D0',
+            boxShadow: 'none',
           },
         }}
       >
@@ -163,3 +239,5 @@ export const Sidebar: React.FC<SidebarProps> = ({ open, onClose, drawerWidth = 2
     </>
   );
 };
+
+export default Sidebar;

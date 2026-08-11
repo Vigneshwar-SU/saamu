@@ -16,7 +16,7 @@ export const Footer: React.FC = () => {
         px: 3,
         mt: 'auto',
         backgroundColor: '#FFFFFF',
-        borderTop: '1px solid #E2E8F0',
+        borderTop: '1px solid #E7E0D0',
       }}
     >
       <Container maxWidth={false}>
@@ -26,8 +26,9 @@ export const Footer: React.FC = () => {
           alignItems="center"
           spacing={1}
         >
-          <Typography variant="body2" sx={{ color: '#64748B', fontSize: '0.85rem' }}>
-            © {currentYear} <strong>Saamu Tailors</strong>. Enterprise Tailoring Management System. All rights reserved.
+          <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
+            © {currentYear} <strong style={{ color: '#242424' }}>Saamu Tailors</strong>. Enterprise Tailoring
+            Management System. All rights reserved.
           </Typography>
 
           <Stack direction="row" spacing={2} alignItems="center">
@@ -45,15 +46,15 @@ export const Footer: React.FC = () => {
                 {isLoading ? (
                   <CircularProgress size={12} color="inherit" />
                 ) : health?.status === 'ok' ? (
-                  <CheckCircleIcon sx={{ fontSize: 16, color: '#22C55E' }} />
+                  <CheckCircleIcon sx={{ fontSize: 16, color: '#2E7D52' }} />
                 ) : (
-                  <ErrorOutlineIcon sx={{ fontSize: 16, color: '#EF4444' }} />
+                  <ErrorOutlineIcon sx={{ fontSize: 16, color: '#B3402F' }} />
                 )}
                 <Typography
                   variant="caption"
                   sx={{
                     fontWeight: 600,
-                    color: health?.status === 'ok' ? '#15803D' : isError ? '#B91C1C' : '#64748B',
+                    color: health?.status === 'ok' ? '#1F5C3C' : isError ? '#8F2F22' : 'text.secondary',
                     fontSize: '0.75rem',
                   }}
                 >
@@ -71,3 +72,5 @@ export const Footer: React.FC = () => {
     </Box>
   );
 };
+
+export default Footer;

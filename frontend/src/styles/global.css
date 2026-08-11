@@ -1,5 +1,5 @@
 /* Global CSS Styles & Font Imports */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 * {
   box-sizing: border-box;
@@ -7,14 +7,27 @@
   padding: 0;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   width: 100%;
   height: 100%;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  background-color: #F8FAFC;
-  color: #0F172A;
+  background-color: #FAF6EC;
+  color: #242424;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background-color: #E8D79A;
+  color: #242424;
+}
+
+/* Visible focus ring for keyboard users across the whole app. */
+:focus-visible {
+  outline: 2px solid #C9A227;
+  outline-offset: 2px;
 }
 
 /* Custom scrollbars for clean ERP look */
@@ -24,16 +37,16 @@ html, body, #root {
 }
 
 ::-webkit-scrollbar-track {
-  background: #F1F5F9;
+  background: #F1EBDD;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
+  background: #D4C9AF;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
+  background: #B5A886;
 }
 
 /* Print: only the digital bill is printed; the application shell is hidden. */

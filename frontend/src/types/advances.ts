@@ -10,8 +10,8 @@ export const ADVANCE_STATUS_LABELS: Record<AdvanceStatus, string> = {
 };
 
 export const ADVANCE_STATUS_COLORS: Record<AdvanceStatus, { bg: string; text: string }> = {
-  OUTSTANDING: { bg: '#FEF3C7', text: '#B45309' },
-  DEDUCTED: { bg: '#E2E8F0', text: '#475569' },
+  OUTSTANDING: { bg: '#FBF0E3', text: '#8F4A00' },
+  DEDUCTED: { bg: '#E7E0D0', text: '#6B6B6B' },
 };
 
 export interface SalaryAdvance {

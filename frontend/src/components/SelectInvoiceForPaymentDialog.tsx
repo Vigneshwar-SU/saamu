@@ -122,15 +122,15 @@ export const SelectInvoiceForPaymentDialog: React.FC<SelectInvoiceForPaymentDial
           {selectedInvoice && (
             <Paper
               variant="outlined"
-              sx={{ p: 2, borderRadius: '10px', backgroundColor: '#F8FAFC' }}
+              sx={{ p: 2, borderRadius: '10px', backgroundColor: '#FBF6EA' }}
             >
               <Stack spacing={1}>
-                <Typography variant="caption" sx={{ color: '#64748B' }}>
+                <Typography variant="caption" sx={{ color: '#6B6B6B' }}>
                   {selectedInvoice.invoice_number} ·{' '}
                   {INVOICE_STATUS_LABELS[selectedInvoice.status]}
                 </Typography>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2" sx={{ color: '#64748B' }}>
+                  <Typography variant="body2" sx={{ color: '#6B6B6B' }}>
                     Invoice Total
                   </Typography>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
@@ -138,7 +138,7 @@ export const SelectInvoiceForPaymentDialog: React.FC<SelectInvoiceForPaymentDial
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <Typography variant="body2" sx={{ color: '#64748B' }}>
+                  <Typography variant="body2" sx={{ color: '#6B6B6B' }}>
                     Amount Paid
                   </Typography>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
@@ -148,7 +148,7 @@ export const SelectInvoiceForPaymentDialog: React.FC<SelectInvoiceForPaymentDial
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography
                     variant="body2"
-                    sx={{ color: '#64748B', fontWeight: mode === 'REFUND' ? 600 : 400 }}
+                    sx={{ color: '#6B6B6B', fontWeight: mode === 'REFUND' ? 600 : 400 }}
                   >
                     {mode === 'REFUND' ? 'Total Paid (Refundable)' : 'Balance Due'}
                   </Typography>
@@ -156,7 +156,7 @@ export const SelectInvoiceForPaymentDialog: React.FC<SelectInvoiceForPaymentDial
                     variant="body2"
                     sx={{
                       fontWeight: 700,
-                      color: mode === 'REFUND' ? '#1E3A8A' : '#B45309',
+                      color: mode === 'REFUND' ? '#7A5E0C' : '#8F4A00',
                     }}
                   >
                     {formatCurrency(
@@ -179,7 +179,7 @@ export const SelectInvoiceForPaymentDialog: React.FC<SelectInvoiceForPaymentDial
           variant="contained"
           disabled={!selectedInvoice}
           onClick={() => selectedInvoice && onSelect(selectedInvoice)}
-          sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
+          
         >
           Continue
         </Button>

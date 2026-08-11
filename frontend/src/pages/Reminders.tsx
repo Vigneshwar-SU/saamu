@@ -2,17 +2,12 @@ import React, { useState } from 'react';
 import {
   Alert,
   Box,
-  Breadcrumbs,
   Button,
-  Chip,
   CircularProgress,
-  Link,
-  Pagination,
   Paper,
   Stack,
   Typography,
 } from '@mui/material';
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -23,18 +18,31 @@ import { useNavigate } from 'react-router-dom';
 import { useReminderList } from '../hooks/useReminders';
 import { useReminderActions } from '../hooks/useReminderActions';
 import { getApiErrorMessage } from '../utils/apiErrors';
-import { ORDER_STATUS_COLORS, ORDER_STATUS_LABELS } from '../types/orders';
+import { PageHeader } from '../components/ui/PageHeader';
+import { AppPagination } from '../components/ui/AppPagination';
+import { StatusBadge } from '../components/ui/StatusBadge';
+import type { StatusTone } from '../components/ui/StatusBadge';
+import { ORDER_STATUS_LABELS } from '../types/orders';
+import type { OrderStatus } from '../types/orders';
 import type { ReminderCandidate } from '../types/reminders';
 const PAGE_SIZE = 6;
+
+const ORDER_STATUS_TONES: Record<OrderStatus, StatusTone> = {
+  NEW: 'gold',
+  CUTTING: 'warning',
+  STITCHING: 'info',
+  READY: 'success',
+  COLLECTED: 'neutral',
+  CANCELLED: 'error',
+};
 
 const ReminderCard: React.FC<{ reminder: ReminderCandidate }> = ({ reminder }) => {
   const navigate = useNavigate();
   const { copied, isOpening, error, copy, open } = useReminderActions(reminder);
-  const colors = ORDER_STATUS_COLORS[reminder.order.status];
   const usableNumber = reminder.whatsapp_url !== null;
 
   return (
-    <Paper sx={{ p: 3, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+    <Paper sx={{ p: 3, borderRadius: '12px', border: '1px solid #E7E0D0' }}>
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         spacing={2}
@@ -47,8 +55,8 @@ const ReminderCard: React.FC<{ reminder: ReminderCandidate }> = ({ reminder }) =
               width: 40,
               height: 40,
               borderRadius: '10px',
-              backgroundColor: '#EFF6FF',
-              color: '#1E3A8A',
+              backgroundColor: '#F5EBD2',
+              color: '#A98216',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -59,13 +67,12 @@ const ReminderCard: React.FC<{ reminder: ReminderCandidate }> = ({ reminder }) =
           <Box>
             <Stack direction="row" spacing={1} alignItems="center">
               <Typography sx={{ fontWeight: 700 }}>{reminder.reminder_type_label}</Typography>
-              <Chip
-                size="small"
+              <StatusBadge
                 label={ORDER_STATUS_LABELS[reminder.order.status]}
-                sx={{ fontWeight: 600, backgroundColor: colors.bg, color: colors.text }}
+                tone={ORDER_STATUS_TONES[reminder.order.status]}
               />
             </Stack>
-            <Typography variant="body2" sx={{ color: '#64748B' }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
               {reminder.order.order_number} · {reminder.customer.full_name}
             </Typography>
           </Box>
@@ -86,7 +93,7 @@ const ReminderCard: React.FC<{ reminder: ReminderCandidate }> = ({ reminder }) =
           mt: 2,
           p: 2,
           borderRadius: '10px',
-          backgroundColor: '#F8FAFC',
+          backgroundColor: '#FBF6EA',
           maxHeight: 240,
           overflow: 'auto',
         }}
@@ -98,7 +105,7 @@ const ReminderCard: React.FC<{ reminder: ReminderCandidate }> = ({ reminder }) =
             whiteSpace: 'pre-wrap',
             fontFamily: 'inherit',
             fontSize: '0.875rem',
-            color: '#0F172A',
+            color: 'text.primary',
           }}
         >
           {reminder.message}
@@ -106,7 +113,7 @@ const ReminderCard: React.FC<{ reminder: ReminderCandidate }> = ({ reminder }) =
       </Paper>
 
       {!usableNumber && (
-        <Typography variant="body2" sx={{ color: '#B45309', mt: 1.5 }}>
+        <Typography variant="body2" sx={{ color: 'warning.dark', mt: 1.5 }}>
           No usable WhatsApp number is recorded for this customer, so Open
           WhatsApp is disabled. The message can still be copied.
         </Typography>
@@ -124,7 +131,7 @@ const ReminderCard: React.FC<{ reminder: ReminderCandidate }> = ({ reminder }) =
           startIcon={copied ? <CheckIcon /> : <ContentCopyIcon />}
           disabled={isOpening}
           onClick={copy}
-          sx={copied ? { color: '#15803D', borderColor: '#86EFAC' } : undefined}
+          sx={copied ? { color: 'success.dark', borderColor: 'success.light' } : undefined}
         >
           {copied ? 'Copied' : 'Copy WhatsApp Message'}
         </Button>
@@ -133,7 +140,6 @@ const ReminderCard: React.FC<{ reminder: ReminderCandidate }> = ({ reminder }) =
           startIcon={<ChatIcon />}
           disabled={!usableNumber || isOpening}
           onClick={open}
-          sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
         >
           {isOpening ? 'Preparing...' : 'Open WhatsApp'}
         </Button>
@@ -146,54 +152,26 @@ export const Reminders: React.FC = () => {
   const [page, setPage] = useState(1);
   const { data, isLoading, isError, error, isFetching, refetch } = useReminderList(page);
 
-  const totalPages = data ? Math.max(1, Math.ceil(data.count / PAGE_SIZE)) : 1;
   const reminders = data?.results ?? [];
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} aria-label="breadcrumb">
-        <Link underline="hover" color="inherit" href="/dashboard" sx={{ fontSize: '0.85rem' }}>
-          Saamu Tailors ERP
-        </Link>
-        <Typography color="text.primary" sx={{ fontSize: '0.85rem', fontWeight: 600 }}>
-          Reminders
-        </Typography>
-      </Breadcrumbs>
-
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: '12px',
-              backgroundColor: '#EFF6FF',
-              color: '#1E3A8A',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+      <PageHeader
+        title="Reminders"
+        subtitle="Review and prepare customer reminders. Nothing is sent automatically."
+        icon={<NotificationsActiveIcon />}
+        crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Reminders' }]}
+        actions={
+          <Button
+            variant="outlined"
+            startIcon={<RefreshIcon />}
+            onClick={() => refetch()}
+            disabled={isFetching}
           >
-            <NotificationsActiveIcon />
-          </Box>
-          <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700 }}>
-              Reminders
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#64748B' }}>
-              Review and prepare customer reminders. Nothing is sent automatically.
-            </Typography>
-          </Box>
-        </Box>
-        <Button
-          variant="outlined"
-          startIcon={<RefreshIcon />}
-          onClick={() => refetch()}
-          disabled={isFetching}
-        >
-          Refresh
-        </Button>
-      </Box>
+            Refresh
+          </Button>
+        }
+      />
 
       {isLoading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
@@ -202,7 +180,7 @@ export const Reminders: React.FC = () => {
       )}
 
       {isError && !isLoading && (
-        <Paper sx={{ p: 3, borderRadius: '12px', border: '1px solid #FECACA', backgroundColor: '#FEF2F2' }}>
+        <Paper sx={{ p: 3, borderRadius: '12px', border: '1px solid #FBE9E6', backgroundColor: '#FEF2F2' }}>
           <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between">
             <Alert severity="error" sx={{ flex: 1 }}>
               {getApiErrorMessage(error)}
@@ -215,8 +193,8 @@ export const Reminders: React.FC = () => {
       )}
 
       {!isLoading && !isError && reminders.length === 0 && (
-        <Paper sx={{ p: 6, borderRadius: '12px', border: '1px solid #E2E8F0', textAlign: 'center' }}>
-          <Typography variant="body1" sx={{ color: '#64748B' }}>
+        <Paper sx={{ p: 6, borderRadius: '12px', border: '1px solid #E7E0D0', textAlign: 'center' }}>
+          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
             No pending reminders. Reminders appear here for active orders that
             are ready for collection or have an outstanding balance.
           </Typography>
@@ -232,17 +210,7 @@ export const Reminders: React.FC = () => {
           </Stack>
 
           {data && data.count > 0 && (
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="body2" sx={{ color: '#64748B' }}>
-                Showing {reminders.length} of {data.count} reminders
-              </Typography>
-              <Pagination
-                count={totalPages}
-                page={page}
-                onChange={(_event, value) => setPage(value)}
-                color="primary"
-              />
-            </Box>
+            <AppPagination page={page} count={data.count} pageSize={PAGE_SIZE} onChange={setPage} />
           )}
         </>
       )}

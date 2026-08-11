@@ -1,30 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   Box,
-  Breadcrumbs,
   Button,
-  Chip,
-  CircularProgress,
   FormControl,
   InputLabel,
-  LinearProgress,
-  Link,
   MenuItem,
-  Pagination,
-  Paper,
   Select,
   Stack,
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
   TextField,
   Typography,
 } from '@mui/material';
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import AddCardIcon from '@mui/icons-material/AddCard';
 import { useNavigate } from 'react-router-dom';
@@ -33,10 +23,23 @@ import { formatCurrency, formatDate } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { CreateInvoiceDialog } from '../components/CreateInvoiceDialog';
 import { useCreateInvoice, useInvoiceList } from '../hooks/useInvoices';
-import { INVOICE_STATUSES, INVOICE_STATUS_COLORS, INVOICE_STATUS_LABELS } from '../types/billing';
+import { INVOICE_STATUSES, INVOICE_STATUS_LABELS } from '../types/billing';
 import type { InvoiceCreatePayload, InvoiceStatus } from '../types/billing';
+import { PageHeader } from '../components/ui/PageHeader';
+import { FilterBar } from '../components/ui/FilterBar';
+import { TableCard } from '../components/ui/TableCard';
+import { TableStateRow } from '../components/ui/TableStateRow';
+import { AppPagination } from '../components/ui/AppPagination';
+import { StatusBadge } from '../components/ui/StatusBadge';
+import type { StatusTone } from '../components/ui/StatusBadge';
 
 const PAGE_SIZE = 6;
+
+const STATUS_TONES: Record<InvoiceStatus, StatusTone> = {
+  UNPAID: 'error',
+  PARTIALLY_PAID: 'warning',
+  PAID: 'success',
+};
 
 export const Invoices: React.FC = () => {
   const navigate = useNavigate();
@@ -63,60 +66,27 @@ export const Invoices: React.FC = () => {
   });
 
   const createMutation = useCreateInvoice();
-  const totalPages = data ? Math.max(1, Math.ceil(data.count / PAGE_SIZE)) : 1;
 
   const handleCreate = (payload: InvoiceCreatePayload) => createMutation.mutateAsync(payload);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} aria-label="breadcrumb">
-        <Link underline="hover" color="inherit" href="/dashboard" sx={{ fontSize: '0.85rem' }}>
-          Saamu Tailors ERP
-        </Link>
-        <Typography color="text.primary" sx={{ fontSize: '0.85rem', fontWeight: 600 }}>
-          Invoices
-        </Typography>
-      </Breadcrumbs>
+      <PageHeader
+        title="Invoices"
+        subtitle="Track customer bills and payments."
+        icon={<ReceiptLongIcon />}
+        crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Invoices' }]}
+        actions={
+          isStaff && (
+            <Button variant="contained" startIcon={<AddCardIcon />} onClick={() => setDialogOpen(true)}>
+              Create Invoice
+            </Button>
+          )
+        }
+      />
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: '12px',
-              backgroundColor: '#EFF6FF',
-              color: '#1E3A8A',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <ReceiptLongIcon />
-          </Box>
-          <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700 }}>
-              Invoices
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#64748B' }}>
-              Track customer bills and payments.
-            </Typography>
-          </Box>
-        </Box>
-        {isStaff && (
-          <Button
-            variant="contained"
-            startIcon={<AddCardIcon />}
-            onClick={() => setDialogOpen(true)}
-            sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
-          >
-            Create Invoice
-          </Button>
-        )}
-      </Box>
-
-      <Paper sx={{ p: 2, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+      <FilterBar>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} flexWrap="wrap">
           <TextField
             label="Search"
             placeholder="Invoice no, order no, customer"
@@ -157,119 +127,85 @@ export const Invoices: React.FC = () => {
             InputLabelProps={{ shrink: true }}
           />
         </Stack>
-      </Paper>
+      </FilterBar>
 
-      <Paper sx={{ borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-        {isFetching && !isLoading && <LinearProgress sx={{ height: 3 }} />}
-        <TableContainer>
-          <Table size="medium">
-            <TableHead>
-              <TableRow sx={{ backgroundColor: '#F8FAFC' }}>
-                <TableCell sx={{ fontWeight: 700 }}>Invoice</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Customer</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Order</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Total</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Paid</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Balance Due</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
-                    <CircularProgress size={28} />
+      <TableCard loading={isFetching && !isLoading}>
+        <Table size="medium">
+          <TableHead>
+            <TableRow>
+              <TableCell>Invoice</TableCell>
+              <TableCell>Customer</TableCell>
+              <TableCell>Order</TableCell>
+              <TableCell>Date</TableCell>
+              <TableCell>Total</TableCell>
+              <TableCell>Paid</TableCell>
+              <TableCell>Balance Due</TableCell>
+              <TableCell>Status</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {isLoading ? (
+              <TableStateRow colSpan={8} state="loading" />
+            ) : isError ? (
+              <TableStateRow
+                colSpan={8}
+                state="error"
+                errorMessage={getApiErrorMessage(error)}
+                onRetry={() => refetch()}
+              />
+            ) : data && data.results.length === 0 ? (
+              <TableStateRow colSpan={8} state="empty" emptyTitle="No invoices found" />
+            ) : (
+              data?.results.map((invoice) => (
+                <TableRow
+                  key={invoice.id}
+                  hover
+                  sx={{ cursor: 'pointer' }}
+                  onClick={() => navigate(`/invoices/${invoice.id}`)}
+                >
+                  <TableCell>
+                    <Typography sx={{ fontWeight: 600 }}>{invoice.invoice_number}</Typography>
                   </TableCell>
-                </TableRow>
-              ) : isError ? (
-                <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
-                    <Alert severity="error" sx={{ display: 'inline-flex' }}>
-                      {getApiErrorMessage(error)}
-                    </Alert>
-                    <Box sx={{ mt: 1.5 }}>
-                      <Button size="small" variant="outlined" onClick={() => refetch()}>
-                        Retry
-                      </Button>
-                    </Box>
+                  <TableCell>
+                    <Typography variant="body2">{invoice.customer.full_name}</Typography>
                   </TableCell>
-                </TableRow>
-              ) : data && data.results.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
-                    <Typography sx={{ color: '#64748B' }}>No invoices found.</Typography>
+                  <TableCell>
+                    <Typography variant="body2">{invoice.order.order_number}</Typography>
                   </TableCell>
-                </TableRow>
-              ) : (
-                data?.results.map((invoice) => {
-                  const colors = INVOICE_STATUS_COLORS[invoice.status];
-                  return (
-                    <TableRow
-                      key={invoice.id}
-                      hover
-                      sx={{ cursor: 'pointer', '&:last-child td, &:last-child th': { border: 0 } }}
-                      onClick={() => navigate(`/invoices/${invoice.id}`)}
+                  <TableCell>
+                    <Typography variant="body2">{formatDate(invoice.invoice_date)}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {formatCurrency(invoice.total_amount)}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{formatCurrency(invoice.amount_paid)}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: 600,
+                        color: invoice.balance_due > 0 ? '#8F4A00' : '#1F5C3C',
+                      }}
                     >
-                      <TableCell>
-                        <Typography sx={{ fontWeight: 600 }}>{invoice.invoice_number}</Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{invoice.customer.full_name}</Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{invoice.order.order_number}</Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{formatDate(invoice.invoice_date)}</Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {formatCurrency(invoice.total_amount)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{formatCurrency(invoice.amount_paid)}</Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            fontWeight: 600,
-                            color: invoice.balance_due > 0 ? '#B45309' : '#15803D',
-                          }}
-                        >
-                          {formatCurrency(invoice.balance_due)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={INVOICE_STATUS_LABELS[invoice.status]}
-                          size="small"
-                          sx={{ fontWeight: 600, backgroundColor: colors.bg, color: colors.text }}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+                      {formatCurrency(invoice.balance_due)}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge label={INVOICE_STATUS_LABELS[invoice.status]} tone={STATUS_TONES[invoice.status]} />
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </TableCard>
 
       {data && data.count > 0 && (
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="body2" sx={{ color: '#64748B' }}>
-            Showing {data.results.length} of {data.count} invoices
-          </Typography>
-          <Pagination
-            count={totalPages}
-            page={page}
-            onChange={(_event, value) => setPage(value)}
-            color="primary"
-          />
-        </Box>
+        <AppPagination page={page} count={data.count} pageSize={PAGE_SIZE} onChange={setPage} />
       )}
 
       <CreateInvoiceDialog
@@ -280,3 +216,5 @@ export const Invoices: React.FC = () => {
     </Box>
   );
 };
+
+export default Invoices;

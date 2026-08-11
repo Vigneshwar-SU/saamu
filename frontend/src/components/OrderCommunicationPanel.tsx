@@ -42,15 +42,15 @@ export const OrderCommunicationPanel: React.FC<{ orderId: number }> = ({
   } = useOrderCommunication(orderId);
 
   return (
-    <Paper sx={{ p: 3, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+    <Paper sx={{ p: 3, borderRadius: '12px', border: '1px solid #E7E0D0' }}>
       <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
         <Box
           sx={{
             width: 40,
             height: 40,
             borderRadius: '10px',
-            backgroundColor: '#EFF6FF',
-            color: '#1E3A8A',
+            backgroundColor: '#F5EBD2',
+            color: '#7A5E0C',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -62,7 +62,7 @@ export const OrderCommunicationPanel: React.FC<{ orderId: number }> = ({
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
             Customer Communication
           </Typography>
-          <Typography variant="caption" sx={{ color: '#64748B' }}>
+          <Typography variant="caption" sx={{ color: '#6B6B6B' }}>
             Prepare a WhatsApp-ready message. Nothing is sent automatically.
           </Typography>
         </Box>
@@ -111,7 +111,7 @@ export const OrderCommunicationPanel: React.FC<{ orderId: number }> = ({
               sx={{
                 p: 2,
                 borderRadius: '10px',
-                backgroundColor: '#F8FAFC',
+                backgroundColor: '#FBF6EA',
                 maxHeight: 260,
                 overflow: 'auto',
               }}
@@ -123,7 +123,7 @@ export const OrderCommunicationPanel: React.FC<{ orderId: number }> = ({
                   whiteSpace: 'pre-wrap',
                   fontFamily: 'inherit',
                   fontSize: '0.875rem',
-                  color: '#0F172A',
+                  color: '#242424',
                 }}
               >
                 {data.message}
@@ -131,7 +131,7 @@ export const OrderCommunicationPanel: React.FC<{ orderId: number }> = ({
             </Paper>
 
             {!data.phone_number && (
-              <Typography variant="body2" sx={{ color: '#B45309' }}>
+              <Typography variant="body2" sx={{ color: '#8F4A00' }}>
                 No usable WhatsApp number is recorded for this customer, so Open
                 WhatsApp is disabled. The message can still be copied.
               </Typography>
@@ -147,7 +147,7 @@ export const OrderCommunicationPanel: React.FC<{ orderId: number }> = ({
                 onClick={copy}
                 sx={
                   copied
-                    ? { color: '#15803D', borderColor: '#86EFAC' }
+                    ? { color: '#1F5C3C', borderColor: '#86EFAC' }
                     : undefined
                 }
               >
@@ -158,10 +158,6 @@ export const OrderCommunicationPanel: React.FC<{ orderId: number }> = ({
                 startIcon={<ChatIcon />}
                 disabled={!data.whatsapp_url || isBusy}
                 onClick={open}
-                sx={{
-                  backgroundColor: '#1E3A8A',
-                  '&:hover': { backgroundColor: '#1D4ED8' },
-                }}
               >
                 Open WhatsApp
               </Button>

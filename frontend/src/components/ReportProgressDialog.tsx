@@ -61,7 +61,7 @@ const ReportProgressDialog: React.FC<ReportProgressDialogProps> = ({ open, assig
       <DialogContent dividers>
         <Stack spacing={2.5} sx={{ mt: 0.5 }}>
           {submitError && <Alert severity="error">{submitError}</Alert>}
-          <Typography variant="body2" sx={{ color: '#475569' }}>
+          <Typography variant="body2" sx={{ color: '#6B6B6B' }}>
             {assignment.order_item.garment_type} · assigned {assignment.assigned_quantity} pcs
           </Typography>
           <TextField
@@ -84,7 +84,7 @@ const ReportProgressDialog: React.FC<ReportProgressDialogProps> = ({ open, assig
           variant="contained"
           disabled={isSubmitting}
           startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
-          sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
+          
         >
           Save
         </Button>

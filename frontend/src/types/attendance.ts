@@ -11,9 +11,9 @@ export const ATTENDANCE_STATUS_LABELS: Record<AttendanceStatus, string> = {
 };
 
 export const ATTENDANCE_STATUS_COLORS: Record<AttendanceStatus, { bg: string; text: string }> = {
-  PRESENT: { bg: '#DCFCE7', text: '#15803D' },
-  ABSENT: { bg: '#FEE2E2', text: '#B91C1C' },
-  HALF_DAY: { bg: '#FEF3C7', text: '#B45309' },
+  PRESENT: { bg: '#E7F1EA', text: '#1F5C3C' },
+  ABSENT: { bg: '#FBE9E6', text: '#8F2F22' },
+  HALF_DAY: { bg: '#FBF0E3', text: '#8F4A00' },
 };
 
 export interface Attendance {

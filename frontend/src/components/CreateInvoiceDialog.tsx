@@ -146,10 +146,10 @@ export const CreateInvoiceDialog: React.FC<CreateInvoiceDialogProps> = ({
           {order && (
             <Paper
               variant="outlined"
-              sx={{ p: 2, borderRadius: '10px', backgroundColor: '#F8FAFC' }}
+              sx={{ p: 2, borderRadius: '10px', backgroundColor: '#FBF6EA' }}
             >
               <Stack spacing={1}>
-                <Typography variant="caption" sx={{ color: '#64748B' }}>
+                <Typography variant="caption" sx={{ color: '#6B6B6B' }}>
                   Order {order.order_number} · {order.items.length} garment line(s)
                 </Typography>
                 <Typography variant="body1" sx={{ fontWeight: 700 }}>
@@ -204,7 +204,7 @@ export const CreateInvoiceDialog: React.FC<CreateInvoiceDialogProps> = ({
           variant="contained"
           disabled={isSubmitting}
           startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
-          sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
+          
         >
           Create Invoice
         </Button>

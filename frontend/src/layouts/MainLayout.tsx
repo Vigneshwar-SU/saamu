@@ -4,8 +4,9 @@ import { Outlet } from 'react-router-dom';
 import { Header } from '../components/Header';
 import { Sidebar } from '../components/Sidebar';
 import { Footer } from '../components/Footer';
+import { PageContainer } from '../components/ui/PageContainer';
 
-const DRAWER_WIDTH = 260;
+const DRAWER_WIDTH = 272;
 
 export const MainLayout: React.FC = () => {
   const theme = useTheme();
@@ -16,7 +17,7 @@ export const MainLayout: React.FC = () => {
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#F8FAFC' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#FAF6EC' }}>
       {/* Top Navigation Bar */}
       <Header onToggleSidebar={handleToggleSidebar} />
 
@@ -43,7 +44,9 @@ export const MainLayout: React.FC = () => {
           }}
         >
           <Box className="page-content" sx={{ p: { xs: 2, sm: 3, md: 4 }, flexGrow: 1 }}>
-            <Outlet />
+            <PageContainer>
+              <Outlet />
+            </PageContainer>
           </Box>
 
           {/* Footer */}
@@ -53,3 +56,5 @@ export const MainLayout: React.FC = () => {
     </Box>
   );
 };
+
+export default MainLayout;

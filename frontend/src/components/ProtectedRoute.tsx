@@ -10,7 +10,7 @@ const FullPageLoader: React.FC = () => (
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: '#F8FAFC',
+      backgroundColor: '#FAF6EC',
     }}
   >
     <CircularProgress />

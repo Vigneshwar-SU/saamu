@@ -29,13 +29,13 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       return this.props.children;
     }
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 8, px: 2 }}>
         <Paper
           sx={{
             p: 4,
             maxWidth: 480,
-            borderRadius: '12px',
-            border: '1px solid #E2E8F0',
+            borderRadius: '14px',
+            border: '1px solid #E7E0D0',
             boxShadow: 'none',
           }}
         >
@@ -43,7 +43,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             <Alert severity="error" sx={{ display: 'inline-flex' }}>
               Something went wrong while rendering this page.
             </Alert>
-            <Typography variant="body2" sx={{ color: '#64748B' }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
               The error has been logged. Try reloading the page or sign in again.
             </Typography>
             <Stack direction="row" spacing={1}>

@@ -76,9 +76,9 @@ export const WORK_ASSIGNMENT_STATUS_COLORS: Record<
   WorkAssignmentStatus,
   { bg: string; text: string }
 > = {
-  ASSIGNED: { bg: '#EFF6FF', text: '#1E3A8A' },
-  IN_PROGRESS: { bg: '#FEF3C7', text: '#B45309' },
-  COMPLETED: { bg: '#DCFCE7', text: '#15803D' },
+  ASSIGNED: { bg: '#F5EBD2', text: '#7A5E0C' },
+  IN_PROGRESS: { bg: '#FBF0E3', text: '#8F4A00' },
+  COMPLETED: { bg: '#E7F1EA', text: '#1F5C3C' },
 };
 
 export const NEXT_ASSIGNMENT_STATUS: Partial<Record<WorkAssignmentStatus, WorkAssignmentStatus>> = {

@@ -22,12 +22,12 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
 };
 
 export const ORDER_STATUS_COLORS: Record<OrderStatus, { bg: string; text: string }> = {
-  NEW: { bg: '#EFF6FF', text: '#1E3A8A' },
-  CUTTING: { bg: '#FEF3C7', text: '#B45309' },
-  STITCHING: { bg: '#FFEDD5', text: '#C2410C' },
-  READY: { bg: '#DCFCE7', text: '#15803D' },
-  COLLECTED: { bg: '#F1F5F9', text: '#475569' },
-  CANCELLED: { bg: '#FEE2E2', text: '#B91C1C' },
+  NEW: { bg: '#F5EBD2', text: '#7A5E0C' },
+  CUTTING: { bg: '#FBF0E3', text: '#8F4A00' },
+  STITCHING: { bg: '#FBF0E3', text: '#8F4A00' },
+  READY: { bg: '#E7F1EA', text: '#1F5C3C' },
+  COLLECTED: { bg: '#F1EDE2', text: '#6B6B6B' },
+  CANCELLED: { bg: '#FBE9E6', text: '#8F2F22' },
 };
 
 export const TERMINAL_ORDER_STATUSES: ReadonlySet<OrderStatus> = new Set([

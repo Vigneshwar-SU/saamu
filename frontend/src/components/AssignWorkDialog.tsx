@@ -203,8 +203,8 @@ const AssignWorkDialog: React.FC<AssignWorkDialogProps> = ({
               </FormControl>
 
               {selectedItem && (
-                <Paper variant="outlined" sx={{ p: 2, borderRadius: '10px', backgroundColor: '#F8FAFC' }}>
-                  <Typography variant="caption" sx={{ color: '#64748B', display: 'block', mb: 1 }}>
+                <Paper variant="outlined" sx={{ p: 2, borderRadius: '10px', backgroundColor: '#FBF6EA' }}>
+                  <Typography variant="caption" sx={{ color: '#6B6B6B', display: 'block', mb: 1 }}>
                     {selectedItem.garment_type} · {selectedItem.quantity} ordered ·{' '}
                     {selectedItem.remaining_quantity} remaining
                   </Typography>
@@ -236,7 +236,7 @@ const AssignWorkDialog: React.FC<AssignWorkDialogProps> = ({
           variant="contained"
           disabled={isSubmitting}
           startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
-          sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
+          
         >
           Assign Work
         </Button>

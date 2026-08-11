@@ -1,24 +1,16 @@
 import React, { useState } from 'react';
 import {
-  Alert,
   Box,
-  Breadcrumbs,
   Button,
-  Chip,
-  CircularProgress,
   Link,
-  Paper,
   Stack,
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
   Typography,
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
@@ -30,23 +22,29 @@ import { formatCurrency, formatDate } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { RecordCustomerPaymentDialog } from '../components/RecordCustomerPaymentDialog';
 import { useCreatePayment, useInvoice, useInvoicePayments } from '../hooks/useInvoices';
-import { INVOICE_STATUS_COLORS, INVOICE_STATUS_LABELS, PAYMENT_TYPE_LABELS } from '../types/billing';
-import type { CustomerPaymentPayload, PaymentType } from '../types/billing';
+import { INVOICE_STATUS_LABELS, PAYMENT_TYPE_LABELS } from '../types/billing';
+import type { CustomerPaymentPayload } from '../types/billing';
+import { PageHeader } from '../components/ui/PageHeader';
+import { SectionCard } from '../components/ui/SectionCard';
+import { TableCard } from '../components/ui/TableCard';
+import { TableStateRow } from '../components/ui/TableStateRow';
+import { StatCard } from '../components/ui/StatCard';
+import { StatusBadge } from '../components/ui/StatusBadge';
+import { ErrorState } from '../components/ui/ErrorState';
+import type { StatusTone } from '../components/ui/StatusBadge';
 
-const SummaryCard: React.FC<{ label: string; value: string; color?: string }> = ({
-  label,
-  value,
-  color,
-}) => (
-  <Paper sx={{ flex: 1, minWidth: 160, p: 2, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-    <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600 }}>
-      {label}
-    </Typography>
-    <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.5, color: color ?? '#0F172A' }}>
-      {value}
-    </Typography>
-  </Paper>
-);
+const INVOICE_TONES: Record<string, StatusTone> = {
+  UNPAID: 'error',
+  PARTIALLY_PAID: 'warning',
+  PAID: 'success',
+};
+
+const PAYMENT_TYPE_TONES: Record<string, StatusTone> = {
+  ADVANCE: 'info',
+  PARTIAL: 'gold',
+  FINAL: 'success',
+  REFUND: 'error',
+};
 
 export const InvoiceDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -73,7 +71,7 @@ export const InvoiceDetail: React.FC = () => {
   if (isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-        <CircularProgress size={32} />
+        <Typography color="text.secondary">Loading invoice…</Typography>
       </Box>
     );
   }
@@ -81,206 +79,180 @@ export const InvoiceDetail: React.FC = () => {
   if (isError || !invoice) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-start' }}>
-        <Alert severity="error">{getApiErrorMessage(error)}</Alert>
-        <Button size="small" variant="outlined" onClick={() => refetch()}>
-          Retry
-        </Button>
+        <ErrorState message={getApiErrorMessage(error)} onRetry={() => refetch()} />
       </Box>
     );
   }
 
-  const colors = INVOICE_STATUS_COLORS[invoice.status];
   const canRecord = isStaff && invoice.balance_due > 0;
   const canRefund = isStaff && invoice.amount_paid > 0;
 
-  const PAYMENT_TYPE_COLORS: Record<PaymentType, { bg: string; text: string }> = {
-    ADVANCE: { bg: '#E0E7FF', text: '#4338CA' },
-    PARTIAL: { bg: '#DBEAFE', text: '#1D4ED8' },
-    FINAL: { bg: '#DCFCE7', text: '#15803D' },
-    REFUND: { bg: '#FEE2E2', text: '#B91C1C' },
-  };
-
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} aria-label="breadcrumb">
-          <Link underline="hover" color="inherit" href="/dashboard" sx={{ fontSize: '0.85rem' }}>
-            Saamu Tailors ERP
-          </Link>
-          <Link underline="hover" color="inherit" href="/invoices" sx={{ fontSize: '0.85rem' }}>
-            Invoices
-          </Link>
-          <Typography color="text.primary" sx={{ fontSize: '0.85rem', fontWeight: 600 }}>
-            {invoice.invoice_number}
-          </Typography>
-        </Breadcrumbs>
-        <Button size="small" startIcon={<ArrowBackIcon />} onClick={() => navigate('/invoices')}>
-          Back to Invoices
-        </Button>
-      </Box>
-
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: '12px',
-              backgroundColor: '#EFF6FF',
-              color: '#1E3A8A',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <ReceiptLongIcon />
-          </Box>
-          <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700 }}>
-              {invoice.invoice_number}
-            </Typography>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
-              <Chip
-                label={INVOICE_STATUS_LABELS[invoice.status]}
-                size="small"
-                sx={{ fontWeight: 600, backgroundColor: colors.bg, color: colors.text }}
-              />
-              <Typography variant="body2" sx={{ color: '#64748B' }}>
-                {invoice.payment_count} payment{invoice.payment_count === 1 ? '' : 's'}
-              </Typography>
-            </Stack>
-          </Box>
-        </Box>
-        <Stack direction="row" spacing={1.5} flexWrap="wrap">
-          <Button
-            variant="outlined"
-            startIcon={<LocalPrintshopIcon />}
-            onClick={() => navigate(`/invoices/${invoice.id}/bill`)}
-          >
-            View Bill
-          </Button>
-          {canRecord && (
-            <>
-              <Button
-                variant="outlined"
-                startIcon={<PaymentsIcon />}
-                onClick={() => setPaymentDialogOpen(true)}
-              >
-                Record Payment
-              </Button>
-              <Button
-                variant="contained"
-                startIcon={<VerifiedUserIcon />}
-                onClick={() => setSettleDialogOpen(true)}
-                sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
-              >
-                Settle in Full
-              </Button>
-            </>
-          )}
-          {canRefund && (
+      <PageHeader
+        title={invoice.invoice_number}
+        subtitle={`${invoice.payment_count} payment${invoice.payment_count === 1 ? '' : 's'}`}
+        icon={<ReceiptLongIcon />}
+        backTo="/invoices"
+        crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Invoices', to: '/invoices' }, { label: invoice.invoice_number }]}
+        actions={
+          <Stack direction="row" spacing={1} flexWrap="wrap">
             <Button
               variant="outlined"
-              color="error"
-              startIcon={<CurrencyExchangeIcon />}
-              onClick={() => setRefundDialogOpen(true)}
+              startIcon={<LocalPrintshopIcon />}
+              onClick={() => navigate(`/invoices/${invoice.id}/bill`)}
             >
-              Record Refund
+              View Bill
             </Button>
-          )}
-        </Stack>
-      </Box>
-
-      <Paper sx={{ p: 2, borderRadius: '12px', border: '1px solid #E2E8F0', backgroundColor: '#F8FAFC' }}>
-        <Stack spacing={1}>
-          <Stack direction="row" spacing={4} flexWrap="wrap">
-            <Box>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600 }}>
-                CUSTOMER
-              </Typography>
-              <Typography sx={{ fontWeight: 600 }}>{invoice.customer.full_name}</Typography>
-              <Typography variant="body2" sx={{ color: '#64748B' }}>
-                {invoice.customer.mobile_number}
-              </Typography>
-            </Box>
-            <Box>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600 }}>
-                ORDER
-              </Typography>
-              <Link
-                underline="hover"
-                color="inherit"
-                href={`/orders/${invoice.order.id}`}
-                sx={{ fontWeight: 600, fontSize: '0.9rem' }}
+            {canRecord && (
+              <>
+                <Button
+                  variant="outlined"
+                  startIcon={<PaymentsIcon />}
+                  onClick={() => setPaymentDialogOpen(true)}
+                >
+                  Record Payment
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<VerifiedUserIcon />}
+                  onClick={() => setSettleDialogOpen(true)}
+                >
+                  Settle in Full
+                </Button>
+              </>
+            )}
+            {canRefund && (
+              <Button
+                variant="outlined"
+                color="error"
+                startIcon={<CurrencyExchangeIcon />}
+                onClick={() => setRefundDialogOpen(true)}
               >
-                {invoice.order.order_number}
-              </Link>
-              <Typography variant="body2" sx={{ color: '#64748B' }}>
-                {formatDate(invoice.order.order_date)}
-              </Typography>
-            </Box>
-            <Box>
-              <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600 }}>
-                INVOICE DATE
-              </Typography>
-              <Typography sx={{ fontWeight: 600 }}>{formatDate(invoice.invoice_date)}</Typography>
-            </Box>
-            {invoice.created_by_name && (
-              <Box>
-                <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600 }}>
-                  CREATED BY
-                </Typography>
-                <Typography sx={{ fontWeight: 600 }}>{invoice.created_by_name}</Typography>
-              </Box>
+                Record Refund
+              </Button>
             )}
           </Stack>
-          {invoice.notes && (
-            <Typography
-              variant="body2"
-              sx={{ color: '#475569', whiteSpace: 'pre-wrap', mt: 1, pt: 1, borderTop: '1px solid #E2E8F0' }}
-            >
-              {invoice.notes}
-            </Typography>
-          )}
-        </Stack>
-      </Paper>
+        }
+      />
 
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} flexWrap="wrap">
-        <SummaryCard label="SUBTOTAL" value={formatCurrency(invoice.subtotal)} />
-        <SummaryCard label="ADJUSTMENT" value={formatCurrency(invoice.adjustment_amount)} />
-        <SummaryCard label="TOTAL" value={formatCurrency(invoice.total_amount)} color="#1E3A8A" />
-        <SummaryCard label="GROSS PAID" value={formatCurrency(invoice.gross_paid)} />
-        <SummaryCard label="REFUNDED" value={formatCurrency(invoice.refunded_amount)} />
-        <SummaryCard label="PAID (NET)" value={formatCurrency(invoice.amount_paid)} />
-        <SummaryCard
-          label="BALANCE DUE"
-          value={formatCurrency(invoice.balance_due)}
-          color={invoice.balance_due > 0 ? '#B45309' : '#15803D'}
-        />
-      </Stack>
-
-      <Paper sx={{ borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-        <Box sx={{ p: 2, backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-          <Typography sx={{ fontWeight: 700 }}>Line Items</Typography>
+      <SectionCard noPadding>
+        <Box sx={{ px: 2.5, py: 2 }}>
+          <Stack spacing={1}>
+            <Stack direction="row" spacing={4} flexWrap="wrap">
+              <Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                  STATUS
+                </Typography>
+                <Box sx={{ mt: 0.5 }}>
+                  <StatusBadge
+                    label={INVOICE_STATUS_LABELS[invoice.status]}
+                    tone={INVOICE_TONES[invoice.status] ?? 'neutral'}
+                  />
+                </Box>
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                  CUSTOMER
+                </Typography>
+                <Typography sx={{ fontWeight: 600 }}>{invoice.customer.full_name}</Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  {invoice.customer.mobile_number}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                  ORDER
+                </Typography>
+                <Link
+                  underline="hover"
+                  color="inherit"
+                  href={`/orders/${invoice.order.id}`}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    navigate(`/orders/${invoice.order.id}`);
+                  }}
+                  sx={{ fontWeight: 600, fontSize: '0.9rem' }}
+                >
+                  {invoice.order.order_number}
+                </Link>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  {formatDate(invoice.order.order_date)}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                  INVOICE DATE
+                </Typography>
+                <Typography sx={{ fontWeight: 600 }}>{formatDate(invoice.invoice_date)}</Typography>
+              </Box>
+              {invoice.created_by_name && (
+                <Box>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                    CREATED BY
+                  </Typography>
+                  <Typography sx={{ fontWeight: 600 }}>{invoice.created_by_name}</Typography>
+                </Box>
+              )}
+            </Stack>
+            {invoice.notes && (
+              <Typography
+                variant="body2"
+                sx={{
+                  color: 'text.secondary',
+                  whiteSpace: 'pre-wrap',
+                  mt: 1,
+                  pt: 1,
+                  borderTop: '1px solid #E7E0D0',
+                }}
+              >
+                {invoice.notes}
+              </Typography>
+            )}
+          </Stack>
         </Box>
-        <TableContainer>
+      </SectionCard>
+
+      <Box
+        sx={{
+          display: 'grid',
+          gap: 2,
+          gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' },
+        }}
+      >
+        <StatCard label="Subtotal" value={formatCurrency(invoice.subtotal)} tone="default" />
+        <StatCard label="Adjustment" value={formatCurrency(invoice.adjustment_amount)} tone="default" />
+        <StatCard label="Total" value={formatCurrency(invoice.total_amount)} tone="gold" />
+        <StatCard label="Gross Paid" value={formatCurrency(invoice.gross_paid)} tone="default" />
+        <StatCard label="Refunded" value={formatCurrency(invoice.refunded_amount)} tone="error" />
+        <StatCard label="Paid (Net)" value={formatCurrency(invoice.amount_paid)} tone="success" />
+        <StatCard
+          label="Balance Due"
+          value={formatCurrency(invoice.balance_due)}
+          tone={invoice.balance_due > 0 ? 'warning' : 'success'}
+        />
+      </Box>
+
+      <SectionCard title="Line Items" icon={<ReceiptLongIcon />} noPadding>
+        <TableCard sx={{ border: 'none', borderRadius: 0 }}>
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell sx={{ fontWeight: 700 }}>Garment</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Code</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Qty</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Unit Price</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Line Total</TableCell>
+                <TableCell>Garment</TableCell>
+                <TableCell>Code</TableCell>
+                <TableCell>Qty</TableCell>
+                <TableCell>Unit Price</TableCell>
+                <TableCell>Line Total</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {invoice.items.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
-                    <Typography sx={{ color: '#64748B' }}>No line items on this invoice.</Typography>
-                  </TableCell>
-                </TableRow>
+                <TableStateRow
+                  colSpan={5}
+                  state="empty"
+                  emptyTitle="No line items"
+                  emptyMessage="No line items on this invoice."
+                />
               ) : (
                 invoice.items.map((item) => (
                   <TableRow key={item.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
@@ -306,82 +278,76 @@ export const InvoiceDetail: React.FC = () => {
               )}
             </TableBody>
           </Table>
-        </TableContainer>
-      </Paper>
+        </TableCard>
+      </SectionCard>
 
-      <Paper sx={{ borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-        <Box sx={{ p: 2, backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-          <Typography sx={{ fontWeight: 700 }}>Payment History</Typography>
-        </Box>
-        <TableContainer>
+      <SectionCard title="Payment History" icon={<PaymentsIcon />} noPadding>
+        <TableCard sx={{ border: 'none', borderRadius: 0 }}>
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Amount</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Method</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Reference</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Notes</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Recorded By</TableCell>
+                <TableCell>Date</TableCell>
+                <TableCell>Type</TableCell>
+                <TableCell>Amount</TableCell>
+                <TableCell>Method</TableCell>
+                <TableCell>Reference</TableCell>
+                <TableCell>Notes</TableCell>
+                <TableCell>Recorded By</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {payments.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                    <Typography sx={{ color: '#64748B' }}>No payments recorded yet.</Typography>
-                  </TableCell>
-                </TableRow>
+                <TableStateRow
+                  colSpan={7}
+                  state="empty"
+                  emptyTitle="No payments recorded yet"
+                  emptyMessage="Payments for this invoice will appear here."
+                />
               ) : (
-                payments.map((payment) => {
-                  const typeColors = PAYMENT_TYPE_COLORS[payment.payment_type];
-                  return (
-                    <TableRow key={payment.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                      <TableCell>
-                        <Typography variant="body2">{formatDate(payment.payment_date)}</Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={PAYMENT_TYPE_LABELS[payment.payment_type]}
-                          size="small"
-                          sx={{ fontWeight: 600, backgroundColor: typeColors.bg, color: typeColors.text }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            fontWeight: 600,
-                            color: payment.payment_type === 'REFUND' ? '#B91C1C' : 'inherit',
-                          }}
-                        >
-                          {payment.payment_type === 'REFUND' ? '− ' : ''}
-                          {formatCurrency(payment.amount)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{payment.payment_method_display}</Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{payment.reference || '-'}</Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ maxWidth: 220 }}>
-                          {payment.notes || '-'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{payment.recorded_by_name || '-'}</Typography>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
+                payments.map((payment) => (
+                  <TableRow key={payment.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                    <TableCell>
+                      <Typography variant="body2">{formatDate(payment.payment_date)}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge
+                        label={PAYMENT_TYPE_LABELS[payment.payment_type]}
+                        tone={PAYMENT_TYPE_TONES[payment.payment_type] ?? 'neutral'}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 600,
+                          color: payment.payment_type === 'REFUND' ? '#8F2F22' : 'inherit',
+                        }}
+                      >
+                        {payment.payment_type === 'REFUND' ? '− ' : ''}
+                        {formatCurrency(payment.amount)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">{payment.payment_method_display}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">{payment.reference || '-'}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ maxWidth: 220 }}>
+                        {payment.notes || '-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">{payment.recorded_by_name || '-'}</Typography>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>
-        </TableContainer>
-      </Paper>
+        </TableCard>
+      </SectionCard>
 
       {canRecord && (
         <>
@@ -413,3 +379,5 @@ export const InvoiceDetail: React.FC = () => {
     </Box>
   );
 };
+
+export default InvoiceDetail;

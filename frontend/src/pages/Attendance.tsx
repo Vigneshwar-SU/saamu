@@ -1,31 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   Box,
-  Breadcrumbs,
   Button,
-  Chip,
-  CircularProgress,
   FormControl,
   InputLabel,
-  LinearProgress,
-  Link,
   MenuItem,
-  Pagination,
-  Paper,
   Select,
   Stack,
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
   TextField,
   Tooltip,
   Typography,
 } from '@mui/material';
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
 import EditIcon from '@mui/icons-material/Edit';
@@ -33,16 +23,25 @@ import { useAuth } from '../context/useAuth';
 import { formatDate } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { AttendanceFormDialog } from '../components/AttendanceFormDialog';
+import { PageHeader } from '../components/ui/PageHeader';
+import { FilterBar } from '../components/ui/FilterBar';
+import { TableCard } from '../components/ui/TableCard';
+import { TableStateRow } from '../components/ui/TableStateRow';
+import { AppPagination } from '../components/ui/AppPagination';
+import { StatusBadge } from '../components/ui/StatusBadge';
+import type { StatusTone } from '../components/ui/StatusBadge';
 import { useCreateAttendance, useAttendanceList, useUpdateAttendance } from '../hooks/useAttendance';
 import { useTailorList } from '../hooks/useTailors';
-import {
-  ATTENDANCE_STATUS_COLORS,
-  ATTENDANCE_STATUS_LABELS,
-  ATTENDANCE_STATUSES,
-} from '../types/attendance';
+import { ATTENDANCE_STATUS_LABELS, ATTENDANCE_STATUSES } from '../types/attendance';
 import type { Attendance, AttendancePayload, AttendanceStatus } from '../types/attendance';
 
 const PAGE_SIZE = 6;
+
+const ATTENDANCE_STATUS_TONES: Record<AttendanceStatus, StatusTone> = {
+  PRESENT: 'success',
+  ABSENT: 'error',
+  HALF_DAY: 'warning',
+};
 
 export const AttendancePage: React.FC = () => {
   const { role } = useAuth();
@@ -74,8 +73,6 @@ export const AttendancePage: React.FC = () => {
   const createMutation = useCreateAttendance();
   const updateMutation = useUpdateAttendance();
 
-  const totalPages = data ? Math.max(1, Math.ceil(data.count / PAGE_SIZE)) : 1;
-
   const openCreateDialog = () => {
     setEditingRecord(null);
     setDialogOpen(true);
@@ -100,53 +97,25 @@ export const AttendancePage: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} aria-label="breadcrumb">
-        <Link underline="hover" color="inherit" href="/dashboard" sx={{ fontSize: '0.85rem' }}>
-          Saamu Tailors ERP
-        </Link>
-        <Typography color="text.primary" sx={{ fontSize: '0.85rem', fontWeight: 600 }}>
-          Attendance
-        </Typography>
-      </Breadcrumbs>
+      <PageHeader
+        title="Attendance"
+        subtitle="Mark daily tailor attendance and review records."
+        icon={<FactCheckIcon />}
+        crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Attendance' }]}
+        actions={
+          isStaff && (
+            <Button
+              variant="contained"
+              startIcon={<EventNoteIcon />}
+              onClick={openCreateDialog}
+            >
+              Mark Attendance
+            </Button>
+          )
+        }
+      />
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: '12px',
-              backgroundColor: '#EFF6FF',
-              color: '#1E3A8A',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <FactCheckIcon />
-          </Box>
-          <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700 }}>
-              Attendance
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#64748B' }}>
-              Mark daily tailor attendance and review records.
-            </Typography>
-          </Box>
-        </Box>
-        {isStaff && (
-          <Button
-            variant="contained"
-            startIcon={<EventNoteIcon />}
-            onClick={openCreateDialog}
-            sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
-          >
-            Mark Attendance
-          </Button>
-        )}
-      </Box>
-
-      <Paper sx={{ p: 2, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+      <FilterBar>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <TextField
             label="From"
@@ -196,115 +165,82 @@ export const AttendancePage: React.FC = () => {
             </Select>
           </FormControl>
         </Stack>
-      </Paper>
+      </FilterBar>
 
-      <Paper sx={{ borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-        {isFetching && !isLoading && <LinearProgress sx={{ height: 3 }} />}
-        <TableContainer>
-          <Table size="medium">
-            <TableHead>
-              <TableRow sx={{ backgroundColor: '#F8FAFC' }}>
-                <TableCell sx={{ fontWeight: 700 }}>Tailor</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Notes</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Marked By</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 700 }}>
-                  Actions
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
-                    <CircularProgress size={28} />
+      <TableCard loading={isFetching && !isLoading}>
+        <Table size="medium">
+          <TableHead>
+            <TableRow>
+              <TableCell>Tailor</TableCell>
+              <TableCell>Date</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Notes</TableCell>
+              <TableCell>Marked By</TableCell>
+              <TableCell align="right">Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {isLoading ? (
+              <TableStateRow colSpan={6} state="loading" />
+            ) : isError ? (
+              <TableStateRow
+                colSpan={6}
+                state="error"
+                errorMessage={getApiErrorMessage(error)}
+                onRetry={() => refetch()}
+              />
+            ) : data && data.results.length === 0 ? (
+              <TableStateRow colSpan={6} state="empty" emptyTitle="No attendance records found" />
+            ) : (
+              data?.results.map((record) => (
+                <TableRow key={record.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                  <TableCell>
+                    <Typography sx={{ fontWeight: 600 }}>{record.tailor.name}</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+                      #{record.tailor.id}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{formatDate(record.attendance_date)}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge
+                      label={ATTENDANCE_STATUS_LABELS[record.status]}
+                      tone={ATTENDANCE_STATUS_TONES[record.status]}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" sx={{ maxWidth: 260 }}>
+                      {record.notes || '-'}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{record.marked_by_name || '-'}</Typography>
+                  </TableCell>
+                  <TableCell align="right">
+                    {isStaff && (
+                      <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                        <Tooltip title="Edit record">
+                          <Button
+                            size="small"
+                            startIcon={<EditIcon fontSize="small" />}
+                            onClick={() => openEditDialog(record)}
+                          >
+                            Edit
+                          </Button>
+                        </Tooltip>
+                      </Stack>
+                    )}
                   </TableCell>
                 </TableRow>
-              ) : isError ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                    <Alert severity="error" sx={{ display: 'inline-flex' }}>
-                      {getApiErrorMessage(error)}
-                    </Alert>
-                    <Box sx={{ mt: 1.5 }}>
-                      <Button size="small" variant="outlined" onClick={() => refetch()}>
-                        Retry
-                      </Button>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ) : data && data.results.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
-                    <Typography sx={{ color: '#64748B' }}>No attendance records found.</Typography>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                data?.results.map((record) => {
-                  const colors = ATTENDANCE_STATUS_COLORS[record.status];
-                  return (
-                    <TableRow key={record.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                      <TableCell>
-                        <Typography sx={{ fontWeight: 600 }}>{record.tailor.name}</Typography>
-                        <Typography variant="caption" sx={{ color: '#94A3B8' }}>
-                          #{record.tailor.id}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{formatDate(record.attendance_date)}</Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={ATTENDANCE_STATUS_LABELS[record.status]}
-                          size="small"
-                          sx={{ fontWeight: 600, backgroundColor: colors.bg, color: colors.text }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ maxWidth: 260 }}>
-                          {record.notes || '-'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{record.marked_by_name || '-'}</Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        {isStaff && (
-                          <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                            <Tooltip title="Edit record">
-                              <Button
-                                size="small"
-                                startIcon={<EditIcon fontSize="small" />}
-                                onClick={() => openEditDialog(record)}
-                              >
-                                Edit
-                              </Button>
-                            </Tooltip>
-                          </Stack>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </TableCard>
 
       {data && data.count > 0 && (
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="body2" sx={{ color: '#64748B' }}>
-            Showing {data.results.length} of {data.count} records
-          </Typography>
-          <Pagination
-            count={totalPages}
-            page={page}
-            onChange={(_event, value) => setPage(value)}
-            color="primary"
-          />
-        </Box>
+        <AppPagination page={page} count={data.count} pageSize={PAGE_SIZE} onChange={setPage} />
       )}
 
       <AttendanceFormDialog

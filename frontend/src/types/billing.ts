@@ -11,9 +11,9 @@ export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
 };
 
 export const INVOICE_STATUS_COLORS: Record<InvoiceStatus, { bg: string; text: string }> = {
-  UNPAID: { bg: '#FEE2E2', text: '#B91C1C' },
-  PARTIALLY_PAID: { bg: '#FEF3C7', text: '#B45309' },
-  PAID: { bg: '#DCFCE7', text: '#15803D' },
+  UNPAID: { bg: '#FBE9E6', text: '#8F2F22' },
+  PARTIALLY_PAID: { bg: '#FBF0E3', text: '#8F4A00' },
+  PAID: { bg: '#E7F1EA', text: '#1F5C3C' },
 };
 
 export const PAYMENT_METHODS = ['CASH', 'UPI', 'BANK_TRANSFER', 'OTHER'] as const;

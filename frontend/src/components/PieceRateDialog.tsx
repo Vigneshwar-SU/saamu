@@ -131,7 +131,7 @@ export const PieceRateDialog: React.FC<PieceRateDialogProps> = ({ open, onClose 
         <Stack spacing={2.5} sx={{ mt: 0.5 }}>
           {actionError && <Alert severity="error">{actionError}</Alert>}
 
-          <Paper variant="outlined" sx={{ p: 2, borderRadius: '10px', backgroundColor: '#F8FAFC' }}>
+          <Paper variant="outlined" sx={{ p: 2, borderRadius: '10px', backgroundColor: '#FBF6EA' }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1.5 }}>
               Configure rate per garment type
             </Typography>
@@ -158,7 +158,7 @@ export const PieceRateDialog: React.FC<PieceRateDialogProps> = ({ open, onClose 
                 startIcon={actionLoading ? <CircularProgress size={16} color="inherit" /> : <AddIcon />}
                 onClick={handleAdd}
                 disabled={actionLoading}
-                sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' }, minWidth: 120 }}
+                sx={{ minWidth: 120 }}
               >
                 Add
               </Button>
@@ -177,14 +177,14 @@ export const PieceRateDialog: React.FC<PieceRateDialogProps> = ({ open, onClose 
               </Button>
             </Stack>
           ) : rates.length === 0 ? (
-            <Typography sx={{ color: '#64748B', textAlign: 'center', py: 3 }}>
+            <Typography sx={{ color: '#6B6B6B', textAlign: 'center', py: 3 }}>
               No piece rates configured yet.
             </Typography>
           ) : (
             <TableContainer>
               <Table size="small">
                 <TableHead>
-                  <TableRow sx={{ backgroundColor: '#F8FAFC' }}>
+                  <TableRow sx={{ backgroundColor: '#FBF6EA' }}>
                     <TableCell sx={{ fontWeight: 700 }}>Garment</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>Rate / Piece</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
@@ -220,8 +220,8 @@ export const PieceRateDialog: React.FC<PieceRateDialogProps> = ({ open, onClose 
                           size="small"
                           sx={{
                             fontWeight: 600,
-                            backgroundColor: pieceRate.is_active ? '#DCFCE7' : '#F1F5F9',
-                            color: pieceRate.is_active ? '#15803D' : '#475569',
+                            backgroundColor: pieceRate.is_active ? '#E7F1EA' : '#F1EDE2',
+                            color: pieceRate.is_active ? '#1F5C3C' : '#6B6B6B',
                           }}
                         />
                       </TableCell>

@@ -230,7 +230,7 @@ export const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onCl
           )}
 
           <Stack spacing={2.5}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1E3A8A' }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#7A5E0C' }}>
               Order Details
             </Typography>
             <Autocomplete
@@ -281,7 +281,7 @@ export const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onCl
 
           <Box>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#1E3A8A' }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#7A5E0C' }}>
                 Garment Items
               </Typography>
               <Button size="small" startIcon={<AddIcon />} onClick={addItem} disabled={!customerId}>
@@ -302,13 +302,13 @@ export const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onCl
                       key={item.key}
                       sx={{
                         p: 2,
-                        border: '1px solid #E2E8F0',
+                        border: '1px solid #E7E0D0',
                         borderRadius: '10px',
-                        backgroundColor: '#F8FAFC',
+                        backgroundColor: '#FBF6EA',
                       }}
                     >
                       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#475569' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#6B6B6B' }}>
                           Item {index + 1}
                         </Typography>
                         <Button
@@ -420,7 +420,7 @@ export const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onCl
           variant="contained"
           disabled={createMutation.isPending || !customerId}
           startIcon={createMutation.isPending ? <CircularProgress size={16} color="inherit" /> : undefined}
-          sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
+          
         >
           Create Order
         </Button>

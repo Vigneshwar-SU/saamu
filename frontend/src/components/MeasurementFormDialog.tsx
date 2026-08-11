@@ -206,7 +206,7 @@ export const MeasurementFormDialog: React.FC<MeasurementFormDialogProps> = ({
             )}
           />
 
-          <Typography variant="caption" sx={{ color: '#64748B' }}>
+          <Typography variant="caption" sx={{ color: '#6B6B6B' }}>
             All measurements are in inches. Fields marked with * are required for{' '}
             {selectedGarment}.
           </Typography>
@@ -252,7 +252,7 @@ export const MeasurementFormDialog: React.FC<MeasurementFormDialogProps> = ({
           variant="contained"
           disabled={isSubmitting}
           startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
-          sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
+          
         >
           {initial ? 'Save New Version' : 'Save Measurements'}
         </Button>

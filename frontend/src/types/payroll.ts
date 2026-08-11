@@ -15,9 +15,9 @@ export const PAYROLL_PERIOD_STATUS_COLORS: Record<
   PayrollPeriodStatus,
   { bg: string; text: string }
 > = {
-  DRAFT: { bg: '#F1F5F9', text: '#475569' },
-  CALCULATED: { bg: '#EFF6FF', text: '#1E3A8A' },
-  FINALIZED: { bg: '#DCFCE7', text: '#15803D' },
+  DRAFT: { bg: '#F1EDE2', text: '#6B6B6B' },
+  CALCULATED: { bg: '#F5EBD2', text: '#7A5E0C' },
+  FINALIZED: { bg: '#E7F1EA', text: '#1F5C3C' },
 };
 
 export const SETTLEMENT_STATUSES = ['UNPAID', 'PARTIALLY_PAID', 'SETTLED'] as const;
@@ -34,9 +34,9 @@ export const SETTLEMENT_STATUS_COLORS: Record<
   SettlementStatus,
   { bg: string; text: string }
 > = {
-  UNPAID: { bg: '#FEF3C7', text: '#B45309' },
-  PARTIALLY_PAID: { bg: '#EFF6FF', text: '#1E3A8A' },
-  SETTLED: { bg: '#DCFCE7', text: '#15803D' },
+  UNPAID: { bg: '#FBF0E3', text: '#8F4A00' },
+  PARTIALLY_PAID: { bg: '#F5EBD2', text: '#7A5E0C' },
+  SETTLED: { bg: '#E7F1EA', text: '#1F5C3C' },
 };
 
 export const PAYMENT_METHODS = ['CASH', 'BANK_TRANSFER', 'UPI', 'OTHER'] as const;

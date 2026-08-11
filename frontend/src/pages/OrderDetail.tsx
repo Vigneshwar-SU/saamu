@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Box,
-  Breadcrumbs,
   Button,
   Chip,
   CircularProgress,
@@ -10,13 +9,9 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   FormControl,
-  IconButton,
   InputLabel,
-  Link,
   MenuItem,
-  Paper,
   Select,
   Stack,
   Table,
@@ -29,19 +24,15 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import EditIcon from '@mui/icons-material/Edit';
 import CancelIcon from '@mui/icons-material/Cancel';
 import StraightenIcon from '@mui/icons-material/Straighten';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
-import PaymentsIcon from '@mui/icons-material/Payments';
-import InventoryIcon from '@mui/icons-material/Inventory';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HistoryIcon from '@mui/icons-material/History';
 import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
 import { formatCurrency, formatDate, formatPieces } from '../utils/formatters';
@@ -57,6 +48,14 @@ import AssignWorkDialog from '../components/AssignWorkDialog';
 import { OrderCommunicationPanel } from '../components/OrderCommunicationPanel';
 import ReportProgressDialog from '../components/ReportProgressDialog';
 import WorkAssignmentStatusChip from '../components/WorkAssignmentStatusChip';
+import { PageHeader } from '../components/ui/PageHeader';
+import { InfoField } from '../components/ui/InfoField';
+import { SectionCard } from '../components/ui/SectionCard';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
+import { StatusBadge } from '../components/ui/StatusBadge';
+import type { StatusTone } from '../components/ui/StatusBadge';
+import { ErrorState } from '../components/ui/ErrorState';
+import { TableStateRow } from '../components/ui/TableStateRow';
 import { MEASUREMENT_FIELD_LABELS } from '../types/customers';
 import type { MeasurementFieldName } from '../types/customers';
 import {
@@ -66,47 +65,25 @@ import {
   TERMINAL_ORDER_STATUSES,
 } from '../types/orders';
 import type { Order, OrderItem, OrderStatus, OrderUpdatePayload } from '../types/orders';
-import { INVOICE_STATUS_COLORS, INVOICE_STATUS_LABELS } from '../types/billing';
+import { INVOICE_STATUS_LABELS } from '../types/billing';
+import type { InvoiceStatus } from '../types/billing';
 import { NEXT_ASSIGNMENT_STATUS, WORK_ASSIGNMENT_STATUS_LABELS } from '../types/tailors';
 import type { WorkAssignment, WorkAssignmentStatus } from '../types/tailors';
 
-const InfoCell: React.FC<{
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}> = ({ icon, label, value }) => (
-  <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'flex-start' }}>
-    <Box
-      sx={{
-        width: 36,
-        height: 36,
-        borderRadius: '10px',
-        backgroundColor: '#F1F5F9',
-        color: '#475569',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-      }}
-    >
-      {icon}
-    </Box>
-    <Box>
-      <Typography
-        variant="caption"
-        sx={{ color: '#94A3B8', textTransform: 'uppercase', fontSize: '0.68rem', fontWeight: 600 }}
-      >
-        {label}
-      </Typography>
-      <Typography
-        variant="body2"
-        sx={{ fontWeight: 500, color: '#0F172A', whiteSpace: 'pre-wrap' }}
-      >
-        {value}
-      </Typography>
-    </Box>
-  </Box>
-);
+const ORDER_STATUS_TONES: Record<OrderStatus, StatusTone> = {
+  NEW: 'gold',
+  CUTTING: 'warning',
+  STITCHING: 'info',
+  READY: 'success',
+  COLLECTED: 'neutral',
+  CANCELLED: 'error',
+};
+
+const INVOICE_STATUS_TONES: Record<InvoiceStatus, StatusTone> = {
+  UNPAID: 'error',
+  PARTIALLY_PAID: 'warning',
+  PAID: 'success',
+};
 
 interface EditOrderDialogProps {
   open: boolean;
@@ -179,7 +156,6 @@ const EditOrderDialog: React.FC<EditOrderDialogProps> = ({ open, order, onClose,
           variant="contained"
           disabled={isSubmitting}
           startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
-          sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
         >
           Save Changes
         </Button>
@@ -210,7 +186,7 @@ const MeasurementSnapshotRow: React.FC<{ item: OrderItem }> = ({ item }) => {
         </TableCell>
       </TableRow>
       {open && (
-        <TableRow sx={{ backgroundColor: '#F8FAFC' }}>
+        <TableRow sx={{ backgroundColor: '#FBF6EA' }}>
           <TableCell colSpan={7} sx={{ pb: 2 }}>
             <Box
               sx={{
@@ -228,7 +204,7 @@ const MeasurementSnapshotRow: React.FC<{ item: OrderItem }> = ({ item }) => {
                   <Typography
                     variant="caption"
                     sx={{
-                      color: '#94A3B8',
+                      color: 'text.secondary',
                       display: 'block',
                       fontSize: '0.7rem',
                       textTransform: 'uppercase',
@@ -237,7 +213,7 @@ const MeasurementSnapshotRow: React.FC<{ item: OrderItem }> = ({ item }) => {
                   >
                     {MEASUREMENT_FIELD_LABELS[field as MeasurementFieldName] ?? field}
                   </Typography>
-                  <Typography sx={{ fontWeight: 600, color: '#0F172A' }}>
+                  <Typography sx={{ fontWeight: 600, color: 'text.primary' }}>
                     {value == null ? '-' : `${value} in`}
                   </Typography>
                 </Box>
@@ -280,6 +256,7 @@ export const OrderDetail: React.FC = () => {
   const [assignOpen, setAssignOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<WorkAssignment | null>(null);
   const [progressOpen, setProgressOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   const assignments = useMemo(() => assignmentsData?.results ?? [], [assignmentsData]);
 
@@ -297,17 +274,6 @@ export const OrderDetail: React.FC = () => {
     }
   };
 
-  const statusChip = (orderStatus: OrderStatus) => {
-    const colors = ORDER_STATUS_COLORS[orderStatus];
-    return (
-      <Chip
-        label={ORDER_STATUS_LABELS[orderStatus]}
-        size="small"
-        sx={{ fontWeight: 600, backgroundColor: colors.bg, color: colors.text }}
-      />
-    );
-  };
-
   const handleAdvance = async () => {
     if (!order || !nextStatus) return;
     setActionError(null);
@@ -320,11 +286,10 @@ export const OrderDetail: React.FC = () => {
 
   const handleCancel = async () => {
     if (!order) return;
-    const confirmed = window.confirm(`Cancel order ${order.order_number}? This cannot be undone.`);
-    if (!confirmed) return;
     setActionError(null);
     try {
       await statusMutation.mutateAsync('CANCELLED');
+      setCancelOpen(false);
     } catch (transitionError) {
       setActionError(getApiErrorMessage(transitionError));
     }
@@ -340,31 +305,81 @@ export const OrderDetail: React.FC = () => {
 
   if (isError || !order) {
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, py: 8 }}>
-        <Alert severity="error">{getApiErrorMessage(error)}</Alert>
-        <Button variant="outlined" onClick={() => refetch()}>
-          Retry
-        </Button>
-        <Button color="inherit" onClick={() => navigate('/orders')}>
-          Back to Orders
-        </Button>
+      <Box>
+        <ErrorState message={getApiErrorMessage(error)} onRetry={() => refetch()} />
+        <Stack direction="row" justifyContent="center" sx={{ mt: 2 }}>
+          <Button color="inherit" onClick={() => navigate('/orders')}>
+            Back to Orders
+          </Button>
+        </Stack>
       </Box>
     );
   }
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} aria-label="breadcrumb">
-        <Link underline="hover" color="inherit" href="/dashboard" sx={{ fontSize: '0.85rem' }}>
-          Saamu Tailors ERP
-        </Link>
-        <Link underline="hover" color="inherit" href="/orders" sx={{ fontSize: '0.85rem' }}>
-          Orders
-        </Link>
-        <Typography color="text.primary" sx={{ fontSize: '0.85rem', fontWeight: 600 }}>
-          {order.order_number}
-        </Typography>
-      </Breadcrumbs>
+      <PageHeader
+        title={order.order_number}
+        subtitle={`${order.customer.full_name} · ${order.customer.mobile_number}`}
+        icon={<ShoppingBagIcon />}
+        crumbs={[
+          { label: 'Dashboard', to: '/dashboard' },
+          { label: 'Orders', to: '/orders' },
+          { label: order.order_number },
+        ]}
+        backTo="/orders"
+        actions={
+          <>
+            <StatusBadge
+              label={ORDER_STATUS_LABELS[order.status]}
+              tone={ORDER_STATUS_TONES[order.status]}
+            />
+            {isStaff && !isTerminal && (
+              <>
+                <Button variant="outlined" startIcon={<EditIcon />} onClick={() => setEditOpen(true)}>
+                  Edit
+                </Button>
+                {nextStatus && (
+                  <Button
+                    variant="contained"
+                    startIcon={nextStatus === 'COLLECTED' ? <CheckCircleIcon /> : undefined}
+                    onClick={handleAdvance}
+                  >
+                    Move to {ORDER_STATUS_LABELS[nextStatus]}
+                  </Button>
+                )}
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<CancelIcon />}
+                  onClick={() => setCancelOpen(true)}
+                >
+                  Cancel
+                </Button>
+              </>
+            )}
+            {isStaff && existingInvoice && (
+              <Button
+                variant="outlined"
+                startIcon={<ReceiptLongIcon />}
+                onClick={() => navigate(`/invoices/${existingInvoice.id}`)}
+              >
+                View Invoice
+              </Button>
+            )}
+            {isStaff && !existingInvoice && (
+              <Button
+                variant="outlined"
+                startIcon={<ReceiptLongIcon />}
+                onClick={handleCreateInvoice}
+                disabled={createInvoiceMutation.isPending}
+              >
+                Create Invoice
+              </Button>
+            )}
+          </>
+        }
+      />
 
       {actionError && <Alert severity="error">{actionError}</Alert>}
       {statusMutation.isPending && (
@@ -373,81 +388,7 @@ export const OrderDetail: React.FC = () => {
         </Alert>
       )}
 
-      <Box
-        sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}
-      >
-        <Stack direction="row" spacing={1.5} alignItems="flex-start">
-          <Tooltip title="Back to orders">
-            <IconButton
-              onClick={() => navigate('/orders')}
-              sx={{ border: '1px solid #E2E8F0', borderRadius: '10px', color: '#475569' }}
-            >
-              <ArrowBackIcon />
-            </IconButton>
-          </Tooltip>
-          <Box>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                {order.order_number}
-              </Typography>
-              {statusChip(order.status)}
-            </Stack>
-            <Typography variant="body2" sx={{ color: '#64748B' }}>
-              {order.customer.full_name} · {order.customer.mobile_number}
-            </Typography>
-          </Box>
-        </Stack>
-
-        {isStaff && !isTerminal && (
-          <Stack direction="row" spacing={1}>
-            <Button variant="outlined" startIcon={<EditIcon />} onClick={() => setEditOpen(true)}>
-              Edit
-            </Button>
-            {nextStatus && (
-              <Button
-                variant="contained"
-                startIcon={nextStatus === 'COLLECTED' ? <CheckCircleIcon /> : undefined}
-                onClick={handleAdvance}
-                sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
-              >
-                Move to {ORDER_STATUS_LABELS[nextStatus]}
-              </Button>
-            )}
-            <Button
-              variant="outlined"
-              color="error"
-              startIcon={<CancelIcon />}
-              onClick={handleCancel}
-            >
-              Cancel
-            </Button>
-          </Stack>
-        )}
-        {isStaff && existingInvoice && (
-          <Button
-            variant="outlined"
-            startIcon={<ReceiptLongIcon />}
-            onClick={() => navigate(`/invoices/${existingInvoice.id}`)}
-          >
-            View Invoice
-          </Button>
-        )}
-        {isStaff && !existingInvoice && (
-          <Button
-            variant="outlined"
-            startIcon={<ReceiptLongIcon />}
-            onClick={handleCreateInvoice}
-            disabled={createInvoiceMutation.isPending}
-          >
-            Create Invoice
-          </Button>
-        )}
-      </Box>
-
-      <Paper sx={{ p: 3, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2.5 }}>
-          Order Summary
-        </Typography>
+      <SectionCard title="Order Summary">
         <Box
           sx={{
             display: 'grid',
@@ -455,23 +396,13 @@ export const OrderDetail: React.FC = () => {
             gap: 3,
           }}
         >
-          <InfoCell
-            icon={<CalendarTodayIcon sx={{ fontSize: 18 }} />}
-            label="Order Date"
-            value={formatDate(order.order_date)}
-          />
-          <InfoCell
-            icon={<CalendarTodayIcon sx={{ fontSize: 18 }} />}
+          <InfoField label="Order Date" value={formatDate(order.order_date)} />
+          <InfoField
             label="Expected Delivery"
             value={order.expected_delivery_date ? formatDate(order.expected_delivery_date) : '-'}
           />
-          <InfoCell
-            icon={<ReceiptLongIcon sx={{ fontSize: 18 }} />}
-            label="Total Amount"
-            value={formatCurrency(Number(order.total_amount))}
-          />
-          <InfoCell
-            icon={<InventoryIcon sx={{ fontSize: 18 }} />}
+          <InfoField label="Total Amount" value={formatCurrency(Number(order.total_amount))} />
+          <InfoField
             label="Collected At"
             value={
               order.collected_at ? formatDate(order.collected_at, 'DD MMM YYYY, hh:mm A') : '-'
@@ -480,32 +411,23 @@ export const OrderDetail: React.FC = () => {
         </Box>
         {order.notes && (
           <Box sx={{ mt: 3 }}>
-            <Typography
-              variant="caption"
-              sx={{
-                color: '#94A3B8',
-                textTransform: 'uppercase',
-                fontSize: '0.68rem',
-                fontWeight: 600,
-              }}
-            >
+            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
               Order Notes
             </Typography>
-            <Typography variant="body2" sx={{ mt: 0.5, color: '#0F172A', whiteSpace: 'pre-wrap' }}>
+            <Typography
+              variant="body2"
+              sx={{ mt: 0.5, color: 'text.primary', whiteSpace: 'pre-wrap' }}
+            >
               {order.notes}
             </Typography>
           </Box>
         )}
-      </Paper>
+      </SectionCard>
 
-      <Paper sx={{ p: 3, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-        <Box
-          sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}
-        >
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            Billing
-          </Typography>
-          {order.payment_summary?.has_invoice && (
+      <SectionCard
+        title="Billing"
+        action={
+          order.payment_summary?.has_invoice && (
             <Button
               size="small"
               variant="outlined"
@@ -515,8 +437,9 @@ export const OrderDetail: React.FC = () => {
             >
               View Invoice
             </Button>
-          )}
-        </Box>
+          )
+        }
+      >
         <Box
           sx={{
             display: 'grid',
@@ -524,97 +447,49 @@ export const OrderDetail: React.FC = () => {
             gap: 3,
           }}
         >
-          <InfoCell
-            icon={<ReceiptLongIcon sx={{ fontSize: 18 }} />}
-            label="Order Total"
-            value={formatCurrency(Number(order.total_amount))}
-          />
-          <InfoCell
-            icon={<PaymentsIcon sx={{ fontSize: 18 }} />}
+          <InfoField label="Order Total" value={formatCurrency(Number(order.total_amount))} />
+          <InfoField
             label="Total Paid"
             value={formatCurrency(Number(order.payment_summary?.total_paid ?? 0))}
           />
-          <InfoCell
-            icon={<ReceiptLongIcon sx={{ fontSize: 18 }} />}
+          <InfoField
             label="Outstanding Balance"
             value={formatCurrency(
               Number(order.payment_summary?.outstanding_balance ?? order.total_amount)
             )}
           />
           <Box>
-            <Typography
-              variant="caption"
-              sx={{
-                color: '#94A3B8',
-                textTransform: 'uppercase',
-                fontSize: '0.68rem',
-                fontWeight: 600,
-              }}
-            >
+            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
               Payment Status
             </Typography>
             {order.payment_summary?.has_invoice ? (
-              <Chip
-                size="small"
-                label={INVOICE_STATUS_LABELS[order.payment_summary.payment_status]}
-                sx={{
-                  mt: 0.5,
-                  fontWeight: 600,
-                  backgroundColor: INVOICE_STATUS_COLORS[order.payment_summary.payment_status].bg,
-                  color: INVOICE_STATUS_COLORS[order.payment_summary.payment_status].text,
-                }}
-              />
+              <Box sx={{ mt: 0.5 }}>
+                <StatusBadge
+                  label={INVOICE_STATUS_LABELS[order.payment_summary.payment_status]}
+                  tone={INVOICE_STATUS_TONES[order.payment_summary.payment_status]}
+                />
+              </Box>
             ) : (
-              <Typography sx={{ fontWeight: 600, mt: 0.5, color: '#64748B' }}>
+              <Typography sx={{ fontWeight: 600, mt: 0.5, color: 'text.secondary' }}>
                 No invoice yet
               </Typography>
             )}
           </Box>
         </Box>
-      </Paper>
+      </SectionCard>
 
       <OrderCommunicationPanel orderId={orderId} />
 
-      <Paper sx={{ borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-        <Box
-          sx={{
-            px: 3,
-            py: 2,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}
-        >
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Box
-              sx={{
-                width: 40,
-                height: 40,
-                borderRadius: '10px',
-                backgroundColor: '#EFF6FF',
-                color: '#1E3A8A',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <StraightenIcon fontSize="small" />
-            </Box>
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                Order Items
-              </Typography>
-              <Typography variant="caption" sx={{ color: '#64748B' }}>
-                Measurements snapshot at the time of ordering
-              </Typography>
-            </Box>
-          </Stack>
-        </Box>
-        <Divider />
+      <SectionCard
+        title="Order Items"
+        subtitle="Measurements snapshot at the time of ordering"
+        icon={<StraightenIcon />}
+        noPadding
+      >
         <TableContainer>
           <Table size="medium">
             <TableHead>
-              <TableRow sx={{ backgroundColor: '#F8FAFC' }}>
+              <TableRow sx={{ backgroundColor: '#FBF6EA' }}>
                 <TableCell sx={{ fontWeight: 700 }}>Garment</TableCell>
                 <TableCell align="center" sx={{ fontWeight: 700 }}>
                   Qty
@@ -643,12 +518,14 @@ export const OrderDetail: React.FC = () => {
                         sx={{ fontWeight: 600 }}
                       />
                     </TableCell>
-                    <TableCell align="right">{formatCurrency(Number(item.unit_price))}</TableCell>
+                    <TableCell align="right">
+                      {formatCurrency(Number(item.unit_price))}
+                    </TableCell>
                     <TableCell align="right" sx={{ fontWeight: 700 }}>
                       {formatCurrency(Number(item.line_total))}
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" sx={{ color: '#475569' }}>
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                         {item.notes || '-'}
                       </Typography>
                     </TableCell>
@@ -656,11 +533,11 @@ export const OrderDetail: React.FC = () => {
                   <MeasurementSnapshotRow item={item} />
                 </React.Fragment>
               ))}
-              <TableRow sx={{ backgroundColor: '#F8FAFC' }}>
+              <TableRow sx={{ backgroundColor: '#FBF6EA' }}>
                 <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
                   Total Amount
                 </TableCell>
-                <TableCell align="right" sx={{ fontWeight: 700, color: '#1E3A8A' }}>
+                <TableCell align="right" sx={{ fontWeight: 700, color: '#7A5E0C' }}>
                   {formatCurrency(Number(order.total_amount))}
                 </TableCell>
                 <TableCell />
@@ -668,43 +545,13 @@ export const OrderDetail: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
-      </Paper>
+      </SectionCard>
 
-      <Paper sx={{ borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-        <Box
-          sx={{
-            px: 3,
-            py: 2,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: 2,
-          }}
-        >
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Box
-              sx={{
-                width: 40,
-                height: 40,
-                borderRadius: '10px',
-                backgroundColor: '#EFF6FF',
-                color: '#1E3A8A',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <PersonAddAltIcon fontSize="small" />
-            </Box>
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                Work Assignments
-              </Typography>
-              <Typography variant="caption" sx={{ color: '#64748B' }}>
-                Piece-rate work assigned for this order
-              </Typography>
-            </Box>
-          </Stack>
+      <SectionCard
+        title="Work Assignments"
+        subtitle="Piece-rate work assigned for this order"
+        icon={<PersonAddAltIcon />}
+        action={
           <Stack direction="row" spacing={1} alignItems="center">
             <FormControl size="small" sx={{ minWidth: 150 }}>
               <InputLabel>Status</InputLabel>
@@ -726,18 +573,18 @@ export const OrderDetail: React.FC = () => {
                 variant="contained"
                 startIcon={<PersonAddAltIcon />}
                 onClick={() => setAssignOpen(true)}
-                sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
               >
                 Assign Work
               </Button>
             )}
           </Stack>
-        </Box>
-        <Divider />
+        }
+        noPadding
+      >
         <TableContainer>
           <Table size="medium">
             <TableHead>
-              <TableRow sx={{ backgroundColor: '#F8FAFC' }}>
+              <TableRow sx={{ backgroundColor: '#FBF6EA' }}>
                 <TableCell sx={{ fontWeight: 700 }}>Tailor</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Garment</TableCell>
                 <TableCell align="center" sx={{ fontWeight: 700 }}>
@@ -765,15 +612,15 @@ export const OrderDetail: React.FC = () => {
             </TableHead>
             <TableBody>
               {assignments.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={isStaff ? 9 : 8} align="center" sx={{ py: 6 }}>
-                    <Typography sx={{ color: '#64748B' }}>
-                      {statusFilter
-                        ? 'No assignments match this status.'
-                        : 'No work assigned for this order yet.'}
-                    </Typography>
-                  </TableCell>
-                </TableRow>
+                <TableStateRow
+                  colSpan={isStaff ? 9 : 8}
+                  state="empty"
+                  emptyTitle={
+                    statusFilter
+                      ? 'No assignments match this status.'
+                      : 'No work assigned for this order yet.'
+                  }
+                />
               ) : (
                 assignments.map((assignment) => {
                   const nextStatus = NEXT_ASSIGNMENT_STATUS[assignment.status];
@@ -798,7 +645,7 @@ export const OrderDetail: React.FC = () => {
                         </Typography>
                       </TableCell>
                       <TableCell align="center">
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#B45309' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#8F4A00' }}>
                           {formatPieces(
                             assignment.assigned_quantity - assignment.completed_quantity
                           )}
@@ -810,7 +657,7 @@ export const OrderDetail: React.FC = () => {
                         </Typography>
                       </TableCell>
                       <TableCell align="right">
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#15803D' }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#1F5C3C' }}>
                           {formatCurrency(assignment.earned_amount)}
                         </Typography>
                       </TableCell>
@@ -877,33 +724,13 @@ export const OrderDetail: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
-      </Paper>
+      </SectionCard>
 
-      <Paper sx={{ p: 3, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2.5 }}>
-          <Box
-            sx={{
-              width: 40,
-              height: 40,
-              borderRadius: '10px',
-              backgroundColor: '#EFF6FF',
-              color: '#1E3A8A',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <HistoryIcon fontSize="small" />
-          </Box>
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              Status History
-            </Typography>
-            <Typography variant="caption" sx={{ color: '#64748B' }}>
-              Every status change is recorded with the staff member who made it
-            </Typography>
-          </Box>
-        </Stack>
+      <SectionCard
+        title="Status History"
+        subtitle="Every status change is recorded with the staff member who made it"
+        icon={<HistoryIcon />}
+      >
         <Stack spacing={2}>
           {order.status_history.map((entry, index) => {
             const colors = ORDER_STATUS_COLORS[entry.to_status];
@@ -920,18 +747,18 @@ export const OrderDetail: React.FC = () => {
                     }}
                   />
                   {index < order.status_history.length - 1 && (
-                    <Box sx={{ width: 2, height: '100%', backgroundColor: '#E2E8F0' }} />
+                    <Box sx={{ width: 2, height: '100%', backgroundColor: '#E7E0D0' }} />
                   )}
                 </Stack>
                 <Box sx={{ flex: 1 }}>
                   <Stack direction="row" spacing={1} alignItems="center">
-                    <Typography sx={{ fontWeight: 600, color: '#0F172A' }}>
+                    <Typography sx={{ fontWeight: 600, color: 'text.primary' }}>
                       {entry.from_status
                         ? `${ORDER_STATUS_LABELS[entry.from_status]} → ${ORDER_STATUS_LABELS[entry.to_status]}`
                         : `Order placed · ${ORDER_STATUS_LABELS[entry.to_status]}`}
                     </Typography>
                   </Stack>
-                  <Typography variant="caption" sx={{ color: '#94A3B8' }}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                     {entry.changed_by_username ?? 'System'} ·{' '}
                     {formatDate(entry.changed_at, 'DD MMM YYYY, hh:mm A')}
                   </Typography>
@@ -940,7 +767,18 @@ export const OrderDetail: React.FC = () => {
             );
           })}
         </Stack>
-      </Paper>
+      </SectionCard>
+
+      <ConfirmDialog
+        open={cancelOpen}
+        title="Cancel order"
+        message={`Cancel order ${order.order_number}? This cannot be undone.`}
+        confirmLabel="Cancel Order"
+        tone="error"
+        loading={statusMutation.isPending}
+        onConfirm={handleCancel}
+        onCancel={() => setCancelOpen(false)}
+      />
 
       <EditOrderDialog
         open={editOpen}
@@ -969,3 +807,5 @@ export const OrderDetail: React.FC = () => {
     </Box>
   );
 };
+
+export default OrderDetail;

@@ -11,13 +11,12 @@ import {
   Alert,
   Stack,
   Container,
-  Paper,
   CircularProgress,
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import ContentCutIcon from '@mui/icons-material/ContentCut';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import { BrandMark } from '../components/ui/BrandMark';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -93,25 +92,27 @@ export const ResetPassword: React.FC = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#F8FAFC',
+        backgroundColor: '#FAF6EC',
+        backgroundImage:
+          'radial-gradient(1200px 600px at 50% -10%, rgba(201, 162, 39, 0.16) 0%, rgba(201, 162, 39, 0) 60%), radial-gradient(900px 500px at 100% 110%, rgba(201, 162, 39, 0.10) 0%, rgba(201, 162, 39, 0) 60%)',
         py: 4,
         px: 2,
       }}
     >
       <Container maxWidth="sm">
-        <Paper
-          elevation={2}
+        <Box
           sx={{
-            borderRadius: '16px',
-            border: '1px solid #E2E8F0',
+            borderRadius: '20px',
+            border: '1px solid #E7E0D0',
             overflow: 'hidden',
             backgroundColor: '#FFFFFF',
+            boxShadow: '0 24px 48px -16px rgba(58, 48, 20, 0.22)',
           }}
         >
           {/* Header Branding Banner */}
           <Box
             sx={{
-              backgroundColor: '#1E3A8A',
+              background: 'linear-gradient(135deg, #8F6E10 0%, #A98216 55%, #C9A227 100%)',
               color: '#FFFFFF',
               py: 4,
               px: 3,
@@ -122,26 +123,16 @@ export const ResetPassword: React.FC = () => {
               gap: 1.5,
             }}
           >
-            <Box
-              sx={{
-                width: 56,
-                height: 56,
-                borderRadius: '14px',
-                backgroundColor: '#2563EB',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.2)',
-              }}
-            >
-              <ContentCutIcon sx={{ fontSize: 32, color: '#FFFFFF' }} />
-            </Box>
+            <BrandMark size={64} />
             <Box>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em' }}>
-                SAAMU TAILORS
+              <Typography
+                variant="h4"
+                sx={{ fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.02em', lineHeight: 1.2 }}
+              >
+                Saamu Tailors
               </Typography>
-              <Typography variant="body2" sx={{ color: '#93C5FD', mt: 0.5 }}>
-                Tailoring Management System ERP
+              <Typography variant="body2" sx={{ color: '#F5EBD2', mt: 0.5, fontWeight: 500 }}>
+                Enterprise Tailoring Management System
               </Typography>
             </Box>
           </Box>
@@ -149,7 +140,7 @@ export const ResetPassword: React.FC = () => {
           <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
             {completed ? (
               <Stack spacing={2.5}>
-                <Typography variant="h5" sx={{ fontWeight: 700, color: '#0F172A' }}>
+                <Typography variant="h5" sx={{ fontWeight: 700, color: '#242424' }}>
                   Password Reset Successful
                 </Typography>
                 <Alert severity="success" sx={{ borderRadius: '10px' }}>
@@ -161,20 +152,13 @@ export const ResetPassword: React.FC = () => {
                   fullWidth
                   size="large"
                   onClick={() => navigate('/login')}
-                  sx={{
-                    py: 1.5,
-                    fontSize: '1rem',
-                    fontWeight: 600,
-                    backgroundColor: '#1E3A8A',
-                    '&:hover': { backgroundColor: '#1D4ED8' },
-                  }}
                 >
                   Back to Sign In
                 </Button>
               </Stack>
             ) : invalidLink ? (
               <Stack spacing={2.5}>
-                <Typography variant="h5" sx={{ fontWeight: 700, color: '#0F172A' }}>
+                <Typography variant="h5" sx={{ fontWeight: 700, color: '#242424' }}>
                   Reset Link Invalid
                 </Typography>
                 <Alert severity="error" sx={{ borderRadius: '10px' }}>
@@ -186,13 +170,6 @@ export const ResetPassword: React.FC = () => {
                   fullWidth
                   size="large"
                   onClick={() => navigate('/forgot-password')}
-                  sx={{
-                    py: 1.5,
-                    fontSize: '1rem',
-                    fontWeight: 600,
-                    backgroundColor: '#1E3A8A',
-                    '&:hover': { backgroundColor: '#1D4ED8' },
-                  }}
                 >
                   Request New Link
                 </Button>
@@ -203,7 +180,7 @@ export const ResetPassword: React.FC = () => {
                     variant="body2"
                     onClick={() => navigate('/login')}
                     sx={{
-                      color: '#2563EB',
+                      color: '#A98216',
                       fontWeight: 600,
                       textDecoration: 'none',
                       '&:hover': { textDecoration: 'underline' },
@@ -215,10 +192,10 @@ export const ResetPassword: React.FC = () => {
               </Stack>
             ) : (
               <>
-                <Typography variant="h5" sx={{ fontWeight: 700, color: '#0F172A', mb: 1 }}>
+                <Typography variant="h5" sx={{ fontWeight: 700, color: '#242424', mb: 1 }}>
                   Set a New Password
                 </Typography>
-                <Typography variant="body2" sx={{ color: '#64748B', mb: 3 }}>
+                <Typography variant="body2" sx={{ color: '#6B6B6B', mb: 3 }}>
                   Choose a strong password you have not used for this account.
                 </Typography>
 
@@ -246,7 +223,7 @@ export const ResetPassword: React.FC = () => {
                           InputProps={{
                             startAdornment: (
                               <InputAdornment position="start">
-                                <LockOutlinedIcon sx={{ color: '#64748B' }} />
+                                <LockOutlinedIcon sx={{ color: '#6B6B6B' }} />
                               </InputAdornment>
                             ),
                             endAdornment: (
@@ -281,7 +258,7 @@ export const ResetPassword: React.FC = () => {
                           InputProps={{
                             startAdornment: (
                               <InputAdornment position="start">
-                                <LockOutlinedIcon sx={{ color: '#64748B' }} />
+                                <LockOutlinedIcon sx={{ color: '#6B6B6B' }} />
                               </InputAdornment>
                             ),
                             endAdornment: (
@@ -311,13 +288,6 @@ export const ResetPassword: React.FC = () => {
                           <CircularProgress size={18} color="inherit" />
                         ) : undefined
                       }
-                      sx={{
-                        py: 1.5,
-                        fontSize: '1rem',
-                        fontWeight: 600,
-                        backgroundColor: '#1E3A8A',
-                        '&:hover': { backgroundColor: '#1D4ED8' },
-                      }}
                     >
                       {confirmPasswordReset.isPending ? 'Resetting Password...' : 'Reset Password'}
                     </Button>
@@ -329,7 +299,7 @@ export const ResetPassword: React.FC = () => {
                         variant="body2"
                         onClick={() => navigate('/login')}
                         sx={{
-                          color: '#2563EB',
+                          color: '#7A5E0C',
                           fontWeight: 600,
                           textDecoration: 'none',
                           '&:hover': { textDecoration: 'underline' },
@@ -348,16 +318,16 @@ export const ResetPassword: React.FC = () => {
             sx={{
               py: 2,
               px: 3,
-              backgroundColor: '#F1F5F9',
-              borderTop: '1px solid #E2E8F0',
+              backgroundColor: '#FBF6EA',
+              borderTop: '1px solid #E7E0D0',
               textAlign: 'center',
             }}
           >
-            <Typography variant="caption" sx={{ color: '#64748B' }}>
-              Saamu Tailors System Foundation Sprint | Single-PC Local Deployment
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              Saamu Tailors System | Single-PC Local Deployment
             </Typography>
           </Box>
-        </Paper>
+        </Box>
       </Container>
     </Box>
   );

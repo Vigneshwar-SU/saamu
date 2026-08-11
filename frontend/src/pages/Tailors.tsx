@@ -1,25 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Alert,
   Box,
-  Breadcrumbs,
   Button,
-  Chip,
-  CircularProgress,
   FormControl,
   InputAdornment,
   InputLabel,
-  LinearProgress,
-  Link,
   MenuItem,
-  Pagination,
-  Paper,
   Select,
   Stack,
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
   TextField,
@@ -31,7 +22,6 @@ import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import UnarchiveIcon from '@mui/icons-material/Unarchive';
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import GroupsIcon from '@mui/icons-material/Groups';
 import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
 import TuneIcon from '@mui/icons-material/Tune';
@@ -41,6 +31,14 @@ import { formatCurrency, formatDate, formatPieces } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { TailorFormDialog } from '../components/TailorFormDialog';
 import { PieceRateDialog } from '../components/PieceRateDialog';
+import { PageHeader } from '../components/ui/PageHeader';
+import { FilterBar } from '../components/ui/FilterBar';
+import { TableCard } from '../components/ui/TableCard';
+import { TableStateRow } from '../components/ui/TableStateRow';
+import { AppPagination } from '../components/ui/AppPagination';
+import { StatusBadge } from '../components/ui/StatusBadge';
+import { StatCard } from '../components/ui/StatCard';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import {
   useArchiveTailor,
   useCreateTailor,
@@ -65,6 +63,7 @@ export const Tailors: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTailor, setEditingTailor] = useState<Tailor | null>(null);
   const [pieceRateDialogOpen, setPieceRateDialogOpen] = useState(false);
+  const [archiveTarget, setArchiveTarget] = useState<Tailor | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setSearch(searchInput.trim()), 300);
@@ -82,8 +81,6 @@ export const Tailors: React.FC = () => {
   const updateMutation = useUpdateTailor(editingTailor?.id ?? 0);
   const archiveMutation = useArchiveTailor();
   const restoreMutation = useRestoreTailor();
-
-  const totalPages = data ? Math.max(1, Math.ceil(data.count / PAGE_SIZE)) : 1;
 
   const openCreateDialog = () => {
     setEditingTailor(null);
@@ -107,16 +104,14 @@ export const Tailors: React.FC = () => {
     return createMutation.mutateAsync(payload);
   };
 
-  const handleArchive = async (tailor: Tailor) => {
-    const confirmed = window.confirm(
-      `Archive tailor "${tailor.name}"? The profile and work history are kept and can be restored later.`
-    );
-    if (!confirmed) return;
+  const confirmArchive = async () => {
+    if (!archiveTarget) return;
     try {
-      await archiveMutation.mutateAsync(tailor.id);
+      await archiveMutation.mutateAsync(archiveTarget.id);
     } catch (archiveError) {
       window.alert(getApiErrorMessage(archiveError));
     }
+    setArchiveTarget(null);
   };
 
   const handleRestore = async (tailor: Tailor) => {
@@ -129,108 +124,70 @@ export const Tailors: React.FC = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />} aria-label="breadcrumb">
-        <Link underline="hover" color="inherit" href="/dashboard" sx={{ fontSize: '0.85rem' }}>
-          Saamu Tailors ERP
-        </Link>
-        <Typography color="text.primary" sx={{ fontSize: '0.85rem', fontWeight: 600 }}>
-          Tailors
-        </Typography>
-      </Breadcrumbs>
-
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Box
-            sx={{
-              width: 48,
-              height: 48,
-              borderRadius: '12px',
-              backgroundColor: '#EFF6FF',
-              color: '#1E3A8A',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <GroupsIcon />
-          </Box>
-          <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700 }}>
-              Tailors
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#64748B' }}>
-              Manage tailors, assign work, and track piece-rate earnings.
-            </Typography>
-          </Box>
-        </Box>
-        {isStaff && (
-          <Stack direction="row" spacing={1.5}>
-            <Button
-              variant="outlined"
-              startIcon={<TuneIcon />}
-              onClick={() => setPieceRateDialogOpen(true)}
-              sx={{ borderColor: '#1E3A8A', color: '#1E3A8A' }}
-            >
-              Piece Rates
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<PersonAddAltIcon />}
-              onClick={openCreateDialog}
-              sx={{ backgroundColor: '#1E3A8A', '&:hover': { backgroundColor: '#1D4ED8' } }}
-            >
-              Add Tailor
-            </Button>
-          </Stack>
-        )}
-      </Box>
+      <PageHeader
+        title="Tailors"
+        subtitle="Manage tailors, assign work, and track piece-rate earnings."
+        icon={<GroupsIcon />}
+        crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Tailors' }]}
+        actions={
+          isStaff && (
+            <Stack direction="row" spacing={1.5}>
+              <Button
+                variant="outlined"
+                startIcon={<TuneIcon />}
+                onClick={() => setPieceRateDialogOpen(true)}
+              >
+                Piece Rates
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<PersonAddAltIcon />}
+                onClick={openCreateDialog}
+              >
+                Add Tailor
+              </Button>
+            </Stack>
+          )
+        }
+      />
 
       {earningsSummary && (
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} flexWrap="wrap">
-          <Paper sx={{ flex: 1, minWidth: 180, p: 2, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-            <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600 }}>
-              TOTAL TAILORS
-            </Typography>
-            <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.5 }}>
-              {earningsSummary.summary.total_active_tailors ?? earningsSummary.tailors.length}
-            </Typography>
-          </Paper>
-          <Paper sx={{ flex: 1, minWidth: 180, p: 2, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-            <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600 }}>
-              TOTAL ASSIGNED
-            </Typography>
-            <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.5 }}>
-              {formatPieces(earningsSummary.summary.workload?.total_assigned ?? 0)}
-            </Typography>
-          </Paper>
-          <Paper sx={{ flex: 1, minWidth: 180, p: 2, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-            <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600 }}>
-              TOTAL COMPLETED
-            </Typography>
-            <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.5, color: '#15803D' }}>
-              {formatPieces(earningsSummary.summary.workload?.total_completed ?? 0)}
-            </Typography>
-          </Paper>
-          <Paper sx={{ flex: 1, minWidth: 180, p: 2, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-            <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600 }}>
-              TOTAL OUTSTANDING
-            </Typography>
-            <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.5, color: '#B45309' }}>
-              {formatPieces(earningsSummary.summary.workload?.total_outstanding ?? 0)}
-            </Typography>
-          </Paper>
-          <Paper sx={{ flex: 1, minWidth: 180, p: 2, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
-            <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600 }}>
-              TOTAL EARNED
-            </Typography>
-            <Typography variant="h5" sx={{ fontWeight: 700, mt: 0.5, color: '#15803D' }}>
-              {formatCurrency(earningsSummary.summary.workload?.total_earned ?? 0)}
-            </Typography>
-          </Paper>
-        </Stack>
+        <Box
+          sx={{
+            display: 'grid',
+            gap: 2,
+            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(5, 1fr)' },
+          }}
+        >
+          <StatCard
+            label="TOTAL TAILORS"
+            value={String(
+              earningsSummary.summary.total_active_tailors ?? earningsSummary.tailors.length
+            )}
+          />
+          <StatCard
+            label="TOTAL ASSIGNED"
+            value={formatPieces(earningsSummary.summary.workload?.total_assigned ?? 0)}
+          />
+          <StatCard
+            label="TOTAL COMPLETED"
+            value={formatPieces(earningsSummary.summary.workload?.total_completed ?? 0)}
+            tone="success"
+          />
+          <StatCard
+            label="TOTAL OUTSTANDING"
+            value={formatPieces(earningsSummary.summary.workload?.total_outstanding ?? 0)}
+            tone="warning"
+          />
+          <StatCard
+            label="TOTAL EARNED"
+            value={formatCurrency(earningsSummary.summary.workload?.total_earned ?? 0)}
+            tone="success"
+          />
+        </Box>
       )}
 
-      <Paper sx={{ p: 2, borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+      <FilterBar>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <TextField
             value={searchInput}
@@ -241,7 +198,7 @@ export const Tailors: React.FC = () => {
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon sx={{ color: '#64748B' }} />
+                  <SearchIcon sx={{ color: 'text.secondary' }} />
                 </InputAdornment>
               ),
             }}
@@ -259,189 +216,170 @@ export const Tailors: React.FC = () => {
             </Select>
           </FormControl>
         </Stack>
-      </Paper>
+      </FilterBar>
 
-      <Paper sx={{ borderRadius: '12px', border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-        {isFetching && !isLoading && <LinearProgress sx={{ height: 3 }} />}
-        <TableContainer>
-          <Table size="medium">
-            <TableHead>
-              <TableRow sx={{ backgroundColor: '#F8FAFC' }}>
-                <TableCell sx={{ fontWeight: 700 }}>Tailor</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Mobile</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Assigned</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Completed</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Outstanding</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Earned</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Created</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 700 }}>
-                  Actions
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={9} align="center" sx={{ py: 6 }}>
-                    <CircularProgress size={28} />
-                  </TableCell>
-                </TableRow>
-              ) : isError ? (
-                <TableRow>
-                  <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
-                    <Alert severity="error" sx={{ display: 'inline-flex' }}>
-                      {getApiErrorMessage(error)}
-                    </Alert>
-                    <Box sx={{ mt: 1.5 }}>
-                      <Button size="small" variant="outlined" onClick={() => refetch()}>
-                        Retry
-                      </Button>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ) : data && data.results.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={9} align="center" sx={{ py: 6 }}>
-                    <Typography sx={{ color: '#64748B' }}>No tailors found.</Typography>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                data?.results.map((tailor) => {
-                  const entry = earningsSummary?.tailors.find((summaryEntry) => summaryEntry.id === tailor.id);
-                  const workload = entry?.workload ?? {
-                    assigned_quantity: 0,
-                    completed_quantity: 0,
-                    outstanding_quantity: 0,
-                    earned_amount: 0,
-                  };
-                  return (
-                    <TableRow
-                      key={tailor.id}
-                      hover
-                      sx={{ cursor: 'pointer', '&:last-child td, &:last-child th': { border: 0 } }}
-                      onClick={() => navigate(`/tailors/${tailor.id}`)}
-                    >
-                      <TableCell>
-                        <Typography sx={{ fontWeight: 600 }}>{tailor.name}</Typography>
-                        <Typography variant="caption" sx={{ color: '#94A3B8' }}>
-                          #{tailor.id}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{tailor.mobile_number || '-'}</Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">
-                          {formatPieces(workload.assigned_quantity)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">
-                          {formatPieces(workload.completed_quantity)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {formatPieces(workload.outstanding_quantity)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#15803D' }}>
-                          {formatCurrency(workload.earned_amount)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={tailor.is_active ? 'Active' : 'Archived'}
-                          size="small"
-                          sx={{
-                            fontWeight: 600,
-                            backgroundColor: tailor.is_active ? '#DCFCE7' : '#F1F5F9',
-                            color: tailor.is_active ? '#15803D' : '#64748B',
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Typography variant="body2">{formatDate(tailor.created_at)}</Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                          <Tooltip title="View details">
+      <TableCard loading={isFetching && !isLoading}>
+        <Table size="medium">
+          <TableHead>
+            <TableRow>
+              <TableCell>Tailor</TableCell>
+              <TableCell>Mobile</TableCell>
+              <TableCell>Assigned</TableCell>
+              <TableCell>Completed</TableCell>
+              <TableCell>Outstanding</TableCell>
+              <TableCell>Earned</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Created</TableCell>
+              <TableCell align="right">Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {isLoading ? (
+              <TableStateRow colSpan={9} state="loading" />
+            ) : isError ? (
+              <TableStateRow
+                colSpan={9}
+                state="error"
+                errorMessage={getApiErrorMessage(error)}
+                onRetry={() => refetch()}
+              />
+            ) : data && data.results.length === 0 ? (
+              <TableStateRow colSpan={9} state="empty" emptyTitle="No tailors found" />
+            ) : (
+              data?.results.map((tailor) => {
+                const entry = earningsSummary?.tailors.find((summaryEntry) => summaryEntry.id === tailor.id);
+                const workload = entry?.workload ?? {
+                  assigned_quantity: 0,
+                  completed_quantity: 0,
+                  outstanding_quantity: 0,
+                  earned_amount: 0,
+                };
+                return (
+                  <TableRow
+                    key={tailor.id}
+                    hover
+                    sx={{ cursor: 'pointer' }}
+                    onClick={() => navigate(`/tailors/${tailor.id}`)}
+                  >
+                    <TableCell>
+                      <Typography sx={{ fontWeight: 600 }}>{tailor.name}</Typography>
+                      <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+                        #{tailor.id}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">{tailor.mobile_number || '-'}</Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">
+                        {formatPieces(workload.assigned_quantity)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">
+                        {formatPieces(workload.completed_quantity)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {formatPieces(workload.outstanding_quantity)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'success.dark' }}>
+                        {formatCurrency(workload.earned_amount)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge
+                        label={tailor.is_active ? 'Active' : 'Archived'}
+                        tone={tailor.is_active ? 'success' : 'neutral'}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">{formatDate(tailor.created_at)}</Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                        <Tooltip title="View details">
+                          <Button
+                            size="small"
+                            startIcon={<VisibilityIcon fontSize="small" />}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              navigate(`/tailors/${tailor.id}`);
+                            }}
+                          >
+                            View
+                          </Button>
+                        </Tooltip>
+                        {isStaff && (
+                          <Tooltip title={tailor.is_active ? 'Edit tailor' : 'Restore tailor'}>
                             <Button
                               size="small"
-                              startIcon={<VisibilityIcon fontSize="small" />}
+                              startIcon={
+                                tailor.is_active ? (
+                                  <EditIcon fontSize="small" />
+                                ) : (
+                                  <UnarchiveIcon fontSize="small" />
+                                )
+                              }
                               onClick={(event) => {
                                 event.stopPropagation();
-                                navigate(`/tailors/${tailor.id}`);
+                                if (tailor.is_active) {
+                                  openEditDialog(tailor);
+                                } else {
+                                  handleRestore(tailor);
+                                }
                               }}
                             >
-                              View
+                              {tailor.is_active ? 'Edit' : 'Restore'}
                             </Button>
                           </Tooltip>
-                          {isStaff && (
-                            <Tooltip title={tailor.is_active ? 'Edit tailor' : 'Restore tailor'}>
-                              <Button
-                                size="small"
-                                startIcon={
-                                  tailor.is_active ? (
-                                    <EditIcon fontSize="small" />
-                                  ) : (
-                                    <UnarchiveIcon fontSize="small" />
-                                  )
-                                }
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  if (tailor.is_active) {
-                                    openEditDialog(tailor);
-                                  } else {
-                                    handleRestore(tailor);
-                                  }
-                                }}
-                              >
-                                {tailor.is_active ? 'Edit' : 'Restore'}
-                              </Button>
-                            </Tooltip>
-                          )}
-                          {isStaff && tailor.is_active && (
-                            <Tooltip title="Archive tailor">
-                              <Button
-                                size="small"
-                                color="error"
-                                startIcon={<ArchiveIcon fontSize="small" />}
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  handleArchive(tailor);
-                                }}
-                              >
-                                Archive
-                              </Button>
-                            </Tooltip>
-                          )}
-                        </Stack>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+                        )}
+                        {isStaff && tailor.is_active && (
+                          <Tooltip title="Archive tailor">
+                            <Button
+                              size="small"
+                              color="error"
+                              startIcon={<ArchiveIcon fontSize="small" />}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setArchiveTarget(tailor);
+                              }}
+                            >
+                              Archive
+                            </Button>
+                          </Tooltip>
+                        )}
+                      </Stack>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </TableCard>
 
       {data && data.count > 0 && (
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="body2" sx={{ color: '#64748B' }}>
-            Showing {data.results.length} of {data.count} tailors
-          </Typography>
-          <Pagination
-            count={totalPages}
-            page={page}
-            onChange={(_event, value) => setPage(value)}
-            color="primary"
-          />
-        </Box>
+        <AppPagination page={page} count={data.count} pageSize={PAGE_SIZE} onChange={setPage} />
       )}
+
+      <ConfirmDialog
+        open={archiveTarget !== null}
+        title="Archive tailor"
+        message={
+          archiveTarget
+            ? `Archive tailor "${archiveTarget.name}"? The profile and work history are kept and can be restored later.`
+            : ''
+        }
+        confirmLabel="Archive"
+        tone="warning"
+        loading={archiveMutation.isPending}
+        onConfirm={confirmArchive}
+        onCancel={() => setArchiveTarget(null)}
+      />
 
       <TailorFormDialog open={dialogOpen} initial={editingTailor} onClose={closeDialog} submit={handleSubmit} />
       <PieceRateDialog open={pieceRateDialogOpen} onClose={() => setPieceRateDialogOpen(false)} />
