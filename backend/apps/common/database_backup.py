@@ -230,7 +230,9 @@ def create_backup(config, password, comment=None, verify=True, dbname=None):
         str(output_path),
     ]
     if comment:
-        args.append(f"--comment={comment}")
+        # pg_dump has no --comment/--label CLI option; the comment is recorded
+        # in the log and in the backup filename suffix for traceability.
+        logger.info("Backup comment: %s", comment)
 
     logger.info("Creating PostgreSQL backup of database '%s'.", dbname)
     completed = _run(args, password=password)
