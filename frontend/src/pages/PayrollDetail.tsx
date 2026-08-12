@@ -16,8 +16,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '../context/useAuth';
+import { useParams } from 'react-router-dom';import { useAuth } from '../context/useAuth';
 import { formatCurrency, formatDate, formatPieces } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { RecordPaymentDialog } from '../components/RecordPaymentDialog';
@@ -34,7 +33,6 @@ import {
   useSettleEntry,
 } from '../hooks/usePayroll';
 import {
-  PAYROLL_PERIOD_STATUS_LABELS,
   SALARY_MODEL_LABELS,
   SETTLEMENT_STATUS_LABELS,
 } from '../types/payroll';
@@ -53,12 +51,6 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { ErrorState } from '../components/ui/ErrorState';
 import type { StatusTone } from '../components/ui/StatusBadge';
 
-const PERIOD_TONES: Record<string, StatusTone> = {
-  DRAFT: 'neutral',
-  CALCULATED: 'gold',
-  FINALIZED: 'success',
-};
-
 const SETTLEMENT_TONES: Record<string, StatusTone> = {
   UNPAID: 'warning',
   PARTIALLY_PAID: 'gold',
@@ -72,7 +64,6 @@ const SALARY_MODEL_TONES: Record<string, StatusTone> = {
 };
 
 export const PayrollDetail: React.FC = () => {
-  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const periodId = Number(id ?? 0);
   const { role } = useAuth();

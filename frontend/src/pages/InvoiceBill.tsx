@@ -35,7 +35,6 @@ const PAYMENT_TYPE_TONES: Record<string, StatusTone> = {
 };
 
 export const InvoiceBill: React.FC = () => {
-  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const invoiceId = Number(id ?? 0);
 

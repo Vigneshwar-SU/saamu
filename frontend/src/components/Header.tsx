@@ -18,6 +18,10 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
 import { useHealth } from '../hooks/useHealth';
+import { useNotifications } from '../hooks/useNotifications';
+import type { NotificationGroup } from '../hooks/useNotifications';
+import { NotificationBadge } from './notifications/NotificationBadge';
+import { NotificationPopover } from './notifications/NotificationPopover';
 import { BrandMark } from './ui/BrandMark';
 
 interface HeaderProps {
@@ -35,7 +39,15 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const navigate = useNavigate();
   const { user, role, logout } = useAuth();
   const { data: health } = useHealth();
+  const {
+    groups,
+    badgeCount,
+    isLoading,
+    isError,
+    refetch: refetchNotifications,
+  } = useNotifications();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [notifAnchorEl, setNotifAnchorEl] = React.useState<null | HTMLElement>(null);
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -49,6 +61,33 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
     handleMenuClose();
     await logout();
     navigate('/login', { replace: true });
+  };
+
+  const handleNotificationsToggle = (event: React.MouseEvent<HTMLElement>) => {
+    if (notifAnchorEl) {
+      setNotifAnchorEl(null);
+      return;
+    }
+    setNotifAnchorEl(event.currentTarget);
+    refetchNotifications();
+  };
+
+  const handleNotificationsClose = () => {
+    setNotifAnchorEl(null);
+  };
+
+  const handleNotificationsRetry = () => {
+    refetchNotifications();
+  };
+
+  const handleViewAllNotifications = () => {
+    setNotifAnchorEl(null);
+    navigate('/reminders');
+  };
+
+  const handleSelectNotificationGroup = (group: NotificationGroup) => {
+    setNotifAnchorEl(null);
+    navigate(group.path);
   };
 
   return (
@@ -124,11 +163,36 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
             }}
           />
 
-          <Tooltip title="Notifications">
-            <IconButton aria-label="notifications">
-              <NotificationsNoneIcon />
+          <Tooltip
+            title={
+              badgeCount > 0
+                ? `Notifications (${badgeCount} need attention)`
+                : 'Notifications'
+            }
+          >
+            <IconButton
+              onClick={handleNotificationsToggle}
+              aria-label="Notifications"
+              aria-haspopup="true"
+              aria-expanded={Boolean(notifAnchorEl)}
+            >
+              <NotificationBadge count={badgeCount}>
+                <NotificationsNoneIcon />
+              </NotificationBadge>
             </IconButton>
           </Tooltip>
+
+          <NotificationPopover
+            open={Boolean(notifAnchorEl)}
+            anchorEl={notifAnchorEl}
+            onClose={handleNotificationsClose}
+            onViewAll={handleViewAllNotifications}
+            onSelectGroup={handleSelectNotificationGroup}
+            groups={groups}
+            isLoading={isLoading}
+            isError={isError}
+            onRetry={handleNotificationsRetry}
+          />
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
             <Tooltip title="Account settings">

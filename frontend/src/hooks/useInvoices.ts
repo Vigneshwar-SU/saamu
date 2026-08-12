@@ -6,6 +6,7 @@ import {
   INCOME_SUMMARY_KEY,
 } from './useFinance';
 import { REPORTS_KEY } from './useReports';
+import { invalidateRemindersV1 } from './useReminderV1';
 import type {
   BillResponse,
   BillingListResult,
@@ -60,6 +61,7 @@ export const useCreateInvoice = () => {
       queryClient.invalidateQueries({ queryKey: ['order'] });
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: [REPORTS_KEY] });
+      invalidateRemindersV1(queryClient);
     },
   });
 };
@@ -80,6 +82,7 @@ export const useCreateOrderInvoice = () => {
       queryClient.invalidateQueries({ queryKey: ['order'] });
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: [REPORTS_KEY] });
+      invalidateRemindersV1(queryClient);
     },
   });
 };
@@ -105,6 +108,7 @@ export const useCreatePayment = (invoiceId: number) => {
       queryClient.invalidateQueries({ queryKey: [INCOME_SUMMARY_KEY] });
       queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
       queryClient.invalidateQueries({ queryKey: [REPORTS_KEY] });
+      invalidateRemindersV1(queryClient);
     },
   });
 };

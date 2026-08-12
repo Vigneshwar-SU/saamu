@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { measurementService } from '../services/measurementService';
+import { invalidateRemindersV1 } from './useReminderV1';
 import type { Measurement, MeasurementPayload } from '../types/customers';
 
 export const useMeasurements = (customerId: number, currentOnly = false) => {
@@ -17,6 +18,7 @@ export const useCreateMeasurement = (customerId: number) => {
       measurementService.create(customerId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['measurements', customerId] });
+      invalidateRemindersV1(queryClient);
     },
   });
 };
@@ -28,6 +30,7 @@ export const useUpdateMeasurement = (customerId: number) => {
       measurementService.update(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['measurements', customerId] });
+      invalidateRemindersV1(queryClient);
     },
   });
 };

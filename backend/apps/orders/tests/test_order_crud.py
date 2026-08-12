@@ -2,6 +2,7 @@
 pagination, multi-garment orders and field validation."""
 
 import pytest
+from datetime import date, timedelta
 
 from apps.customers.tests.helpers import auth_header
 from apps.orders.models import Order, OrderItem, OrderStatus
@@ -311,16 +312,18 @@ def test_patch_accepts_only_safe_fields(client, staff, customer):
         **_auth(staff),
     ).json()
 
+    future_date = (date.today() + timedelta(days=5)).isoformat()
+
     response = client.patch(
         order_detail_url(created["id"]),
-        {"notes": "Priority order", "expected_delivery_date": "2026-08-10"},
+        {"notes": "Priority order", "expected_delivery_date": future_date},
         content_type="application/json",
         **_auth(staff),
     )
     assert response.status_code == 200
     body = response.json()
     assert body["notes"] == "Priority order"
-    assert body["expected_delivery_date"] == "2026-08-10"
+    assert body["expected_delivery_date"] == future_date
 
 
 def test_patch_rejects_status_assignment(client, staff, customer):

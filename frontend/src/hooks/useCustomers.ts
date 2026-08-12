@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { customerService } from '../services/customerService';
 import { DASHBOARD_KEY } from './useFinance';
+import { invalidateRemindersV1 } from './useReminderV1';
 import type {
   Customer,
   CustomerListParams,
@@ -30,6 +31,7 @@ export const useCreateCustomer = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
+      invalidateRemindersV1(queryClient);
     },
   });
 };
@@ -42,6 +44,7 @@ export const useUpdateCustomer = (id: number) => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['customer', id] });
       queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
+      invalidateRemindersV1(queryClient);
     },
   });
 };
@@ -54,6 +57,7 @@ export const useArchiveCustomer = () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['customer', id] });
       queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
+      invalidateRemindersV1(queryClient);
     },
   });
 };
@@ -66,6 +70,7 @@ export const useRestoreCustomer = () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['customer', id] });
       queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
+      invalidateRemindersV1(queryClient);
     },
   });
 };

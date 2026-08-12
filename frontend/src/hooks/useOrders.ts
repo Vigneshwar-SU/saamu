@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { orderService } from '../services/orderService';
 import { DASHBOARD_KEY } from './useFinance';
 import { REPORTS_KEY } from './useReports';
+import { invalidateRemindersV1 } from './useReminderV1';
 import type {
   Order,
   OrderCreatePayload,
@@ -34,6 +35,7 @@ export const useCreateOrder = () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
       queryClient.invalidateQueries({ queryKey: [REPORTS_KEY] });
+      invalidateRemindersV1(queryClient);
     },
   });
 };
@@ -47,6 +49,7 @@ export const useUpdateOrder = (id: number) => {
       queryClient.invalidateQueries({ queryKey: ['order', id] });
       queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
       queryClient.invalidateQueries({ queryKey: [REPORTS_KEY] });
+      invalidateRemindersV1(queryClient);
     },
   });
 };
@@ -60,6 +63,7 @@ export const useChangeOrderStatus = (id: number) => {
       queryClient.invalidateQueries({ queryKey: ['order', id] });
       queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
       queryClient.invalidateQueries({ queryKey: [REPORTS_KEY] });
+      invalidateRemindersV1(queryClient);
     },
   });
 };
