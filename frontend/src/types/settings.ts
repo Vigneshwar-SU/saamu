@@ -5,6 +5,7 @@ export interface ShopDetails {
   address: string;
   phone: string;
   established_year: number;
+  customer_follow_up_months: number;
 }
 
 export interface ShopDetailsPayload {
@@ -13,4 +14,5 @@ export interface ShopDetailsPayload {
   address: string;
   phone: string;
   established_year: number;
+  customer_follow_up_months: number;
 }
