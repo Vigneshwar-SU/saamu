@@ -9,6 +9,10 @@ Data flow (Phase 18):
     authoritative data -> backend message preparation -> safe message payload
     -> the user chooses Copy or Open WhatsApp -> external WhatsApp handoff.
 
+Automatic workflow (order detail): ``build_automatic_order_communication``
+derives the single message from the current order status + payment balance, so
+staff never select a message type.
+
 Safety rules honoured:
 - No automatic sending, no provider credentials, no webhooks, no workers.
 - Only the existing ``Customer.mobile_number`` is used; nothing is stored.
@@ -42,6 +46,24 @@ SUPPORTED_MESSAGE_TYPES = (
     MESSAGE_TYPE_READY_FOR_COLLECTION,
     MESSAGE_TYPE_PAYMENT_BALANCE,
 )
+
+# Automatic communication states (order-detail workflow). The message is never
+# chosen by staff: it is derived from the current order status plus the
+# authoritative payment balance, so order status + payment state always
+# determine exactly one message.
+MESSAGE_STATE_ORDER_RECEIVED = "ORDER_RECEIVED"
+MESSAGE_STATE_ORDER_IN_PROGRESS = "ORDER_IN_PROGRESS"
+MESSAGE_STATE_READY_FOR_COLLECTION = "READY_FOR_COLLECTION"
+MESSAGE_STATE_COLLECTED_SETTLED = "COLLECTED_SETTLED"
+MESSAGE_STATE_COLLECTED_PAYMENT_PENDING = "COLLECTED_PAYMENT_PENDING"
+
+MESSAGE_STATE_LABELS = {
+    MESSAGE_STATE_ORDER_RECEIVED: "Order Received",
+    MESSAGE_STATE_ORDER_IN_PROGRESS: "Order In Progress",
+    MESSAGE_STATE_READY_FOR_COLLECTION: "Ready for Collection",
+    MESSAGE_STATE_COLLECTED_SETTLED: "Collected · Payment Settled",
+    MESSAGE_STATE_COLLECTED_PAYMENT_PENDING: "Collected · Payment Outstanding",
+}
 
 # Formatting that is harmless to strip from a stored phone number.
 _PHONE_FORMATTING_RE = re.compile(r"[\s\-()./]+")
@@ -265,6 +287,183 @@ def build_order_communication(order, message_type):
     phone_number = normalize_phone(order.customer.mobile_number)
     return {
         "message_type": message_type,
+        "message": message,
+        "phone_number": phone_number,
+        "whatsapp_url": build_whatsapp_url(phone_number, message),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Automatic communication (order status + payment balance = one message)
+# ---------------------------------------------------------------------------
+
+
+def _build_order_received(order, summary, shop):
+    lines = [
+        f"Hello {order.customer.full_name},",
+        "",
+        f"Thank you for your order at {shop['name']}.",
+        "",
+        "Your order has been received.",
+        "",
+        f"Order Number: {order.order_number}",
+        f"Order Date: {_format_date(order.order_date)}",
+    ]
+    items_summary = _order_items_summary(order)
+    if items_summary:
+        lines.append(f"Items: {items_summary}")
+    lines.append(f"Total: {format_inr(summary['order_total'])}")
+    lines.append(f"Amount Paid: {format_inr(summary['total_paid'])}")
+    lines.append(f"Balance: {format_inr(summary['outstanding_balance'])}")
+    if order.expected_delivery_date:
+        lines.append(f"Expected Delivery: {_format_date(order.expected_delivery_date)}")
+    lines.extend(["", "We will update you as your order progresses.", ""])
+    lines.extend(_sign_off(shop["name"]))
+    return "\n".join(lines)
+
+
+def _build_order_in_progress(order, summary, shop):
+    lines = [
+        f"Hello {order.customer.full_name},",
+        "",
+        "Update on your order.",
+        "",
+        f"Order Number: {order.order_number}",
+        f"Current Status: {OrderStatus(order.status).label}",
+    ]
+    items_summary = _order_items_summary(order)
+    if items_summary:
+        lines.append(f"Items: {items_summary}")
+    lines.append(f"Total: {format_inr(summary['order_total'])}")
+    lines.append(f"Amount Paid: {format_inr(summary['total_paid'])}")
+    lines.append(f"Balance: {format_inr(summary['outstanding_balance'])}")
+    if order.expected_delivery_date:
+        lines.append(f"Expected Delivery: {_format_date(order.expected_delivery_date)}")
+    lines.extend(["", "Your order is currently being prepared.", ""])
+    lines.extend(_sign_off(shop["name"]))
+    return "\n".join(lines)
+
+
+def _build_ready_for_collection_auto(order, summary, shop):
+    lines = [
+        f"Hello {order.customer.full_name},",
+        "",
+        "Good news! Your order is ready for collection.",
+        "",
+        f"Order Number: {order.order_number}",
+    ]
+    items_summary = _order_items_summary(order)
+    if items_summary:
+        lines.append(f"Items: {items_summary}")
+    lines.append(f"Total: {format_inr(summary['order_total'])}")
+    lines.append(f"Amount Paid: {format_inr(summary['total_paid'])}")
+    if summary["outstanding_balance"] <= 0:
+        lines.append("Payment Status: Fully Settled")
+    else:
+        lines.append(
+            f"Outstanding Balance: {format_inr(summary['outstanding_balance'])}"
+        )
+    lines.extend(["", f"Please collect your order from {shop['name']}."])
+    if shop["address"]:
+        lines.append(f"Shop Address: {shop['address']}")
+    if shop["phone"]:
+        lines.append(f"Shop Phone: {shop['phone']}")
+    lines.extend(["", ""])
+    lines.extend(_sign_off(shop["name"]))
+    return "\n".join(lines)
+
+
+def _build_collected_settled(order, summary, shop):
+    lines = [
+        f"Hello {order.customer.full_name},",
+        "",
+        "Thank you for collecting your order.",
+        "",
+        f"Order Number: {order.order_number}",
+        f"Total: {format_inr(summary['order_total'])}",
+        f"Amount Paid: {format_inr(summary['total_paid'])}",
+        "Payment Status: Fully Settled",
+        "",
+        "Thank you for your business. We look forward to serving you again.",
+        "",
+    ]
+    lines.extend(_sign_off(shop["name"]))
+    return "\n".join(lines)
+
+
+def _build_collected_payment_pending(order, summary, shop):
+    lines = [
+        f"Hello {order.customer.full_name},",
+        "",
+        "Thank you for collecting your order.",
+        "",
+        f"Order Number: {order.order_number}",
+        f"Total: {format_inr(summary['order_total'])}",
+        f"Amount Paid: {format_inr(summary['total_paid'])}",
+        f"Outstanding Balance: {format_inr(summary['outstanding_balance'])}",
+        "",
+        (
+            "Please settle the outstanding balance of "
+            f"{format_inr(summary['outstanding_balance'])} at your earliest "
+            "convenience."
+        ),
+        "",
+    ]
+    lines.extend(_sign_off(shop["name"]))
+    return "\n".join(lines)
+
+
+_AUTOMATIC_MESSAGE_BUILDERS = {
+    MESSAGE_STATE_ORDER_RECEIVED: _build_order_received,
+    MESSAGE_STATE_ORDER_IN_PROGRESS: _build_order_in_progress,
+    MESSAGE_STATE_READY_FOR_COLLECTION: _build_ready_for_collection_auto,
+    MESSAGE_STATE_COLLECTED_SETTLED: _build_collected_settled,
+    MESSAGE_STATE_COLLECTED_PAYMENT_PENDING: _build_collected_payment_pending,
+}
+
+
+def determine_automatic_message_state(order, summary=None):
+    """Return the automatic message state for an order (status + payment).
+
+    The single authoritative rule: order status picks the base message and the
+    outstanding balance refines the collected/final states. A CANCELLED order
+    has no communication message (raises ``ValueError``) because no defined
+    template applies to it.
+    """
+    if summary is None:
+        summary = order_payment_summary(order)
+    if order.status == OrderStatus.NEW:
+        return MESSAGE_STATE_ORDER_RECEIVED
+    if order.status in (OrderStatus.CUTTING, OrderStatus.STITCHING):
+        return MESSAGE_STATE_ORDER_IN_PROGRESS
+    if order.status == OrderStatus.READY:
+        return MESSAGE_STATE_READY_FOR_COLLECTION
+    if order.status == OrderStatus.COLLECTED:
+        if summary["outstanding_balance"] <= 0:
+            return MESSAGE_STATE_COLLECTED_SETTLED
+        return MESSAGE_STATE_COLLECTED_PAYMENT_PENDING
+    raise ValueError(
+        f"No communication message can be prepared for a {order.get_status_display()} order."
+    )
+
+
+def build_automatic_order_communication(order):
+    """Prepare the automatically selected communication for an order.
+
+    The message type is derived from the current order status + authoritative
+    payment balance — staff never choose it. Returns
+    ``{message_type, message_label, message, phone_number, whatsapp_url}``.
+    Read-only: nothing is saved, sent or logged. A CANCELLED order raises
+    ``ValueError``.
+    """
+    summary = order_payment_summary(order)
+    message_type = determine_automatic_message_state(order, summary)
+    shop = shop_details_data()
+    message = _AUTOMATIC_MESSAGE_BUILDERS[message_type](order, summary, shop)
+    phone_number = normalize_phone(order.customer.mobile_number)
+    return {
+        "message_type": message_type,
+        "message_label": MESSAGE_STATE_LABELS[message_type],
         "message": message,
         "phone_number": phone_number,
         "whatsapp_url": build_whatsapp_url(phone_number, message),

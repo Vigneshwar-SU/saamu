@@ -111,6 +111,7 @@ class OrderSerializer(serializers.ModelSerializer):
     status_history = OrderStatusHistorySerializer(many=True, read_only=True)
     garment_summary = serializers.SerializerMethodField()
     payment_summary = serializers.SerializerMethodField()
+    assignment_summary = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
@@ -126,6 +127,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "collected_at",
             "garment_summary",
             "payment_summary",
+            "assignment_summary",
             "items",
             "status_history",
             "created_at",
@@ -154,6 +156,34 @@ class OrderSerializer(serializers.ModelSerializer):
         if not self.context.get("include_payment_summary"):
             return None
         return order_payment_summary(obj)
+
+    def get_assignment_summary(self, obj):
+        """Backend-authoritative assign-work availability (detail views only).
+
+        Computed from the ordered item quantities and the sum of
+        ``assigned_quantity`` across every work assignment — completed quantity
+        is deliberately never used here, because assignment availability only
+        depends on whether pieces have been handed to a tailor. ``can_assign_work``
+        is True only while unassigned pieces remain AND the order is not in a
+        terminal state (COLLECTED / CANCELLED), so no tailoring work can be
+        assigned after those states. Returns ``None`` on list responses to keep
+        them light.
+        """
+        if not self.context.get("include_assignment_summary"):
+            return None
+        total_quantity = 0
+        assigned_quantity = 0
+        for item in obj.items.all():
+            total_quantity += item.quantity
+            for assignment in item.work_assignments.all():
+                assigned_quantity += assignment.assigned_quantity
+        remaining_unassigned = max(total_quantity - assigned_quantity, 0)
+        return {
+            "total_quantity": total_quantity,
+            "assigned_quantity": assigned_quantity,
+            "remaining_unassigned": remaining_unassigned,
+            "can_assign_work": remaining_unassigned > 0 and not obj.is_terminal,
+        }
 
 
 class OrderItemCreateSerializer(serializers.Serializer):

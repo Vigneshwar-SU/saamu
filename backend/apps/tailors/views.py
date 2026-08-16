@@ -8,6 +8,8 @@ Work assignment integrity:
 - Assignments only for active tailors and existing order items.
 - ``assigned_quantity`` is checked against the item's remaining quantity under a
   row lock so concurrent assignments never over-allocate.
+- Assignments are rejected for terminal orders (COLLECTED / CANCELLED): no new
+  tailoring work can be assigned after those states.
 - The applicable piece rate is snapshotted at assignment time; later rate edits
   never rewrite history.
 - Status follows ASSIGNED -> IN_PROGRESS -> COMPLETED; completed work cannot be
@@ -25,7 +27,7 @@ from rest_framework.views import APIView
 from apps.authentication.permissions import IsOwnerOrStaff, IsStaffRole
 from apps.common.pagination import SaamuPageNumberPagination
 from apps.customers.models import GarmentType
-from apps.orders.models import OrderItem
+from apps.orders.models import TERMINAL_STATUSES, Order, OrderItem
 
 from .models import PieceRate, Tailor, WorkAssignment
 from .serializers import (
@@ -461,6 +463,16 @@ class WorkAssignmentViewSet(viewsets.ModelViewSet):
 
         with transaction.atomic():
             locked_item = OrderItem.objects.select_for_update().get(pk=order_item.pk)
+            order = Order.objects.select_for_update().get(pk=locked_item.order_id)
+            if order.status in TERMINAL_STATUSES:
+                raise ValidationError(
+                    {
+                        "order": (
+                            f"Work cannot be assigned to this order because it "
+                            f"is {order.get_status_display()}."
+                        )
+                    }
+                )
             assigned_total = (
                 locked_item.work_assignments.aggregate(
                     total=models.Sum("assigned_quantity")

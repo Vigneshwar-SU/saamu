@@ -55,6 +55,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context["include_payment_summary"] = self.action == "retrieve"
+        context["include_assignment_summary"] = self.action == "retrieve"
         return context
 
     def get_queryset(self):

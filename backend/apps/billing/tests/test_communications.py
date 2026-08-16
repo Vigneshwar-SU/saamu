@@ -1,11 +1,12 @@
-"""Phase 18 customer-communication preparation tests.
+"""Customer-communication tests.
 
-Covers all four message templates, deterministic output, authoritative
-order/customer/payment values, exact money formatting, missing optional fields,
-missing/invalid phones, phone normalization, WhatsApp URL construction and
-encoding, privacy exclusions, RBAC (anonymous / OWNER / STAFF), GET-only
-read-only behaviour, and that preparing a message never mutates business
-records.
+Phase 18 explicit message-type builders plus the automatic communication
+workflow (order status + payment balance select exactly one message). Covers
+all five automatic states, authoritative payment values, exact outstanding
+balances, zero-balance behaviour, deterministic output, phone normalization,
+WhatsApp URL construction and encoding, privacy exclusions, RBAC (anonymous /
+OWNER / STAFF), GET-only read-only behaviour, and that preparing a message
+never mutates business records.
 """
 
 import urllib.parse
@@ -17,13 +18,21 @@ from rest_framework import status as http_status
 
 from apps.authentication.tests.helpers import auth_header
 from apps.billing.communications import (
+    MESSAGE_STATE_COLLECTED_PAYMENT_PENDING,
+    MESSAGE_STATE_COLLECTED_SETTLED,
+    MESSAGE_STATE_LABELS,
+    MESSAGE_STATE_ORDER_IN_PROGRESS,
+    MESSAGE_STATE_ORDER_RECEIVED,
+    MESSAGE_STATE_READY_FOR_COLLECTION,
     MESSAGE_TYPE_ORDER_ACKNOWLEDGEMENT,
     MESSAGE_TYPE_ORDER_STATUS_UPDATE,
     MESSAGE_TYPE_PAYMENT_BALANCE,
     MESSAGE_TYPE_READY_FOR_COLLECTION,
     SUPPORTED_MESSAGE_TYPES,
+    build_automatic_order_communication,
     build_order_communication,
     build_whatsapp_url,
+    determine_automatic_message_state,
     format_inr,
     normalize_phone,
 )
@@ -55,7 +64,7 @@ def owner():
 
 
 # ---------------------------------------------------------------------------
-# Message builder: templates
+# Message builder: explicit Phase 18 templates (kept for reminders)
 # ---------------------------------------------------------------------------
 
 
@@ -123,20 +132,6 @@ def test_ready_for_collection_template():
     assert "Regards," in message
 
 
-def test_ready_for_collection_includes_shop_location_when_available():
-    details = ShopDetails.shop_details()
-    details.address = "12, MG Road, Bengaluru"
-    details.phone = "080 4123 4567"
-    details.save()
-    order = create_order(status=OrderStatus.READY)
-    message = build_order_communication(order, MESSAGE_TYPE_READY_FOR_COLLECTION)[
-        "message"
-    ]
-    assert "Please collect it from Saamu Tailors." in message
-    assert "Shop Address: 12, MG Road, Bengaluru" in message
-    assert "Shop Phone: 080 4123 4567" in message
-
-
 def test_payment_balance_template():
     order = create_order()
     invoice = create_invoice(order=order)
@@ -154,31 +149,203 @@ def test_payment_balance_template():
     assert "Payment Status: Partially Paid" in message
 
 
-def test_payment_balance_without_invoice_is_authoritative_unpaid():
+# ---------------------------------------------------------------------------
+# Automatic message selection: order status + payment balance
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("status", "paid", "expected"),
+    [
+        (OrderStatus.NEW, None, MESSAGE_STATE_ORDER_RECEIVED),
+        (OrderStatus.CUTTING, None, MESSAGE_STATE_ORDER_IN_PROGRESS),
+        (OrderStatus.STITCHING, None, MESSAGE_STATE_ORDER_IN_PROGRESS),
+        (OrderStatus.READY, None, MESSAGE_STATE_READY_FOR_COLLECTION),
+        (OrderStatus.READY, "450.50", MESSAGE_STATE_READY_FOR_COLLECTION),
+        (OrderStatus.COLLECTED, "450.50", MESSAGE_STATE_COLLECTED_SETTLED),
+        (OrderStatus.COLLECTED, "100.00", MESSAGE_STATE_COLLECTED_PAYMENT_PENDING),
+    ],
+)
+def test_state_selection_maps_status_and_balance(status, paid, expected):
+    order = create_order(status=status)
+    if paid is not None:
+        invoice = create_invoice(order=order)
+        create_payment(invoice, amount=paid)
+    assert determine_automatic_message_state(order) == expected
+
+
+def test_cancelled_order_has_no_message():
+    order = create_order(status=OrderStatus.CANCELLED)
+    with pytest.raises(ValueError):
+        determine_automatic_message_state(order)
+    with pytest.raises(ValueError):
+        build_automatic_order_communication(order)
+
+
+def test_auto_new_order_received_message():
     order = create_order()
-    message = build_order_communication(order, MESSAGE_TYPE_PAYMENT_BALANCE)["message"]
+    payload = build_automatic_order_communication(order)
+    assert payload["message_type"] == MESSAGE_STATE_ORDER_RECEIVED
+    assert payload["message_label"] == MESSAGE_STATE_LABELS[MESSAGE_STATE_ORDER_RECEIVED]
+    message = payload["message"]
+    assert "Hello Ravi Kumar," in message
+    assert "Your order has been received." in message
+    assert f"Order Number: {order.order_number}" in message
+    assert f"Order Date: {order.order_date.strftime('%d %b %Y')}" in message
+    assert "Items: 2x Shirt, 1x Pant" in message
     assert "Total: ₹450.50" in message
     assert "Amount Paid: ₹0.00" in message
     assert "Balance: ₹450.50" in message
-    assert "Payment Status: Unpaid" in message
+    assert "Regards," in message
+    assert "Saamu Tailors" in message
 
 
-def test_authoritative_values_match_order_payment_summary():
-    from apps.billing.services import order_payment_summary
+@pytest.mark.parametrize(
+    "status", [OrderStatus.CUTTING, OrderStatus.STITCHING]
+)
+def test_auto_in_progress_message(status):
+    order = create_order(status=status)
+    payload = build_automatic_order_communication(order)
+    assert payload["message_type"] == MESSAGE_STATE_ORDER_IN_PROGRESS
+    message = payload["message"]
+    assert f"Current Status: {OrderStatus(status).label}" in message
+    assert "Your order is currently being prepared." in message
+    assert "Items: 2x Shirt, 1x Pant" in message
+    assert "ready for collection" not in message.lower()
 
+
+def test_auto_ready_for_collection_with_balance():
+    order = create_order(status=OrderStatus.READY)
+    invoice = create_invoice(order=order)
+    create_payment(invoice, amount="100.00")
+    payload = build_automatic_order_communication(order)
+    assert payload["message_type"] == MESSAGE_STATE_READY_FOR_COLLECTION
+    message = payload["message"]
+    assert "Good news! Your order is ready for collection." in message
+    assert "Items: 2x Shirt, 1x Pant" in message
+    assert "Total: ₹450.50" in message
+    assert "Amount Paid: ₹100.00" in message
+    assert "Outstanding Balance: ₹350.50" in message
+    assert "Please collect your order from Saamu Tailors." in message
+    assert "Payment Status: Fully Settled" not in message
+
+
+def test_auto_ready_for_collection_fully_settled():
+    order = create_order(status=OrderStatus.READY)
+    invoice = create_invoice(order=order)
+    create_payment(invoice, amount="450.50")
+    message = build_automatic_order_communication(order)["message"]
+    assert "Payment Status: Fully Settled" in message
+    assert "Outstanding Balance" not in message
+
+
+def test_auto_ready_includes_shop_location_when_available():
+    details = ShopDetails.shop_details()
+    details.address = "12, MG Road, Bengaluru"
+    details.phone = "080 4123 4567"
+    details.save()
+    order = create_order(status=OrderStatus.READY)
+    message = build_automatic_order_communication(order)["message"]
+    assert "Please collect your order from Saamu Tailors." in message
+    assert "Shop Address: 12, MG Road, Bengaluru" in message
+    assert "Shop Phone: 080 4123 4567" in message
+
+
+def test_auto_collected_fully_paid_message():
+    order = create_order(status=OrderStatus.COLLECTED)
+    invoice = create_invoice(order=order)
+    create_payment(invoice, amount="450.50")
+    payload = build_automatic_order_communication(order)
+    assert payload["message_type"] == MESSAGE_STATE_COLLECTED_SETTLED
+    message = payload["message"]
+    assert "Thank you for collecting your order." in message
+    assert f"Order Number: {order.order_number}" in message
+    assert "Total: ₹450.50" in message
+    assert "Amount Paid: ₹450.50" in message
+    assert "Payment Status: Fully Settled" in message
+    assert "Outstanding Balance" not in message
+    assert "Thank you for your business" in message
+
+
+def test_auto_collected_payment_pending_message():
+    order = create_order(status=OrderStatus.COLLECTED)
+    invoice = create_invoice(order=order)
+    create_payment(invoice, amount="100.00")
+    payload = build_automatic_order_communication(order)
+    assert payload["message_type"] == MESSAGE_STATE_COLLECTED_PAYMENT_PENDING
+    message = payload["message"]
+    assert "Thank you for collecting your order." in message
+    assert "Total: ₹450.50" in message
+    assert "Amount Paid: ₹100.00" in message
+    assert "Outstanding Balance: ₹350.50" in message
+    assert "Please settle the outstanding balance of ₹350.50" in message
+    # Collected + outstanding must never claim payment is complete.
+    assert "Fully Settled" not in message
+    assert "fully paid" not in message.lower()
+    assert "payment completed" not in message.lower()
+
+
+def test_auto_payment_changes_update_message():
     order = create_order()
     invoice = create_invoice(order=order)
-    create_payment(
-        invoice,
-        amount="150.00",
-        payment_type=CustomerPayment.PaymentType.PARTIAL,
-    )
+    first = build_automatic_order_communication(order)["message"]
+    create_payment(invoice, amount="100.00")
+    second = build_automatic_order_communication(order)["message"]
+    assert first != second
+    assert "Amount Paid: ₹0.00" in first
+    assert "Amount Paid: ₹100.00" in second
+    assert "Balance: ₹350.50" in second
+
+
+def test_auto_status_change_updates_message():
+    order = create_order()
+    new_msg = build_automatic_order_communication(order)["message"]
+    order.status = OrderStatus.READY
+    order.save(update_fields=["status"])
+    ready_msg = build_automatic_order_communication(order)["message"]
+    assert "Your order has been received." in new_msg
+    assert "Good news! Your order is ready for collection." in ready_msg
+
+
+def test_auto_values_match_payment_summary():
+    from apps.billing.services import order_payment_summary
+
+    order = create_order(status=OrderStatus.STITCHING)
+    invoice = create_invoice(order=order)
+    create_payment(invoice, amount="150.00")
     summary = order_payment_summary(order)
-    message = build_order_communication(order, MESSAGE_TYPE_PAYMENT_BALANCE)["message"]
-    assert summary["total_paid"] == Decimal("150.00")
+    message = build_automatic_order_communication(order)["message"]
     assert f"Total: {format_inr(summary['order_total'])}" in message
     assert f"Amount Paid: {format_inr(summary['total_paid'])}" in message
     assert f"Balance: {format_inr(summary['outstanding_balance'])}" in message
+
+
+def test_zero_balance_never_shown_as_outstanding_request():
+    order = create_order(status=OrderStatus.READY)
+    invoice = create_invoice(order=order)
+    create_payment(invoice, amount="450.50")
+    message = build_automatic_order_communication(order)["message"]
+    assert "Outstanding Balance: ₹0.00" not in message
+    assert "Payment Status: Fully Settled" in message
+
+
+def test_auto_message_never_mutates_records():
+    order = create_order()
+    invoice = create_invoice(order=order)
+    create_payment(invoice, amount="100.00")
+    counts = (
+        Order.objects.count(),
+        Invoice.objects.count(),
+        CustomerPayment.objects.count(),
+        Customer.objects.count(),
+    )
+    build_automatic_order_communication(order)
+    assert (
+        Order.objects.count(),
+        Invoice.objects.count(),
+        CustomerPayment.objects.count(),
+        Customer.objects.count(),
+    ) == counts
 
 
 # ---------------------------------------------------------------------------
@@ -188,8 +355,8 @@ def test_authoritative_values_match_order_payment_summary():
 
 def test_builder_is_deterministic():
     order = create_order()
-    first = build_order_communication(order, MESSAGE_TYPE_ORDER_ACKNOWLEDGEMENT)
-    second = build_order_communication(order, MESSAGE_TYPE_ORDER_ACKNOWLEDGEMENT)
+    first = build_automatic_order_communication(order)
+    second = build_automatic_order_communication(order)
     assert first == second
 
 
@@ -210,26 +377,22 @@ def test_format_inr_exact_grouping():
 def test_missing_expected_delivery_omitted():
     order = create_order()
     assert order.expected_delivery_date is None
-    ack = build_order_communication(order, MESSAGE_TYPE_ORDER_ACKNOWLEDGEMENT)[
-        "message"
-    ]
-    status_msg = build_order_communication(order, MESSAGE_TYPE_ORDER_STATUS_UPDATE)[
-        "message"
-    ]
-    assert "Expected Delivery:" not in ack
-    assert "Expected Delivery:" not in status_msg
+    received = build_automatic_order_communication(order)["message"]
+    order.status = OrderStatus.STITCHING
+    order.save(update_fields=["status"])
+    in_progress = build_automatic_order_communication(order)["message"]
+    assert "Expected Delivery:" not in received
+    assert "Expected Delivery:" not in in_progress
 
 
 def test_expected_delivery_included_when_set():
     order = create_order(expected_delivery_date=date(2026, 8, 20))
-    ack = build_order_communication(order, MESSAGE_TYPE_ORDER_ACKNOWLEDGEMENT)[
-        "message"
-    ]
-    status_msg = build_order_communication(order, MESSAGE_TYPE_ORDER_STATUS_UPDATE)[
-        "message"
-    ]
-    assert "Expected Delivery: 20 Aug 2026" in ack
-    assert "Expected Delivery: 20 Aug 2026" in status_msg
+    received = build_automatic_order_communication(order)["message"]
+    order.status = OrderStatus.STITCHING
+    order.save(update_fields=["status"])
+    in_progress = build_automatic_order_communication(order)["message"]
+    assert "Expected Delivery: 20 Aug 2026" in received
+    assert "Expected Delivery: 20 Aug 2026" in in_progress
 
 
 # ---------------------------------------------------------------------------
@@ -277,17 +440,14 @@ def test_build_whatsapp_url_rejects_non_digit_destination():
 
 def test_response_shape(client, staff):
     order = create_order()
-    response = client.get(
-        prepare_url(order.id),
-        {"message_type": MESSAGE_TYPE_ORDER_ACKNOWLEDGEMENT},
-        **_auth(staff),
-    )
+    response = client.get(prepare_url(order.id), **_auth(staff))
     assert response.status_code == http_status.HTTP_200_OK
     data = response.data
     assert set(data) == {"success", "data"}
     assert data["success"] is True
     assert set(data["data"]) == {
         "message_type",
+        "message_label",
         "message",
         "phone_number",
         "whatsapp_url",
@@ -296,11 +456,7 @@ def test_response_shape(client, staff):
 
 def test_whatsapp_url_encoding(client, staff):
     order = create_order()
-    response = client.get(
-        prepare_url(order.id),
-        {"message_type": MESSAGE_TYPE_ORDER_ACKNOWLEDGEMENT},
-        **_auth(staff),
-    )
+    response = client.get(prepare_url(order.id), **_auth(staff))
     assert response.status_code == http_status.HTTP_200_OK
     data = response.data["data"]
     assert data["phone_number"] == "919876543210"
@@ -315,11 +471,7 @@ def test_whatsapp_url_encoding(client, staff):
 def test_invalid_phone_yields_no_whatsapp_url(client, staff):
     customer = create_customer(mobile_number="not-a-number")
     order = create_order(customer=customer)
-    response = client.get(
-        prepare_url(order.id),
-        {"message_type": MESSAGE_TYPE_ORDER_ACKNOWLEDGEMENT},
-        **_auth(staff),
-    )
+    response = client.get(prepare_url(order.id), **_auth(staff))
     assert response.status_code == http_status.HTTP_200_OK
     data = response.data["data"]
     assert data["message"]
@@ -330,80 +482,74 @@ def test_invalid_phone_yields_no_whatsapp_url(client, staff):
 def test_empty_phone_yields_no_whatsapp_url(client, staff):
     customer = create_customer(mobile_number="")
     order = create_order(customer=customer)
-    response = client.get(
-        prepare_url(order.id),
-        {"message_type": MESSAGE_TYPE_ORDER_ACKNOWLEDGEMENT},
-        **_auth(staff),
-    )
+    response = client.get(prepare_url(order.id), **_auth(staff))
     assert response.status_code == http_status.HTTP_200_OK
     data = response.data["data"]
+    assert data["message"]
     assert data["phone_number"] is None
     assert data["whatsapp_url"] is None
 
 
 def test_api_is_deterministic(client, staff):
     order = create_order()
-    first = client.get(
-        prepare_url(order.id),
-        {"message_type": MESSAGE_TYPE_PAYMENT_BALANCE},
-        **_auth(staff),
-    ).data
-    second = client.get(
-        prepare_url(order.id),
-        {"message_type": MESSAGE_TYPE_PAYMENT_BALANCE},
-        **_auth(staff),
-    ).data
+    first = client.get(prepare_url(order.id), **_auth(staff)).data
+    second = client.get(prepare_url(order.id), **_auth(staff)).data
     assert first == second
 
 
 def test_anonymous_gets_401(client):
     order = create_order()
-    response = client.get(
-        prepare_url(order.id),
-        {"message_type": MESSAGE_TYPE_ORDER_ACKNOWLEDGEMENT},
-    )
+    response = client.get(prepare_url(order.id))
     assert response.status_code == http_status.HTTP_401_UNAUTHORIZED
 
 
 def test_owner_and_staff_can_prepare(client, owner, staff):
     order = create_order()
     for user in (owner, staff):
-        response = client.get(
-            prepare_url(order.id),
-            {"message_type": MESSAGE_TYPE_ORDER_ACKNOWLEDGEMENT},
-            **_auth(user),
-        )
+        response = client.get(prepare_url(order.id), **_auth(user))
         assert response.status_code == http_status.HTTP_200_OK
         assert response.data["success"] is True
-        assert (
-            response.data["data"]["message_type"] == MESSAGE_TYPE_ORDER_ACKNOWLEDGEMENT
-        )
+        assert response.data["data"]["message_type"] == MESSAGE_STATE_ORDER_RECEIVED
 
 
-def test_acknowledgement_uses_real_order_and_customer_data(client, owner):
-    """Regression: the Order Detail page flow must not 500.
-
-    Reproduces the exact UI path (OWNER selects Order Acknowledgement) and
-    asserts the prepared message carries the real order/customer values.
-    """
+def test_obsolete_message_type_param_is_ignored(client, staff):
     order = create_order()
+    with_type = client.get(
+        prepare_url(order.id), {"message_type": "SEND_NOW"}, **_auth(staff)
+    )
+    without_type = client.get(prepare_url(order.id), **_auth(staff))
+    assert with_type.status_code == http_status.HTTP_200_OK
+    assert without_type.status_code == http_status.HTTP_200_OK
+    assert with_type.data == without_type.data
+
+
+def test_api_auto_selects_ready_message(client, staff):
+    order = create_order(status=OrderStatus.READY)
     invoice = create_invoice(order=order)
     create_payment(invoice, amount="100.00")
-    response = client.get(
-        prepare_url(order.id),
-        {"message_type": MESSAGE_TYPE_ORDER_ACKNOWLEDGEMENT},
-        **_auth(owner),
-    )
+    response = client.get(prepare_url(order.id), **_auth(staff))
     assert response.status_code == http_status.HTTP_200_OK
     data = response.data["data"]
-    message = data["message"]
-    assert f"Hello {order.customer.full_name}," in message
-    assert f"Order Number: {order.order_number}" in message
-    assert f"Total: {format_inr(order.total_amount)}" in message
-    assert "Amount Paid: ₹100.00" in message
-    assert "Balance: ₹350.50" in message
-    assert data["phone_number"] == "919876543210"
-    assert data["whatsapp_url"].startswith("https://wa.me/919876543210?text=")
+    assert data["message_type"] == MESSAGE_STATE_READY_FOR_COLLECTION
+    assert (
+        data["message_label"] == MESSAGE_STATE_LABELS[MESSAGE_STATE_READY_FOR_COLLECTION]
+    )
+    assert "Outstanding Balance: ₹350.50" in data["message"]
+
+
+def test_cancelled_order_400(client, staff):
+    order = create_order(status=OrderStatus.CANCELLED)
+    response = client.get(prepare_url(order.id), **_auth(staff))
+    assert response.status_code == http_status.HTTP_400_BAD_REQUEST
+    assert response.data["success"] is False
+    assert response.data["error"]["code"] == "validation_error"
+
+
+def test_missing_order_404(client, staff):
+    response = client.get(prepare_url(999999), **_auth(staff))
+    assert response.status_code == http_status.HTTP_404_NOT_FOUND
+    assert response.data["success"] is False
+    assert response.data["error"]["code"] == "not_found"
 
 
 def test_endpoint_is_get_only(client, staff):
@@ -411,56 +557,6 @@ def test_endpoint_is_get_only(client, staff):
     for method in ("post", "put", "patch", "delete"):
         response = getattr(client, method)(prepare_url(order.id), **_auth(staff))
         assert response.status_code == http_status.HTTP_405_METHOD_NOT_ALLOWED
-
-
-def test_unsupported_message_type_400(client, staff):
-    order = create_order()
-    response = client.get(
-        prepare_url(order.id), {"message_type": "SEND_NOW"}, **_auth(staff)
-    )
-    assert response.status_code == http_status.HTTP_400_BAD_REQUEST
-    assert response.data["success"] is False
-    assert response.data["error"]["code"] == "validation_error"
-
-
-def test_missing_message_type_400(client, staff):
-    order = create_order()
-    response = client.get(prepare_url(order.id), **_auth(staff))
-    assert response.status_code == http_status.HTTP_400_BAD_REQUEST
-    assert response.data["error"]["code"] == "validation_error"
-
-
-def test_missing_order_404(client, staff):
-    response = client.get(
-        prepare_url(999999),
-        {"message_type": MESSAGE_TYPE_ORDER_ACKNOWLEDGEMENT},
-        **_auth(staff),
-    )
-    assert response.status_code == http_status.HTTP_404_NOT_FOUND
-    assert response.data["success"] is False
-    assert response.data["error"]["code"] == "not_found"
-
-
-def test_ready_message_requires_ready_status(client, staff):
-    order = create_order()
-    response = client.get(
-        prepare_url(order.id),
-        {"message_type": MESSAGE_TYPE_READY_FOR_COLLECTION},
-        **_auth(staff),
-    )
-    assert response.status_code == http_status.HTTP_400_BAD_REQUEST
-    assert response.data["error"]["code"] == "validation_error"
-
-
-def test_ready_message_allowed_for_ready_order(client, staff):
-    order = create_order(status=OrderStatus.READY)
-    response = client.get(
-        prepare_url(order.id),
-        {"message_type": MESSAGE_TYPE_READY_FOR_COLLECTION},
-        **_auth(staff),
-    )
-    assert response.status_code == http_status.HTTP_200_OK
-    assert response.data["data"]["message_type"] == MESSAGE_TYPE_READY_FOR_COLLECTION
 
 
 def test_prepare_never_mutates_business_records(client, staff):
@@ -474,16 +570,11 @@ def test_prepare_never_mutates_business_records(client, staff):
         Customer.objects.count(),
     )
     order_before = Order.objects.get(pk=order.pk)
-    for message_type in SUPPORTED_MESSAGE_TYPES:
-        response = client.get(
-            prepare_url(order.id),
-            {"message_type": message_type},
-            **_auth(staff),
-        )
-        assert response.status_code in (
-            http_status.HTTP_200_OK,
-            http_status.HTTP_400_BAD_REQUEST,
-        )
+    for status in (OrderStatus.NEW, OrderStatus.STITCHING, OrderStatus.READY):
+        order.status = status
+        order.save(update_fields=["status"])
+        response = client.get(prepare_url(order.id), **_auth(staff))
+        assert response.status_code == http_status.HTTP_200_OK
     assert (
         Order.objects.count(),
         Invoice.objects.count(),
@@ -500,7 +591,7 @@ def test_prepare_never_mutates_business_records(client, staff):
 # ---------------------------------------------------------------------------
 
 
-def test_privacy_exclusions():
+def test_auto_privacy_exclusions():
     customer = create_customer(
         full_name="Ravi Kumar",
         notes="INTERNAL: prefers no home visits.",
@@ -509,11 +600,10 @@ def test_privacy_exclusions():
         customer=customer,
         notes="INTERNAL SECRET note must never appear.",
     )
-    for message_type in SUPPORTED_MESSAGE_TYPES:
-        if message_type == MESSAGE_TYPE_READY_FOR_COLLECTION:
-            order.status = OrderStatus.READY
-            order.save(update_fields=["status"])
-        message = build_order_communication(order, message_type)["message"]
+    for status in (OrderStatus.NEW, OrderStatus.CUTTING, OrderStatus.READY):
+        order.status = status
+        order.save(update_fields=["status"])
+        message = build_automatic_order_communication(order)["message"]
         assert "INTERNAL SECRET note must never appear." not in message
         assert "INTERNAL: prefers no home visits." not in message
         if order.customer.alternate_mobile_number:
@@ -522,8 +612,10 @@ def test_privacy_exclusions():
 
 def test_no_undefined_or_null_placeholders():
     order = create_order(status=OrderStatus.READY)
-    for message_type in SUPPORTED_MESSAGE_TYPES:
-        message = build_order_communication(order, message_type)["message"]
+    for status in (OrderStatus.NEW, OrderStatus.CUTTING, OrderStatus.READY):
+        order.status = status
+        order.save(update_fields=["status"])
+        message = build_automatic_order_communication(order)["message"]
         assert "undefined" not in message.lower()
         assert "null" not in message.lower()
         assert "None" not in message
