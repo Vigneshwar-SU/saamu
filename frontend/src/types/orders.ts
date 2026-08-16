@@ -70,6 +70,13 @@ export interface OrderStatusHistoryEntry {
   changed_at: string;
 }
 
+export interface AssignmentSummary {
+  total_quantity: number;
+  assigned_quantity: number;
+  remaining_unassigned: number;
+  can_assign_work: boolean;
+}
+
 export interface Order {
   id: number;
   order_number: string;
@@ -82,6 +89,7 @@ export interface Order {
   collected_at: string | null;
   garment_summary: Array<{ garment_type: GarmentType; quantity: number }>;
   payment_summary: OrderPaymentSummary | null;
+  assignment_summary: AssignmentSummary | null;
   items: OrderItem[];
   status_history: OrderStatusHistoryEntry[];
   created_at: string;

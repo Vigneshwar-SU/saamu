@@ -617,15 +617,15 @@ export const OrderDetail: React.FC = () => {
                 <MenuItem value="COMPLETED">Completed</MenuItem>
               </Select>
             </FormControl>
-            {isStaff && (
-              <Button
-                variant="contained"
-                startIcon={<PersonAddAltIcon />}
-                onClick={() => setAssignOpen(true)}
-              >
-                Assign Work
-              </Button>
-            )}
+          {isStaff && order.assignment_summary?.can_assign_work && (
+            <Button
+              variant="contained"
+              startIcon={<PersonAddAltIcon />}
+              onClick={() => setAssignOpen(true)}
+            >
+              Assign Work
+            </Button>
+          )}
           </Stack>
         }
         noPadding

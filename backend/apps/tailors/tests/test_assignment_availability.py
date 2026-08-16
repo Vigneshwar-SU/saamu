@@ -35,8 +35,8 @@ def _auth(user):
     return {"HTTP_AUTHORIZATION": auth_header(user)["HTTP_AUTHORIZATION"]}
 
 
-def _detail(client, order):
-    response = client.get(f"/api/v1/orders/{order.id}/", **_auth(make_staff()))
+def _detail(client, order, staff):
+    response = client.get(f"/api/v1/orders/{order.id}/", **_auth(staff))
     assert response.status_code == 200
     return response.json()["assignment_summary"]
 
@@ -73,7 +73,7 @@ def test_three_shirts_availability_progress(
     for quantity in assigned:
         _assign(client, staff, tailor, order, item, quantity)
 
-    summary = _detail(client, order)
+    summary =     _detail(client, order, staff)
     assert summary["total_quantity"] == 3
     assert summary["assigned_quantity"] == expected_assigned
     assert summary["remaining_unassigned"] == expected_remaining
@@ -91,7 +91,7 @@ def test_multiple_tailors_assignments_sum_together(client, staff):
     _assign(client, staff, tailor_a, order, item, 1)
     _assign(client, staff, tailor_b, order, item, 2)
 
-    summary = _detail(client, order)
+    summary =     _detail(client, order, staff)
     assert summary["total_quantity"] == 3
     assert summary["assigned_quantity"] == 3
     assert summary["remaining_unassigned"] == 0
@@ -109,10 +109,43 @@ def test_remaining_ignores_completed_quantity(client, staff):
     # piece because completed work does not free an unassigned piece.
     create_assignment(tailor, item, assigned_quantity=2, completed_quantity=2)
 
-    summary = _detail(client, order)
+    summary =     _detail(client, order, staff)
     assert summary["assigned_quantity"] == 2
     assert summary["remaining_unassigned"] == 1
     assert summary["can_assign_work"] is True
+
+
+def test_mixed_garments_partial_assignment_keeps_assign_work(client, staff):
+    customer = create_customer()
+    order = create_order_with_items(customer, {"SHIRT": 2, "PANT": 3})
+    tailor = create_tailor()
+    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="PANT")
+
+    _assign(client, staff, tailor, order, get_order_item(order, "SHIRT"), 2)
+
+    summary =     _detail(client, order, staff)
+    assert summary["total_quantity"] == 5
+    assert summary["assigned_quantity"] == 2
+    assert summary["remaining_unassigned"] == 3
+    assert summary["can_assign_work"] is True
+
+
+def test_mixed_garments_all_assigned_disables_assign_work(client, staff):
+    customer = create_customer()
+    order = create_order_with_items(customer, {"SHIRT": 2, "PANT": 3})
+    tailor = create_tailor()
+    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="PANT")
+
+    _assign(client, staff, tailor, order, get_order_item(order, "SHIRT"), 2)
+    _assign(client, staff, tailor, order, get_order_item(order, "PANT"), 3)
+
+    summary =     _detail(client, order, staff)
+    assert summary["total_quantity"] == 5
+    assert summary["assigned_quantity"] == 5
+    assert summary["remaining_unassigned"] == 0
+    assert summary["can_assign_work"] is False
 
 
 @pytest.mark.parametrize(
@@ -136,7 +169,7 @@ def test_terminal_order_cannot_receive_new_assignment(client, staff, status):
     assert response.status_code == 400
     assert response.json()["success"] is False
     assert response.json()["error"]["code"] == "validation_error"
-    detail = response.json()["error"]["details"]["order"][0]
+    detail = response.json()["error"]["details"]["order"]
     assert OrderStatus(status).label in detail
 
 
@@ -149,7 +182,7 @@ def test_terminal_order_never_assignable_even_with_remaining(client, staff, stat
     order.status = status
     order.save(update_fields=["status"])
 
-    summary = _detail(client, order)
+    summary =     _detail(client, order, staff)
     assert summary["total_quantity"] == 3
     assert summary["assigned_quantity"] == 0
     assert summary["remaining_unassigned"] == 3
