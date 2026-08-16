@@ -8,14 +8,22 @@ interface InfoFieldProps {
   strong?: boolean;
 }
 
-export const InfoField: React.FC<InfoFieldProps> = ({ label, value, loading = false, strong = false }) => {
+export const InfoField: React.FC<InfoFieldProps> = ({
+  label,
+  value,
+  loading = false,
+  strong = false,
+}) => {
   return (
     <Box>
-      <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+      <Typography
+        variant="caption"
+        sx={{ color: 'text.secondary', fontWeight: 600, display: 'block', mb: 0.5 }}
+      >
         {label}
       </Typography>
       {loading ? (
-        <Skeleton width={120} height={22} sx={{ mt: 0.5 }} />
+        <Skeleton width={120} height={22} />
       ) : (
         <Typography variant="body2" sx={{ fontWeight: strong ? 700 : 500, color: 'text.primary' }}>
           {value ?? '—'}

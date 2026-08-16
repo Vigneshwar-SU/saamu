@@ -20,7 +20,11 @@ import { useParams } from 'react-router-dom';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useInvoiceBill } from '../hooks/useInvoices';
-import { INVOICE_STATUS_COLORS, INVOICE_STATUS_LABELS, PAYMENT_TYPE_LABELS } from '../types/billing';
+import {
+  INVOICE_STATUS_COLORS,
+  INVOICE_STATUS_LABELS,
+  PAYMENT_TYPE_LABELS,
+} from '../types/billing';
 import type { InvoiceStatus } from '../types/billing';
 import { PageHeader } from '../components/ui/PageHeader';
 import { ErrorState } from '../components/ui/ErrorState';
@@ -67,9 +71,17 @@ export const InvoiceBill: React.FC = () => {
           title={`${bill.bill_metadata.invoice_number} · Bill`}
           icon={<LocalPrintshopIcon />}
           backTo={`/invoices/${invoiceId}`}
-          crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Invoices', to: '/invoices' }, { label: `${bill.bill_metadata.invoice_number} · Bill` }]}
+          crumbs={[
+            { label: 'Dashboard', to: '/dashboard' },
+            { label: 'Invoices', to: '/invoices' },
+            { label: `${bill.bill_metadata.invoice_number} · Bill` },
+          ]}
           actions={
-            <Button variant="contained" startIcon={<LocalPrintshopIcon />} onClick={() => window.print()}>
+            <Button
+              variant="contained"
+              startIcon={<LocalPrintshopIcon />}
+              onClick={() => window.print()}
+            >
               Print
             </Button>
           }
@@ -161,7 +173,10 @@ export const InvoiceBill: React.FC = () => {
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={4} flexWrap="wrap">
           <Box>
-            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: 'text.secondary', fontWeight: 600, display: 'block', mb: 0.5 }}
+            >
               BILLED TO
             </Typography>
             <Typography sx={{ fontWeight: 700 }}>{bill.customer.full_name}</Typography>
@@ -170,7 +185,10 @@ export const InvoiceBill: React.FC = () => {
             </Typography>
           </Box>
           <Box>
-            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: 'text.secondary', fontWeight: 600, display: 'block', mb: 0.5 }}
+            >
               ORDER
             </Typography>
             <Typography sx={{ fontWeight: 600 }}>{bill.order.order_number}</Typography>
@@ -179,13 +197,16 @@ export const InvoiceBill: React.FC = () => {
             </Typography>
           </Box>
           <Box>
-            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+            <Typography
+              variant="caption"
+              sx={{ color: 'text.secondary', fontWeight: 600, display: 'block', mb: 0.5 }}
+            >
               ORDER STATUS
             </Typography>
             <Chip
               label={bill.order.status}
               size="small"
-              sx={{ mt: 0.5, fontWeight: 600, backgroundColor: '#F1EDE2', color: '#544A35' }}
+              sx={{ fontWeight: 600, backgroundColor: '#F1EDE2', color: '#544A35' }}
             />
           </Box>
         </Stack>

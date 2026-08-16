@@ -94,7 +94,11 @@ export const InvoiceDetail: React.FC = () => {
         subtitle={`${invoice.payment_count} payment${invoice.payment_count === 1 ? '' : 's'}`}
         icon={<ReceiptLongIcon />}
         backTo="/invoices"
-        crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Invoices', to: '/invoices' }, { label: invoice.invoice_number }]}
+        crumbs={[
+          { label: 'Dashboard', to: '/dashboard' },
+          { label: 'Invoices', to: '/invoices' },
+          { label: invoice.invoice_number },
+        ]}
         actions={
           <Stack direction="row" spacing={1} flexWrap="wrap">
             <Button
@@ -141,10 +145,13 @@ export const InvoiceDetail: React.FC = () => {
           <Stack spacing={1}>
             <Stack direction="row" spacing={4} flexWrap="wrap">
               <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                <Typography
+                  variant="caption"
+                  sx={{ color: 'text.secondary', fontWeight: 600, display: 'block', mb: 0.5 }}
+                >
                   STATUS
                 </Typography>
-                <Box sx={{ mt: 0.5 }}>
+                <Box>
                   <StatusBadge
                     label={INVOICE_STATUS_LABELS[invoice.status]}
                     tone={INVOICE_TONES[invoice.status] ?? 'neutral'}
@@ -152,7 +159,10 @@ export const InvoiceDetail: React.FC = () => {
                 </Box>
               </Box>
               <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                <Typography
+                  variant="caption"
+                  sx={{ color: 'text.secondary', fontWeight: 600, display: 'block', mb: 0.5 }}
+                >
                   CUSTOMER
                 </Typography>
                 <Typography sx={{ fontWeight: 600 }}>{invoice.customer.full_name}</Typography>
@@ -161,7 +171,10 @@ export const InvoiceDetail: React.FC = () => {
                 </Typography>
               </Box>
               <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                <Typography
+                  variant="caption"
+                  sx={{ color: 'text.secondary', fontWeight: 600, display: 'block', mb: 0.5 }}
+                >
                   ORDER
                 </Typography>
                 <Link
@@ -181,14 +194,20 @@ export const InvoiceDetail: React.FC = () => {
                 </Typography>
               </Box>
               <Box>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                <Typography
+                  variant="caption"
+                  sx={{ color: 'text.secondary', fontWeight: 600, display: 'block', mb: 0.5 }}
+                >
                   INVOICE DATE
                 </Typography>
                 <Typography sx={{ fontWeight: 600 }}>{formatDate(invoice.invoice_date)}</Typography>
               </Box>
               {invoice.created_by_name && (
                 <Box>
-                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: 'text.secondary', fontWeight: 600, display: 'block', mb: 0.5 }}
+                  >
                     CREATED BY
                   </Typography>
                   <Typography sx={{ fontWeight: 600 }}>{invoice.created_by_name}</Typography>
@@ -221,7 +240,11 @@ export const InvoiceDetail: React.FC = () => {
         }}
       >
         <StatCard label="Subtotal" value={formatCurrency(invoice.subtotal)} tone="default" />
-        <StatCard label="Adjustment" value={formatCurrency(invoice.adjustment_amount)} tone="default" />
+        <StatCard
+          label="Adjustment"
+          value={formatCurrency(invoice.adjustment_amount)}
+          tone="default"
+        />
         <StatCard label="Total" value={formatCurrency(invoice.total_amount)} tone="gold" />
         <StatCard label="Gross Paid" value={formatCurrency(invoice.gross_paid)} tone="default" />
         <StatCard label="Refunded" value={formatCurrency(invoice.refunded_amount)} tone="error" />
@@ -255,7 +278,10 @@ export const InvoiceDetail: React.FC = () => {
                 />
               ) : (
                 invoice.items.map((item) => (
-                  <TableRow key={item.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                  <TableRow
+                    key={item.id}
+                    sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                  >
                     <TableCell>
                       <Typography variant="body2">{item.garment_type}</Typography>
                     </TableCell>
@@ -305,7 +331,10 @@ export const InvoiceDetail: React.FC = () => {
                 />
               ) : (
                 payments.map((payment) => (
-                  <TableRow key={payment.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                  <TableRow
+                    key={payment.id}
+                    sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                  >
                     <TableCell>
                       <Typography variant="body2">{formatDate(payment.payment_date)}</Typography>
                     </TableCell>
