@@ -50,7 +50,10 @@ const AssignWorkDialog: React.FC<AssignWorkDialogProps> = ({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: ordersData } = useOrderList({ search: orderSearch });
+  const { data: ordersData, isLoading: ordersLoading } = useOrderList({
+    search: orderSearch,
+    assignable: true,
+  });
   const { data: order } = useOrder(orderId === '' ? 0 : Number(orderId));
 
   useEffect(() => {
@@ -165,11 +168,19 @@ const AssignWorkDialog: React.FC<AssignWorkDialogProps> = ({
                     setOrderItemId('');
                   }}
                 >
-                  {orders.map((entry) => (
-                    <MenuItem key={entry.id} value={entry.id}>
-                      {entry.order_number} · {entry.customer.full_name}
+                  {ordersLoading ? (
+                    <MenuItem value="">Loading…</MenuItem>
+                  ) : orders.length === 0 ? (
+                    <MenuItem value="" disabled>
+                      {orderSearch ? 'No unassigned work matches this search' : 'No unassigned work available'}
                     </MenuItem>
-                  ))}
+                  ) : (
+                    orders.map((entry) => (
+                      <MenuItem key={entry.id} value={entry.id}>
+                        {entry.order_number} · {entry.customer.full_name}
+                      </MenuItem>
+                    ))
+                  )}
                 </Select>
               </FormControl>
             </>
@@ -194,11 +205,17 @@ const AssignWorkDialog: React.FC<AssignWorkDialogProps> = ({
                   label="Garment to assign *"
                   onChange={(event) => setOrderItemId(event.target.value as number | '')}
                 >
-                  {eligibleItems.map((item: OrderItem) => (
-                    <MenuItem key={item.id} value={item.id}>
-                      {item.garment_type} · remaining {item.remaining_quantity} of {item.quantity}
+                  {eligibleItems.length === 0 ? (
+                    <MenuItem value="" disabled>
+                      No unassigned work available
                     </MenuItem>
-                  ))}
+                  ) : (
+                    eligibleItems.map((item: OrderItem) => (
+                      <MenuItem key={item.id} value={item.id}>
+                        {item.garment_type} · remaining {item.remaining_quantity} of {item.quantity}
+                      </MenuItem>
+                    ))
+                  )}
                 </Select>
               </FormControl>
 

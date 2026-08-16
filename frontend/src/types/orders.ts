@@ -109,6 +109,8 @@ export interface OrderListParams {
   page?: number;
   dateFrom?: string;
   dateTo?: string;
+  /** Only orders that can still receive tailoring work (backend-filtered). */
+  assignable?: boolean;
 }
 
 export interface OrderItemPayload {

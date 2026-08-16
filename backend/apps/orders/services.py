@@ -18,12 +18,14 @@ Two rules are enforced here:
   quantity never counts.
 """
 
-from django.db import transaction
+from django.db import models, transaction
+from django.db.models.functions import Coalesce
 from rest_framework.exceptions import ValidationError
 
+from apps.tailors.models import WorkAssignment
 from apps.tailors.services import create_work_assignment
 
-from .models import Order, OrderStatus, OrderStatusHistory
+from .models import TERMINAL_STATUSES, Order, OrderItem, OrderStatus, OrderStatusHistory
 
 STITCHING_READINESS_MESSAGE = (
     "All work must be assigned before the order can move to stitching."
@@ -55,6 +57,44 @@ def order_assignment_state(order):
         "remaining_unassigned": remaining_unassigned,
         "can_assign_work": remaining_unassigned > 0 and not order.is_terminal,
     }
+
+
+def filter_assignable_orders(qs):
+    """DB-level filter keeping only orders that can still receive work.
+
+    Mirrors the per-instance rule in :func:`order_assignment_state`: an order is
+    assignable while unassigned pieces remain (ordered quantity minus the sum of
+    ``assigned_quantity`` across every work assignment) AND the order is not in
+    a terminal state (COLLECTED / CANCELLED). Completed quantity is never used,
+    matching the assignment-authority definition.
+
+    The two totals are computed as scalar subqueries on the outer ``Order``
+    query, so the filter runs in SQL *before* pagination: the returned page
+    never contains orders that would later have to be hidden client-side, and
+    the ``count`` reflects only genuinely assignable orders.
+    """
+    ordered = (
+        OrderItem.objects.filter(order=models.OuterRef("pk"))
+        .values("order")
+        .annotate(total=models.Sum("quantity"))
+        .values("total")
+    )
+    assigned = (
+        WorkAssignment.objects.filter(order_item__order=models.OuterRef("pk"))
+        .values("order_item__order")
+        .annotate(total=models.Sum("assigned_quantity"))
+        .values("total")
+    )
+    return (
+        qs.exclude(status__in=TERMINAL_STATUSES)
+        .annotate(
+            remaining_unassigned_work=(
+                Coalesce(models.Subquery(ordered), models.Value(0))
+                - Coalesce(models.Subquery(assigned), models.Value(0))
+            )
+        )
+        .filter(remaining_unassigned_work__gt=0)
+    )
 
 
 def require_fully_assigned_for_stitching(order):

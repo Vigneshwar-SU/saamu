@@ -19,6 +19,7 @@ export const orderService = {
     if (params.page && params.page > 1) query.set('page', String(params.page));
     if (params.dateFrom) query.set('date_from', params.dateFrom);
     if (params.dateTo) query.set('date_to', params.dateTo);
+    if (params.assignable) query.set('assignable', 'true');
     const qs = query.toString();
     const response = await apiClient.get<OrderListResult>(`/orders/${qs ? `?${qs}` : ''}`);
     return response.data;

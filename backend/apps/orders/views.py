@@ -36,6 +36,7 @@ from apps.orders.serializers import (
 )
 from apps.orders.services import (
     assign_and_move_to_stitching,
+    filter_assignable_orders,
     order_work_progress,
     require_all_work_completed_for_ready,
     require_fully_assigned_for_stitching,
@@ -93,11 +94,14 @@ class OrderViewSet(viewsets.ModelViewSet):
         return qs
 
     def _apply_list_filters(self, qs):
-        """Search + status + date filtering for the list endpoint.
+        """Search + status + date + assignability filtering for the list endpoint.
 
         Search matches order number, customer full name or customer mobile.
         ``?status=NEW`` filters by exact status. ``?date_from`` / ``?date_to``
-        filter by order date (inclusive, YYYY-MM-DD).
+        filter by order date (inclusive, YYYY-MM-DD). ``?assignable=true`` keeps
+        only orders that can still receive tailoring work (unassigned pieces
+        remain AND the order is not terminal); it is applied before pagination
+        so the Assign Work picker never pages through finished orders.
         """
         search = (self.request.query_params.get("search") or "").strip()
         if search:
@@ -119,6 +123,15 @@ class OrderViewSet(viewsets.ModelViewSet):
         date_to = (self.request.query_params.get("date_to") or "").strip()
         if date_to:
             qs = qs.filter(order_date__lte=date_to)
+
+        assignable = (self.request.query_params.get("assignable") or "").strip()
+        if assignable:
+            if assignable not in {"true", "false"}:
+                raise ValidationError(
+                    {"assignable": "Invalid value. Use true or false."}
+                )
+            if assignable == "true":
+                qs = filter_assignable_orders(qs)
         return qs
 
     def create(self, request, *args, **kwargs):
