@@ -8,11 +8,6 @@ import {
   MenuItem,
   Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   TextField,
   Tooltip,
   Typography,
@@ -33,8 +28,7 @@ import { TailorFormDialog } from '../components/TailorFormDialog';
 import { PieceRateDialog } from '../components/PieceRateDialog';
 import { PageHeader } from '../components/ui/PageHeader';
 import { FilterBar } from '../components/ui/FilterBar';
-import { TableCard } from '../components/ui/TableCard';
-import { TableStateRow } from '../components/ui/TableStateRow';
+import { ResponsiveTable } from '../components/ui/ResponsiveTable';
 import { AppPagination } from '../components/ui/AppPagination';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { StatCard } from '../components/ui/StatCard';
@@ -74,7 +68,11 @@ export const Tailors: React.FC = () => {
     setPage(1);
   }, [search, scope]);
 
-  const { data, isLoading, isError, error, isFetching, refetch } = useTailorList({ search, scope, page });
+  const { data, isLoading, isError, error, isFetching, refetch } = useTailorList({
+    search,
+    scope,
+    page,
+  });
   const { data: earningsSummary } = useTailorEarningsSummary();
 
   const createMutation = useCreateTailor();
@@ -218,149 +216,179 @@ export const Tailors: React.FC = () => {
         </Stack>
       </FilterBar>
 
-      <TableCard loading={isFetching && !isLoading}>
-        <Table size="medium">
-          <TableHead>
-            <TableRow>
-              <TableCell>Tailor</TableCell>
-              <TableCell>Mobile</TableCell>
-              <TableCell>Assigned</TableCell>
-              <TableCell>Completed</TableCell>
-              <TableCell>Outstanding</TableCell>
-              <TableCell>Earned</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Created</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isLoading ? (
-              <TableStateRow colSpan={9} state="loading" />
-            ) : isError ? (
-              <TableStateRow
-                colSpan={9}
-                state="error"
-                errorMessage={getApiErrorMessage(error)}
-                onRetry={() => refetch()}
+      <ResponsiveTable
+        data={data?.results ?? []}
+        rowKey={(tailor) => tailor.id}
+        onRowClick={(tailor) => navigate(`/tailors/${tailor.id}`)}
+        loading={isLoading}
+        refetching={isFetching && !isLoading}
+        error={isError}
+        errorMessage={getApiErrorMessage(error)}
+        onRetry={() => refetch()}
+        emptyTitle="No tailors found"
+        columns={[
+          {
+            label: 'Tailor',
+            primary: true,
+            render: (tailor) => (
+              <Box>
+                <Typography sx={{ fontWeight: 600 }}>{tailor.name}</Typography>
+                <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+                  #{tailor.id}
+                </Typography>
+              </Box>
+            ),
+          },
+          {
+            label: 'Mobile',
+            render: (tailor) => (
+              <Typography variant="body2">{tailor.mobile_number || '-'}</Typography>
+            ),
+          },
+          {
+            label: 'Assigned',
+            render: (tailor) => {
+              const entry = earningsSummary?.tailors.find(
+                (summaryEntry) => summaryEntry.id === tailor.id
+              );
+              const workload = entry?.workload ?? {
+                assigned_quantity: 0,
+                completed_quantity: 0,
+                outstanding_quantity: 0,
+                earned_amount: 0,
+              };
+              return (
+                <Typography variant="body2">{formatPieces(workload.assigned_quantity)}</Typography>
+              );
+            },
+          },
+          {
+            label: 'Completed',
+            render: (tailor) => {
+              const entry = earningsSummary?.tailors.find(
+                (summaryEntry) => summaryEntry.id === tailor.id
+              );
+              const workload = entry?.workload ?? {
+                assigned_quantity: 0,
+                completed_quantity: 0,
+                outstanding_quantity: 0,
+                earned_amount: 0,
+              };
+              return (
+                <Typography variant="body2">{formatPieces(workload.completed_quantity)}</Typography>
+              );
+            },
+          },
+          {
+            label: 'Outstanding',
+            render: (tailor) => {
+              const entry = earningsSummary?.tailors.find(
+                (summaryEntry) => summaryEntry.id === tailor.id
+              );
+              const workload = entry?.workload ?? {
+                assigned_quantity: 0,
+                completed_quantity: 0,
+                outstanding_quantity: 0,
+                earned_amount: 0,
+              };
+              return (
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {formatPieces(workload.outstanding_quantity)}
+                </Typography>
+              );
+            },
+          },
+          {
+            label: 'Earned',
+            render: (tailor) => {
+              const entry = earningsSummary?.tailors.find(
+                (summaryEntry) => summaryEntry.id === tailor.id
+              );
+              const workload = entry?.workload ?? {
+                assigned_quantity: 0,
+                completed_quantity: 0,
+                outstanding_quantity: 0,
+                earned_amount: 0,
+              };
+              return (
+                <Typography variant="body2" sx={{ fontWeight: 600, color: 'success.dark' }}>
+                  {formatCurrency(workload.earned_amount)}
+                </Typography>
+              );
+            },
+          },
+          {
+            label: 'Status',
+            render: (tailor) => (
+              <StatusBadge
+                label={tailor.is_active ? 'Active' : 'Archived'}
+                tone={tailor.is_active ? 'success' : 'neutral'}
               />
-            ) : data && data.results.length === 0 ? (
-              <TableStateRow colSpan={9} state="empty" emptyTitle="No tailors found" />
-            ) : (
-              data?.results.map((tailor) => {
-                const entry = earningsSummary?.tailors.find((summaryEntry) => summaryEntry.id === tailor.id);
-                const workload = entry?.workload ?? {
-                  assigned_quantity: 0,
-                  completed_quantity: 0,
-                  outstanding_quantity: 0,
-                  earned_amount: 0,
-                };
-                return (
-                  <TableRow
-                    key={tailor.id}
-                    hover
-                    sx={{ cursor: 'pointer' }}
-                    onClick={() => navigate(`/tailors/${tailor.id}`)}
-                  >
-                    <TableCell>
-                      <Typography sx={{ fontWeight: 600 }}>{tailor.name}</Typography>
-                      <Typography variant="caption" sx={{ color: 'text.disabled' }}>
-                        #{tailor.id}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{tailor.mobile_number || '-'}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
-                        {formatPieces(workload.assigned_quantity)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
-                        {formatPieces(workload.completed_quantity)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {formatPieces(workload.outstanding_quantity)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'success.dark' }}>
-                        {formatCurrency(workload.earned_amount)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge
-                        label={tailor.is_active ? 'Active' : 'Archived'}
-                        tone={tailor.is_active ? 'success' : 'neutral'}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{formatDate(tailor.created_at)}</Typography>
-                    </TableCell>
-                    <TableCell align="right">
-                      <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                        <Tooltip title="View details">
-                          <Button
-                            size="small"
-                            startIcon={<VisibilityIcon fontSize="small" />}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              navigate(`/tailors/${tailor.id}`);
-                            }}
-                          >
-                            View
-                          </Button>
-                        </Tooltip>
-                        {isStaff && (
-                          <Tooltip title={tailor.is_active ? 'Edit tailor' : 'Restore tailor'}>
-                            <Button
-                              size="small"
-                              startIcon={
-                                tailor.is_active ? (
-                                  <EditIcon fontSize="small" />
-                                ) : (
-                                  <UnarchiveIcon fontSize="small" />
-                                )
-                              }
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                if (tailor.is_active) {
-                                  openEditDialog(tailor);
-                                } else {
-                                  handleRestore(tailor);
-                                }
-                              }}
-                            >
-                              {tailor.is_active ? 'Edit' : 'Restore'}
-                            </Button>
-                          </Tooltip>
-                        )}
-                        {isStaff && tailor.is_active && (
-                          <Tooltip title="Archive tailor">
-                            <Button
-                              size="small"
-                              color="error"
-                              startIcon={<ArchiveIcon fontSize="small" />}
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setArchiveTarget(tailor);
-                              }}
-                            >
-                              Archive
-                            </Button>
-                          </Tooltip>
-                        )}
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
+            ),
+          },
+          {
+            label: 'Created',
+            render: (tailor) => (
+              <Typography variant="body2">{formatDate(tailor.created_at)}</Typography>
+            ),
+          },
+        ]}
+        actions={(tailor) => (
+          <Stack direction="row" spacing={0.5} flexWrap="wrap">
+            <Tooltip title="View details">
+              <Button
+                size="small"
+                startIcon={<VisibilityIcon fontSize="small" />}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  navigate(`/tailors/${tailor.id}`);
+                }}
+              >
+                View
+              </Button>
+            </Tooltip>
+            {isStaff && (
+              <Tooltip title={tailor.is_active ? 'Edit tailor' : 'Restore tailor'}>
+                <Button
+                  size="small"
+                  startIcon={
+                    tailor.is_active ? (
+                      <EditIcon fontSize="small" />
+                    ) : (
+                      <UnarchiveIcon fontSize="small" />
+                    )
+                  }
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (tailor.is_active) {
+                      openEditDialog(tailor);
+                    } else {
+                      handleRestore(tailor);
+                    }
+                  }}
+                >
+                  {tailor.is_active ? 'Edit' : 'Restore'}
+                </Button>
+              </Tooltip>
             )}
-          </TableBody>
-        </Table>
-      </TableCard>
+            {isStaff && tailor.is_active && (
+              <Tooltip title="Archive tailor">
+                <Button
+                  size="small"
+                  color="error"
+                  startIcon={<ArchiveIcon fontSize="small" />}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setArchiveTarget(tailor);
+                  }}
+                >
+                  Archive
+                </Button>
+              </Tooltip>
+            )}
+          </Stack>
+        )}
+      />
 
       {data && data.count > 0 && (
         <AppPagination page={page} count={data.count} pageSize={PAGE_SIZE} onChange={setPage} />
@@ -381,7 +409,12 @@ export const Tailors: React.FC = () => {
         onCancel={() => setArchiveTarget(null)}
       />
 
-      <TailorFormDialog open={dialogOpen} initial={editingTailor} onClose={closeDialog} submit={handleSubmit} />
+      <TailorFormDialog
+        open={dialogOpen}
+        initial={editingTailor}
+        onClose={closeDialog}
+        submit={handleSubmit}
+      />
       <PieceRateDialog open={pieceRateDialogOpen} onClose={() => setPieceRateDialogOpen(false)} />
     </Box>
   );

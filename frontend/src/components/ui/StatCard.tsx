@@ -56,7 +56,7 @@ export const StatCard: React.FC<StatCardProps> = ({
         }),
       }}
     >
-      <Box sx={{ p: 2.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+      <Box sx={{ p: { xs: 2, sm: 2.5 }, display: 'flex', flexDirection: 'column', gap: 1 }}>
         {icon && (
           <Box
             sx={{

@@ -1,22 +1,13 @@
 import React, { useState } from 'react';
-import {
-  Box,
-  Button,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Typography,
-} from '@mui/material';
+import { Box, Button, Stack, Typography } from '@mui/material';
 import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
 import CalculateIcon from '@mui/icons-material/Calculate';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
-import { useParams } from 'react-router-dom';import { useAuth } from '../context/useAuth';
+import { useParams } from 'react-router-dom';
+import { useAuth } from '../context/useAuth';
 import { formatCurrency, formatDate, formatPieces } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { RecordPaymentDialog } from '../components/RecordPaymentDialog';
@@ -32,19 +23,11 @@ import {
   useRecordPayment,
   useSettleEntry,
 } from '../hooks/usePayroll';
-import {
-  SALARY_MODEL_LABELS,
-  SETTLEMENT_STATUS_LABELS,
-} from '../types/payroll';
-import type {
-  PayrollEntry,
-  PaymentHistoryResponse,
-  PaymentPayload,
-} from '../types/payroll';
+import { SALARY_MODEL_LABELS, SETTLEMENT_STATUS_LABELS } from '../types/payroll';
+import type { PayrollEntry, PaymentHistoryResponse, PaymentPayload } from '../types/payroll';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SectionCard } from '../components/ui/SectionCard';
-import { TableCard } from '../components/ui/TableCard';
-import { TableStateRow } from '../components/ui/TableStateRow';
+import { ResponsiveTable } from '../components/ui/ResponsiveTable';
 import { StatCard } from '../components/ui/StatCard';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
@@ -146,7 +129,11 @@ export const PayrollDetail: React.FC = () => {
         subtitle={`Period #${period.id}${period.created_by_name ? ` · Created by ${period.created_by_name}` : ''}`}
         icon={<PointOfSaleIcon />}
         backTo="/payroll"
-        crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Payroll', to: '/payroll' }, { label: `Period #${period.id}` }]}
+        crumbs={[
+          { label: 'Dashboard', to: '/dashboard' },
+          { label: 'Payroll', to: '/payroll' },
+          { label: `Period #${period.id}` },
+        ]}
         actions={
           isStaff && (
             <Stack direction="row" spacing={1}>
@@ -200,142 +187,164 @@ export const PayrollDetail: React.FC = () => {
           gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' },
         }}
       >
-        <StatCard label="Total Completed Pieces" value={formatPieces(period.total_completed_pieces)} tone="default" />
-        <StatCard label="Piece Rate Earnings" value={formatCurrency(period.total_piece_rate_earnings)} tone="gold" />
-        <StatCard label="Total Fixed Salary" value={formatCurrency(period.total_fixed_salary)} tone="info" />
-        <StatCard label="Total Gross Salary" value={formatCurrency(period.total_gross_salary)} tone="default" />
-        <StatCard label="Attendance" value={formatCurrency(period.total_attendance_amount)} tone="default" />
-        <StatCard label="Total Payable" value={formatCurrency(period.total_payable)} tone="success" />
+        <StatCard
+          label="Total Completed Pieces"
+          value={formatPieces(period.total_completed_pieces)}
+          tone="default"
+        />
+        <StatCard
+          label="Piece Rate Earnings"
+          value={formatCurrency(period.total_piece_rate_earnings)}
+          tone="gold"
+        />
+        <StatCard
+          label="Total Fixed Salary"
+          value={formatCurrency(period.total_fixed_salary)}
+          tone="info"
+        />
+        <StatCard
+          label="Total Gross Salary"
+          value={formatCurrency(period.total_gross_salary)}
+          tone="default"
+        />
+        <StatCard
+          label="Attendance"
+          value={formatCurrency(period.total_attendance_amount)}
+          tone="default"
+        />
+        <StatCard
+          label="Total Payable"
+          value={formatCurrency(period.total_payable)}
+          tone="success"
+        />
         <StatCard label="Tailors in Period" value={String(period.entry_count)} tone="default" />
       </Box>
 
-      <TableCard>
-        <Table size="medium">
-          <TableHead>
-            <TableRow>
-              <TableCell>Tailor</TableCell>
-              <TableCell>Present</TableCell>
-              <TableCell>Half Day</TableCell>
-              <TableCell>Absent</TableCell>
-              <TableCell>Completed</TableCell>
-              <TableCell>Salary Model</TableCell>
-              <TableCell>Fixed Salary</TableCell>
-              <TableCell>Piece Rate Earnings</TableCell>
-              <TableCell>Attendance Amount</TableCell>
-              <TableCell>Total Payable</TableCell>
-              <TableCell>Advance</TableCell>
-              <TableCell>Paid</TableCell>
-              <TableCell>Outstanding</TableCell>
-              <TableCell>Settlement</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {entries.length === 0 ? (
-              <TableStateRow
-                colSpan={14}
-                state="empty"
-                emptyTitle="No tailor entries yet"
-                emptyMessage={
-                  period.status === 'DRAFT'
-                    ? 'Calculate payroll to generate tailor entries.'
-                    : 'No tailor entries found for this period.'
-                }
+      <ResponsiveTable
+        data={entries}
+        rowKey={(entry) => entry.id}
+        onRowClick={(entry) =>
+          setSelectedTailorId((current) => (current === entry.tailor.id ? null : entry.tailor.id))
+        }
+        emptyTitle="No tailor entries yet"
+        emptyMessage={
+          period.status === 'DRAFT'
+            ? 'Calculate payroll to generate tailor entries.'
+            : 'No tailor entries found for this period.'
+        }
+        columns={[
+          {
+            label: 'Tailor',
+            primary: true,
+            render: (entry) => (
+              <Box>
+                <Typography sx={{ fontWeight: 600 }}>{entry.tailor.name}</Typography>
+                <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+                  #{entry.tailor.id}
+                </Typography>
+              </Box>
+            ),
+          },
+          {
+            label: 'Present',
+            render: (entry) => <Typography variant="body2">{entry.present_days}</Typography>,
+          },
+          {
+            label: 'Half Day',
+            render: (entry) => <Typography variant="body2">{entry.half_days}</Typography>,
+          },
+          {
+            label: 'Absent',
+            render: (entry) => <Typography variant="body2">{entry.absent_days}</Typography>,
+          },
+          {
+            label: 'Completed',
+            render: (entry) => (
+              <Typography variant="body2">{formatPieces(entry.completed_pieces)}</Typography>
+            ),
+          },
+          {
+            label: 'Salary Model',
+            render: (entry) => (
+              <StatusBadge
+                label={SALARY_MODEL_LABELS[entry.salary_model]}
+                tone={SALARY_MODEL_TONES[entry.salary_model] ?? 'neutral'}
               />
-            ) : (
-              entries.map((entry) => (
-                <TableRow
-                  key={entry.id}
-                  hover
-                  sx={{
-                    cursor: 'pointer',
-                    '&:last-child td, &:last-child th': { border: 0 },
-                    backgroundColor:
-                      selectedTailorId === entry.tailor.id ? '#FBF6EA' : 'transparent',
-                  }}
-                  onClick={() =>
-                    setSelectedTailorId((current) =>
-                      current === entry.tailor.id ? null : entry.tailor.id
-                    )
-                  }
-                >
-                  <TableCell>
-                    <Typography sx={{ fontWeight: 600 }}>{entry.tailor.name}</Typography>
-                    <Typography variant="caption" sx={{ color: 'text.disabled' }}>
-                      #{entry.tailor.id}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{entry.present_days}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{entry.half_days}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{entry.absent_days}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{formatPieces(entry.completed_pieces)}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge
-                      label={SALARY_MODEL_LABELS[entry.salary_model]}
-                      tone={SALARY_MODEL_TONES[entry.salary_model] ?? 'neutral'}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {entry.salary_model === 'PER_GARMENT'
-                        ? '—'
-                        : formatCurrency(entry.fixed_salary_amount)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{formatCurrency(entry.piece_rate_earnings)}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{formatCurrency(entry.attendance_amount)}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#1F5C3C' }}>
-                      {formatCurrency(entry.total_payable)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {entry.settlement.advance_deductions > 0
-                        ? `-${formatCurrency(entry.settlement.advance_deductions)}`
-                        : '0'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {formatCurrency(entry.settlement.payments_recorded)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        fontWeight: 600,
-                        color:
-                          entry.settlement.outstanding_payable === 0 ? '#1F5C3C' : '#8F4A00',
-                      }}
-                    >
-                      {formatCurrency(entry.settlement.outstanding_payable)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge
-                      label={SETTLEMENT_STATUS_LABELS[entry.settlement.settlement_status]}
-                      tone={SETTLEMENT_TONES[entry.settlement.settlement_status] ?? 'neutral'}
-                    />
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableCard>
+            ),
+          },
+          {
+            label: 'Fixed Salary',
+            render: (entry) => (
+              <Typography variant="body2">
+                {entry.salary_model === 'PER_GARMENT'
+                  ? '—'
+                  : formatCurrency(entry.fixed_salary_amount)}
+              </Typography>
+            ),
+          },
+          {
+            label: 'Piece Rate Earnings',
+            render: (entry) => (
+              <Typography variant="body2">{formatCurrency(entry.piece_rate_earnings)}</Typography>
+            ),
+          },
+          {
+            label: 'Attendance Amount',
+            render: (entry) => (
+              <Typography variant="body2">{formatCurrency(entry.attendance_amount)}</Typography>
+            ),
+          },
+          {
+            label: 'Total Payable',
+            render: (entry) => (
+              <Typography variant="body2" sx={{ fontWeight: 600, color: '#1F5C3C' }}>
+                {formatCurrency(entry.total_payable)}
+              </Typography>
+            ),
+          },
+          {
+            label: 'Advance',
+            render: (entry) => (
+              <Typography variant="body2">
+                {entry.settlement.advance_deductions > 0
+                  ? `-${formatCurrency(entry.settlement.advance_deductions)}`
+                  : '0'}
+              </Typography>
+            ),
+          },
+          {
+            label: 'Paid',
+            render: (entry) => (
+              <Typography variant="body2">
+                {formatCurrency(entry.settlement.payments_recorded)}
+              </Typography>
+            ),
+          },
+          {
+            label: 'Outstanding',
+            render: (entry) => (
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: 600,
+                  color: entry.settlement.outstanding_payable === 0 ? '#1F5C3C' : '#8F4A00',
+                }}
+              >
+                {formatCurrency(entry.settlement.outstanding_payable)}
+              </Typography>
+            ),
+          },
+          {
+            label: 'Settlement',
+            render: (entry) => (
+              <StatusBadge
+                label={SETTLEMENT_STATUS_LABELS[entry.settlement.settlement_status]}
+                tone={SETTLEMENT_TONES[entry.settlement.settlement_status] ?? 'neutral'}
+              />
+            ),
+          },
+        ]}
+      />
 
       {selectedTailorId && (
         <>
@@ -427,7 +436,9 @@ const TailorAssignmentBreakdown: React.FC<{
       noPadding
     >
       {entry && (
-        <Box sx={{ px: 2.5, py: 1.5, backgroundColor: '#FBF6EA', borderBottom: '1px solid #E7E0D0' }}>
+        <Box
+          sx={{ px: 2.5, py: 1.5, backgroundColor: '#FBF6EA', borderBottom: '1px solid #E7E0D0' }}
+        >
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             {entry.present_days} present · {entry.half_days} half day · {entry.absent_days} absent ·{' '}
             {formatPieces(entry.completed_pieces)} completed ·{' '}
@@ -442,55 +453,56 @@ const TailorAssignmentBreakdown: React.FC<{
           </Typography>
         </Box>
       )}
-      <TableCard sx={{ border: 'none', borderRadius: 0 }}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Order</TableCell>
-              <TableCell>Garment</TableCell>
-              <TableCell>Assigned</TableCell>
-              <TableCell>Completed</TableCell>
-              <TableCell>Rate</TableCell>
-              <TableCell>Earned</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {assignments.length === 0 ? (
-              <TableStateRow
-                colSpan={6}
-                state="empty"
-                emptyTitle="No completed assignments"
-                emptyMessage="No completed assignments in this period."
-              />
-            ) : (
-              assignments.map((assignment) => (
-                <TableRow key={assignment.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                  <TableCell>
-                    <Typography variant="body2">{assignment.order_number}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{assignment.garment_type}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{formatPieces(assignment.assigned_quantity)}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{formatPieces(assignment.completed_quantity)}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{formatCurrency(assignment.rate_per_piece_snapshot)}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#1F5C3C' }}>
-                      {formatCurrency(assignment.earned_amount)}
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableCard>
+      <ResponsiveTable
+        size="small"
+        data={assignments}
+        rowKey={(assignment) => assignment.id}
+        emptyTitle="No completed assignments"
+        emptyMessage="No completed assignments in this period."
+        columns={[
+          {
+            label: 'Order',
+            render: (assignment) => (
+              <Typography variant="body2">{assignment.order_number}</Typography>
+            ),
+          },
+          {
+            label: 'Garment',
+            render: (assignment) => (
+              <Typography variant="body2">{assignment.garment_type}</Typography>
+            ),
+          },
+          {
+            label: 'Assigned',
+            render: (assignment) => (
+              <Typography variant="body2">{formatPieces(assignment.assigned_quantity)}</Typography>
+            ),
+          },
+          {
+            label: 'Completed',
+            render: (assignment) => (
+              <Typography variant="body2">{formatPieces(assignment.completed_quantity)}</Typography>
+            ),
+          },
+          {
+            label: 'Rate',
+            render: (assignment) => (
+              <Typography variant="body2">
+                {formatCurrency(assignment.rate_per_piece_snapshot)}
+              </Typography>
+            ),
+          },
+          {
+            label: 'Earned',
+            primary: true,
+            render: (assignment) => (
+              <Typography variant="body2" sx={{ fontWeight: 600, color: '#1F5C3C' }}>
+                {formatCurrency(assignment.earned_amount)}
+              </Typography>
+            ),
+          },
+        ]}
+      />
     </SectionCard>
   );
 };
@@ -570,9 +582,21 @@ const SettlementPanel: React.FC<{
               gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' },
             }}
           >
-            <StatCard label="Gross Payable" value={formatCurrency(settlement.gross_payable)} tone="default" />
-            <StatCard label="Advance Deduction" value={`-${formatCurrency(settlement.advance_deductions)}`} tone="warning" />
-            <StatCard label="Paid Amount" value={formatCurrency(settlement.payments_recorded)} tone="gold" />
+            <StatCard
+              label="Gross Payable"
+              value={formatCurrency(settlement.gross_payable)}
+              tone="default"
+            />
+            <StatCard
+              label="Advance Deduction"
+              value={`-${formatCurrency(settlement.advance_deductions)}`}
+              tone="warning"
+            />
+            <StatCard
+              label="Paid Amount"
+              value={formatCurrency(settlement.payments_recorded)}
+              tone="gold"
+            />
             <StatCard
               label="Outstanding"
               value={formatCurrency(settlement.outstanding_payable)}
@@ -583,57 +607,52 @@ const SettlementPanel: React.FC<{
       </SectionCard>
 
       <SectionCard title="Payment History" icon={<AccountBalanceWalletIcon />} noPadding>
-        <TableCard sx={{ border: 'none', borderRadius: 0 }}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Date</TableCell>
-                <TableCell>Amount</TableCell>
-                <TableCell>Method</TableCell>
-                <TableCell>Reference</TableCell>
-                <TableCell>Notes</TableCell>
-                <TableCell>Recorded By</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {payments.length === 0 ? (
-                <TableStateRow
-                  colSpan={6}
-                  state="empty"
-                  emptyTitle="No payments recorded yet"
-                  emptyMessage="Payments for this tailor will appear here."
-                />
-              ) : (
-                payments.map((payment) => (
-                  <TableRow key={payment.id} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                    <TableCell>
-                      <Typography variant="body2">{formatDate(payment.payment_date)}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {formatCurrency(payment.amount)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{payment.payment_method_display}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{payment.reference || '-'}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ maxWidth: 220 }}>
-                        {payment.notes || '-'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{payment.recorded_by_name || '-'}</Typography>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableCard>
+        <ResponsiveTable
+          size="small"
+          data={payments}
+          rowKey={(payment) => payment.id}
+          emptyTitle="No payments recorded yet"
+          emptyMessage="Payments for this tailor will appear here."
+          columns={[
+            {
+              label: 'Date',
+              render: (payment) => (
+                <Typography variant="body2">{formatDate(payment.payment_date)}</Typography>
+              ),
+            },
+            {
+              label: 'Amount',
+              primary: true,
+              render: (payment) => (
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {formatCurrency(payment.amount)}
+                </Typography>
+              ),
+            },
+            {
+              label: 'Method',
+              render: (payment) => (
+                <Typography variant="body2">{payment.payment_method_display}</Typography>
+              ),
+            },
+            {
+              label: 'Reference',
+              render: (payment) => (
+                <Typography variant="body2">{payment.reference || '-'}</Typography>
+              ),
+            },
+            {
+              label: 'Notes',
+              render: (payment) => <Typography variant="body2">{payment.notes || '-'}</Typography>,
+            },
+            {
+              label: 'Recorded By',
+              render: (payment) => (
+                <Typography variant="body2">{payment.recorded_by_name || '-'}</Typography>
+              ),
+            },
+          ]}
+        />
       </SectionCard>
     </Stack>
   );

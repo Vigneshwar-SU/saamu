@@ -340,19 +340,19 @@ export const Settings: React.FC = () => {
             subtitle="Read-only details about the application and its current status."
             icon={<InfoOutlinedIcon />}
           >
-            <Stack spacing={1}>
+            <Stack spacing={2.5}>
               <Stack
                 spacing={2.5}
                 direction={{ xs: 'column', sm: 'row' }}
                 sx={{ flexWrap: 'wrap' }}
               >
-                <Box sx={{ flex: '1 1 220px' }}>
+                <Box sx={{ flex: { xs: '1 1 auto', sm: '1 1 220px' } }}>
                   <InfoField label="App" value="Saamu Tailors ERP" strong />
                 </Box>
-                <Box sx={{ flex: '1 1 220px' }}>
+                <Box sx={{ flex: { xs: '1 1 auto', sm: '1 1 220px' } }}>
                   <InfoField label="Version" value={health?.version ? `v${health.version}` : '—'} />
                 </Box>
-                <Box sx={{ flex: '1 1 220px' }}>
+                <Box sx={{ flex: { xs: '1 1 auto', sm: '1 1 220px' } }}>
                   <InfoField
                     label="Environment"
                     value={import.meta.env.DEV ? 'Local Server' : 'Production'}
@@ -364,7 +364,7 @@ export const Settings: React.FC = () => {
                 direction={{ xs: 'column', sm: 'row' }}
                 sx={{ flexWrap: 'wrap' }}
               >
-                <Box sx={{ flex: '1 1 220px' }}>
+                <Box sx={{ flex: { xs: '1 1 auto', sm: '1 1 220px' } }}>
                   <InfoField
                     label="Backend"
                     value={
@@ -375,11 +375,16 @@ export const Settings: React.FC = () => {
                     }
                   />
                 </Box>
-                <Box sx={{ flex: '1 1 220px' }}>
+                <Box sx={{ flex: { xs: '1 1 auto', sm: '1 1 220px' } }}>
                   <InfoField
                     label="Database"
                     value={
-                      <Stack direction="row" spacing={1} alignItems="center">
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        alignItems="center"
+                        sx={{ flexWrap: 'wrap', gap: 0.5 }}
+                      >
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
                           PostgreSQL
                         </Typography>
@@ -391,7 +396,7 @@ export const Settings: React.FC = () => {
                     }
                   />
                 </Box>
-                <Box sx={{ flex: '1 1 220px' }}>
+                <Box sx={{ flex: { xs: '1 1 auto', sm: '1 1 220px' } }}>
                   <InfoField
                     label="Signed in as"
                     value={`${user?.username ?? '—'} (${role === 'OWNER' ? 'Owner' : role === 'STAFF' ? 'Staff' : '—'})`}

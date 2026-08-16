@@ -8,11 +8,7 @@ interface PageContainerProps {
   maxWidth?: number | string;
 }
 
-export const PageContainer: React.FC<PageContainerProps> = ({
-  children,
-  sx,
-  maxWidth = 1400,
-}) => {
+export const PageContainer: React.FC<PageContainerProps> = ({ children, sx, maxWidth = 1400 }) => {
   return (
     <Box
       sx={{

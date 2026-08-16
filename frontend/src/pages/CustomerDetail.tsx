@@ -33,10 +33,7 @@ import {
   useMeasurements,
   useUpdateMeasurement,
 } from '../hooks/useMeasurements';
-import {
-  MEASUREMENT_FIELD_LABELS,
-  MEASUREMENT_FIELDS_BY_GARMENT,
-} from '../types/customers';
+import { MEASUREMENT_FIELD_LABELS, MEASUREMENT_FIELDS_BY_GARMENT } from '../types/customers';
 import type {
   GarmentType,
   Measurement,
@@ -168,7 +165,16 @@ export const CustomerDetail: React.FC = () => {
       >
         {fields.map((field: MeasurementFieldName) => (
           <Box key={field}>
-            <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 600 }}>
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'text.disabled',
+                display: 'block',
+                fontSize: '0.7rem',
+                textTransform: 'uppercase',
+                fontWeight: 600,
+              }}
+            >
               {MEASUREMENT_FIELD_LABELS[field]}
             </Typography>
             <Typography sx={{ fontWeight: 600, color: 'text.primary' }}>
@@ -187,15 +193,28 @@ export const CustomerDetail: React.FC = () => {
         subtitle={`Customer #${customer.id} · ${displayPrimaryMobile}`}
         icon={<StraightenIcon />}
         backTo="/customers"
-        crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Customers', to: '/customers' }, { label: displayName }]}
+        crumbs={[
+          { label: 'Dashboard', to: '/dashboard' },
+          { label: 'Customers', to: '/customers' },
+          { label: displayName },
+        ]}
         actions={
           isStaff && (
             <Stack direction="row" spacing={1} flexWrap="wrap">
-              <Button variant="outlined" startIcon={<EditIcon />} onClick={() => setEditDialogOpen(true)}>
+              <Button
+                variant="outlined"
+                startIcon={<EditIcon />}
+                onClick={() => setEditDialogOpen(true)}
+              >
                 Edit
               </Button>
               {customer.is_active ? (
-                <Button variant="outlined" color="error" startIcon={<ArchiveIcon />} onClick={() => setArchiveDialogOpen(true)}>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  startIcon={<ArchiveIcon />}
+                  onClick={() => setArchiveDialogOpen(true)}
+                >
                   Archive
                 </Button>
               ) : (
@@ -221,7 +240,16 @@ export const CustomerDetail: React.FC = () => {
             gap: 3,
           }}
         >
-          <InfoField label="Status" value={<StatusBadge label={customer.is_active ? 'Active' : 'Archived'} tone={customer.is_active ? 'success' : 'neutral'} />} strong />
+          <InfoField
+            label="Status"
+            value={
+              <StatusBadge
+                label={customer.is_active ? 'Active' : 'Archived'}
+                tone={customer.is_active ? 'success' : 'neutral'}
+              />
+            }
+            strong
+          />
           <InfoField label="Primary Mobile" value={displayPrimaryMobile} />
           <InfoField label="Alternate Mobile" value={displayAlternateMobile} />
           <InfoField label="Address" value={customer.address || '-'} />
@@ -256,12 +284,22 @@ export const CustomerDetail: React.FC = () => {
               <CircularProgress size={28} />
             </Box>
           ) : measurementsError ? (
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, py: 4 }}>
-              <ErrorState message={getApiErrorMessage(measurementsError)} onRetry={() => refetchMeasurements()} />
+            <Box
+              sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, py: 4 }}
+            >
+              <ErrorState
+                message={getApiErrorMessage(measurementsError)}
+                onRetry={() => refetchMeasurements()}
+              />
             </Box>
           ) : currentMeasurement ? (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={1}
+                alignItems={{ xs: 'stretch', sm: 'center' }}
+                justifyContent="space-between"
+              >
                 <Stack direction="row" spacing={1}>
                   <Chip
                     label={`Version ${currentMeasurement.version}`}
@@ -281,6 +319,7 @@ export const CustomerDetail: React.FC = () => {
                     size="small"
                     startIcon={<EditIcon />}
                     onClick={() => openMeasurementDialog(garmentTab, currentMeasurement)}
+                    sx={{ width: { xs: '100%', sm: 'auto' } }}
                   >
                     New Version
                   </Button>
@@ -313,9 +352,28 @@ export const CustomerDetail: React.FC = () => {
               </Typography>
               <Stack spacing={1.5}>
                 {historyMeasurements.map((m) => (
-                  <Box key={m.id} sx={{ p: 2, borderRadius: '10px', border: '1px solid #E7E0D0', backgroundColor: '#FBF6EA' }}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
-                      <Chip label={`Version ${m.version}`} size="small" variant="outlined" sx={{ fontWeight: 600 }} />
+                  <Box
+                    key={m.id}
+                    sx={{
+                      p: 2,
+                      borderRadius: '10px',
+                      border: '1px solid #E7E0D0',
+                      backgroundColor: '#FBF6EA',
+                    }}
+                  >
+                    <Stack
+                      direction={{ xs: 'column', sm: 'row' }}
+                      spacing={1}
+                      alignItems={{ xs: 'flex-start', sm: 'center' }}
+                      justifyContent="space-between"
+                      sx={{ mb: 1.5 }}
+                    >
+                      <Chip
+                        label={`Version ${m.version}`}
+                        size="small"
+                        variant="outlined"
+                        sx={{ fontWeight: 600 }}
+                      />
                       <Typography variant="caption" sx={{ color: 'text.disabled' }}>
                         Recorded {formatDate(m.updated_at)}
                       </Typography>

@@ -110,7 +110,7 @@ export const OrderCommunicationPanel: React.FC<{ orderId: number }> = ({ orderId
 
             {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
 
-            <Stack direction="row" spacing={1.5} flexWrap="wrap">
+            <Stack direction="row" flexWrap="wrap" sx={{ rowGap: { xs: 2, sm: 1.5 }, columnGap: 1.5 }}>
               <Button
                 variant="outlined"
                 startIcon={copied ? <CheckIcon /> : <ContentCopyIcon />}

@@ -21,15 +21,8 @@ import { z } from 'zod';
 import dayjs from 'dayjs';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { useTailorList } from '../hooks/useTailors';
-import {
-  ATTENDANCE_STATUS_LABELS,
-  ATTENDANCE_STATUSES,
-} from '../types/attendance';
-import type {
-  Attendance,
-  AttendancePayload,
-  AttendanceStatus,
-} from '../types/attendance';
+import { ATTENDANCE_STATUS_LABELS, ATTENDANCE_STATUSES } from '../types/attendance';
+import type { Attendance, AttendancePayload, AttendanceStatus } from '../types/attendance';
 
 const attendanceSchema = z.object({
   tailor: z.number({ required_error: 'Select a tailor' }).positive('Select a tailor'),
@@ -195,8 +188,15 @@ export const AttendanceFormDialog: React.FC<AttendanceFormDialogProps> = ({
           />
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} color="inherit">
+      <DialogActions
+        sx={{
+          px: { xs: 2, sm: 3 },
+          py: 2,
+          flexDirection: { xs: 'column-reverse', sm: 'row' },
+          gap: 1,
+        }}
+      >
+        <Button onClick={onClose} color="inherit" fullWidth>
           Cancel
         </Button>
         <Button
@@ -204,7 +204,7 @@ export const AttendanceFormDialog: React.FC<AttendanceFormDialogProps> = ({
           variant="contained"
           disabled={isSubmitting}
           startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
-          
+          fullWidth
         >
           {initial ? 'Save Changes' : 'Save Attendance'}
         </Button>

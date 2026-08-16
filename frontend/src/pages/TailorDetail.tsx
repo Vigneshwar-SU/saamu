@@ -8,11 +8,6 @@ import {
   MenuItem,
   Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   Tooltip,
   Typography,
 } from '@mui/material';
@@ -50,8 +45,7 @@ import { InfoField } from '../components/ui/InfoField';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { ErrorState } from '../components/ui/ErrorState';
-import { TableCard } from '../components/ui/TableCard';
-import { TableStateRow } from '../components/ui/TableStateRow';
+import { ResponsiveTable } from '../components/ui/ResponsiveTable';
 
 const statusChip = (status: WorkAssignmentStatus) => <WorkAssignmentStatusChip status={status} />;
 
@@ -139,19 +133,36 @@ export const TailorDetail: React.FC = () => {
         subtitle={`Tailor #${tailor.id} · Joined ${formatDate(tailor.created_at)}`}
         icon={<StraightenIcon />}
         backTo="/tailors"
-        crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Tailors', to: '/tailors' }, { label: tailor.name }]}
+        crumbs={[
+          { label: 'Dashboard', to: '/dashboard' },
+          { label: 'Tailors', to: '/tailors' },
+          { label: tailor.name },
+        ]}
         actions={
           isStaff && (
-            <Stack direction="row" spacing={1} flexWrap="wrap">
+            <Stack direction="row" flexWrap="wrap" sx={{ rowGap: { xs: 2, sm: 1 }, columnGap: 1 }}>
               {tailor.is_active ? (
                 <>
-                  <Button variant="outlined" startIcon={<EditIcon />} onClick={() => setEditOpen(true)}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<EditIcon />}
+                    onClick={() => setEditOpen(true)}
+                  >
                     Edit
                   </Button>
-                  <Button variant="contained" startIcon={<PersonAddAltIcon />} onClick={() => setAssignOpen(true)}>
+                  <Button
+                    variant="contained"
+                    startIcon={<PersonAddAltIcon />}
+                    onClick={() => setAssignOpen(true)}
+                  >
                     Assign Work
                   </Button>
-                  <Button variant="outlined" color="error" startIcon={<ArchiveIcon />} onClick={() => setArchiveOpen(true)}>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    startIcon={<ArchiveIcon />}
+                    onClick={() => setArchiveOpen(true)}
+                  >
                     Archive
                   </Button>
                 </>
@@ -173,7 +184,16 @@ export const TailorDetail: React.FC = () => {
             gap: 3,
           }}
         >
-          <InfoField label="Status" value={<StatusBadge label={tailor.is_active ? 'Active' : 'Archived'} tone={tailor.is_active ? 'success' : 'neutral'} />} strong />
+          <InfoField
+            label="Status"
+            value={
+              <StatusBadge
+                label={tailor.is_active ? 'Active' : 'Archived'}
+                tone={tailor.is_active ? 'success' : 'neutral'}
+              />
+            }
+            strong
+          />
           <InfoField label="Mobile Number" value={tailor.mobile_number || '-'} />
           <InfoField label="Notes" value={tailor.notes || '-'} />
         </Box>
@@ -188,14 +208,35 @@ export const TailorDetail: React.FC = () => {
               gap: 3,
             }}
           >
-            <InfoField label="Total Assigned" value={formatPieces(earnings.workload.assigned_quantity)} />
-            <InfoField label="Total Completed" value={formatPieces(earnings.workload.completed_quantity)} />
-            <InfoField label="Total Outstanding" value={formatPieces(earnings.workload.outstanding_quantity)} />
-            <InfoField label="Total Earned" value={formatCurrency(earnings.workload.earned_amount)} strong />
+            <InfoField
+              label="Total Assigned"
+              value={formatPieces(earnings.workload.assigned_quantity)}
+            />
+            <InfoField
+              label="Total Completed"
+              value={formatPieces(earnings.workload.completed_quantity)}
+            />
+            <InfoField
+              label="Total Outstanding"
+              value={formatPieces(earnings.workload.outstanding_quantity)}
+            />
+            <InfoField
+              label="Total Earned"
+              value={formatCurrency(earnings.workload.earned_amount)}
+              strong
+            />
           </Box>
           {earnings.garment_breakdown.length > 0 && (
             <Box sx={{ mt: 2.5 }}>
-              <Typography variant="caption" sx={{ color: 'text.disabled', textTransform: 'uppercase', fontSize: '0.68rem', fontWeight: 600 }}>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'text.disabled',
+                  textTransform: 'uppercase',
+                  fontSize: '0.68rem',
+                  fontWeight: 600,
+                }}
+              >
                 By Garment
               </Typography>
               <Box
@@ -220,7 +261,8 @@ export const TailorDetail: React.FC = () => {
                       {entry.garment_type}
                     </Typography>
                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                      {formatPieces(entry.completed_quantity)} · {formatCurrency(entry.earned_amount)}
+                      {formatPieces(entry.completed_quantity)} ·{' '}
+                      {formatCurrency(entry.earned_amount)}
                     </Typography>
                   </Box>
                 ))}
@@ -251,135 +293,143 @@ export const TailorDetail: React.FC = () => {
         }
         noPadding
       >
-        <TableCard sx={{ border: 'none', borderRadius: 0 }}>
-          <Table size="medium">
-            <TableHead>
-              <TableRow>
-                <TableCell>Order</TableCell>
-                <TableCell>Garment</TableCell>
-                <TableCell align="center">Assigned</TableCell>
-                <TableCell align="center">Completed</TableCell>
-                <TableCell align="center">Outstanding</TableCell>
-                <TableCell align="right">Rate</TableCell>
-                <TableCell align="right">Earned</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {assignmentsLoading ? (
-                <TableStateRow colSpan={9} state="loading" />
-              ) : assignments.length === 0 ? (
-                <TableStateRow
-                  colSpan={9}
-                  state="empty"
-                  emptyTitle={statusFilter ? 'No assignments match this status' : 'No work assigned yet'}
-                  emptyMessage={statusFilter ? 'Try a different status filter.' : 'Assign pieces to this tailor to get started.'}
-                />
-              ) : (
-                assignments.map((assignment) => {
+        <ResponsiveTable
+          data={assignments}
+          rowKey={(assignment) => assignment.id}
+          loading={assignmentsLoading}
+          emptyTitle={statusFilter ? 'No assignments match this status' : 'No work assigned yet'}
+          emptyMessage={
+            statusFilter
+              ? 'Try a different status filter.'
+              : 'Assign pieces to this tailor to get started.'
+          }
+          columns={[
+            {
+              label: 'Order',
+              render: (assignment) => (
+                <Button
+                  size="small"
+                  sx={{ textTransform: 'none' }}
+                  onClick={() => navigate(`/orders/${assignment.order_item.order}`)}
+                >
+                  {assignment.order_item.order_number}
+                </Button>
+              ),
+            },
+            {
+              label: 'Garment',
+              primary: true,
+              render: (assignment) => (
+                <Box>
+                  <Typography sx={{ fontWeight: 600 }}>
+                    {assignment.order_item.garment_type}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+                    {assignment.order_item.customer_name}
+                  </Typography>
+                </Box>
+              ),
+            },
+            {
+              label: 'Assigned',
+              render: (assignment) => (
+                <Typography variant="body2">
+                  {formatPieces(assignment.assigned_quantity)}
+                </Typography>
+              ),
+            },
+            {
+              label: 'Completed',
+              render: (assignment) => (
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {formatPieces(assignment.completed_quantity)}
+                </Typography>
+              ),
+            },
+            {
+              label: 'Outstanding',
+              render: (assignment) => (
+                <Typography variant="body2" sx={{ fontWeight: 600, color: '#8F4A00' }}>
+                  {formatPieces(assignment.assigned_quantity - assignment.completed_quantity)}
+                </Typography>
+              ),
+            },
+            {
+              label: 'Rate',
+              render: (assignment) => (
+                <Typography variant="body2">
+                  {formatCurrency(assignment.rate_per_piece_snapshot)}
+                </Typography>
+              ),
+            },
+            {
+              label: 'Earned',
+              render: (assignment) => (
+                <Typography variant="body2" sx={{ fontWeight: 600, color: '#1F5C3C' }}>
+                  {formatCurrency(assignment.earned_amount)}
+                </Typography>
+              ),
+            },
+            {
+              label: 'Status',
+              render: (assignment) => statusChip(assignment.status),
+            },
+          ]}
+          actions={
+            isStaff
+              ? (assignment) => {
                   const nextStatus = NEXT_ASSIGNMENT_STATUS[assignment.status];
-                  return (
-                    <TableRow key={assignment.id} hover>
-                      <TableCell>
+                  return nextStatus ? (
+                    <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                      <Tooltip title="Report completed quantity">
                         <Button
                           size="small"
-                          sx={{ textTransform: 'none' }}
-                          onClick={() => navigate(`/orders/${assignment.order_item.order}`)}
+                          startIcon={<EditIcon fontSize="small" />}
+                          disabled={progressMutation.isPending}
+                          onClick={() => {
+                            setSelectedAssignment(assignment);
+                            setProgressOpen(true);
+                          }}
                         >
-                          {assignment.order_item.order_number}
+                          Progress
                         </Button>
-                      </TableCell>
-                      <TableCell>
-                        <Typography sx={{ fontWeight: 600 }}>
-                          {assignment.order_item.garment_type}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: 'text.disabled' }}>
-                          {assignment.order_item.customer_name}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Typography variant="body2">
-                          {formatPieces(assignment.assigned_quantity)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {formatPieces(assignment.completed_quantity)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#8F4A00' }}>
-                          {formatPieces(assignment.assigned_quantity - assignment.completed_quantity)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="body2">
-                          {formatCurrency(assignment.rate_per_piece_snapshot)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#1F5C3C' }}>
-                          {formatCurrency(assignment.earned_amount)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>{statusChip(assignment.status)}</TableCell>
-                      <TableCell align="right">
-                        {isStaff && nextStatus && (
-                          <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                            <Tooltip title="Report completed quantity">
-                              <Button
-                                size="small"
-                                startIcon={<EditIcon fontSize="small" />}
-                                disabled={progressMutation.isPending}
-                                onClick={() => {
-                                  setSelectedAssignment(assignment);
-                                  setProgressOpen(true);
-                                }}
-                              >
-                                Progress
-                              </Button>
-                            </Tooltip>
-                            <Tooltip title={`Move to ${WORK_ASSIGNMENT_STATUS_LABELS[nextStatus]}`}>
-                              <Button
-                                size="small"
-                                variant="contained"
-                                color={nextStatus === 'COMPLETED' ? 'success' : 'primary'}
-                                disabled={statusMutation.isPending}
-                                startIcon={
-                                  nextStatus === 'COMPLETED' ? (
-                                    <CheckCircleIcon fontSize="small" />
-                                  ) : (
-                                    <PlayArrowIcon fontSize="small" />
-                                  )
-                                }
-                                onClick={async () => {
-                                  setActionError(null);
-                                  try {
-                                    await statusMutation.mutateAsync({
-                                      id: assignment.id,
-                                      status: nextStatus,
-                                    });
-                                  } catch (transitionError) {
-                                    setActionError(getApiErrorMessage(transitionError));
-                                  }
-                                }}
-                              >
-                                {nextStatus === 'COMPLETED'
-                                  ? 'Complete'
-                                  : WORK_ASSIGNMENT_STATUS_LABELS[nextStatus]}
-                              </Button>
-                            </Tooltip>
-                          </Stack>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </TableCard>
+                      </Tooltip>
+                      <Tooltip title={`Move to ${WORK_ASSIGNMENT_STATUS_LABELS[nextStatus]}`}>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          color={nextStatus === 'COMPLETED' ? 'success' : 'primary'}
+                          disabled={statusMutation.isPending}
+                          startIcon={
+                            nextStatus === 'COMPLETED' ? (
+                              <CheckCircleIcon fontSize="small" />
+                            ) : (
+                              <PlayArrowIcon fontSize="small" />
+                            )
+                          }
+                          onClick={async () => {
+                            setActionError(null);
+                            try {
+                              await statusMutation.mutateAsync({
+                                id: assignment.id,
+                                status: nextStatus,
+                              });
+                            } catch (transitionError) {
+                              setActionError(getApiErrorMessage(transitionError));
+                            }
+                          }}
+                        >
+                          {nextStatus === 'COMPLETED'
+                            ? 'Complete'
+                            : WORK_ASSIGNMENT_STATUS_LABELS[nextStatus]}
+                        </Button>
+                      </Tooltip>
+                    </Stack>
+                  ) : null;
+                }
+              : undefined
+          }
+        />
       </SectionCard>
 
       <TailorFormDialog

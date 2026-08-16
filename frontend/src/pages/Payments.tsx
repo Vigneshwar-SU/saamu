@@ -8,11 +8,6 @@ import {
   MenuItem,
   Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
 } from '@mui/material';
@@ -34,16 +29,10 @@ import {
   PAYMENT_TYPES,
   PAYMENT_TYPE_LABELS,
 } from '../types/billing';
-import type {
-  CustomerPaymentPayload,
-  Invoice,
-  PaymentMethod,
-  PaymentType,
-} from '../types/billing';
+import type { CustomerPaymentPayload, Invoice, PaymentMethod, PaymentType } from '../types/billing';
 import { PageHeader } from '../components/ui/PageHeader';
 import { FilterBar } from '../components/ui/FilterBar';
-import { TableCard } from '../components/ui/TableCard';
-import { TableStateRow } from '../components/ui/TableStateRow';
+import { ResponsiveTable } from '../components/ui/ResponsiveTable';
 import { AppPagination } from '../components/ui/AppPagination';
 import { StatCard } from '../components/ui/StatCard';
 import { StatusBadge } from '../components/ui/StatusBadge';
@@ -208,9 +197,7 @@ export const Payments: React.FC = () => {
             <Select
               value={paymentMethodFilter}
               label="Payment Method"
-              onChange={(event) =>
-                setPaymentMethodFilter(event.target.value as PaymentMethod | '')
-              }
+              onChange={(event) => setPaymentMethodFilter(event.target.value as PaymentMethod | '')}
             >
               <MenuItem value="">All methods</MenuItem>
               {PAYMENT_METHODS.map((method) => (
@@ -223,94 +210,92 @@ export const Payments: React.FC = () => {
         </Stack>
       </FilterBar>
 
-      <TableCard loading={isFetching && !isLoading}>
-        <Table size="medium">
-          <TableHead>
-            <TableRow>
-              <TableCell>Date</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell>Amount</TableCell>
-              <TableCell>Method</TableCell>
-              <TableCell>Customer</TableCell>
-              <TableCell>Invoice</TableCell>
-              <TableCell>Recorded By</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isLoading ? (
-              <TableStateRow colSpan={7} state="loading" />
-            ) : isError ? (
-              <TableStateRow
-                colSpan={7}
-                state="error"
-                errorMessage={getApiErrorMessage(error)}
-                onRetry={() => refetch()}
+      <ResponsiveTable
+        data={data?.results ?? []}
+        rowKey={(payment) => payment.id}
+        loading={isLoading}
+        refetching={isFetching && !isLoading}
+        error={isError}
+        errorMessage={getApiErrorMessage(error)}
+        onRetry={() => refetch()}
+        emptyTitle="No payments found"
+        emptyMessage="Record a payment against an invoice to get started."
+        columns={[
+          {
+            label: 'Date',
+            render: (payment) => (
+              <Typography variant="body2">{formatDate(payment.payment_date)}</Typography>
+            ),
+          },
+          {
+            label: 'Type',
+            render: (payment) => (
+              <StatusBadge
+                label={PAYMENT_TYPE_LABELS[payment.payment_type]}
+                tone={PAYMENT_TYPE_TONES[payment.payment_type]}
               />
-            ) : data && data.results.length === 0 ? (
-              <TableStateRow
-                colSpan={7}
-                state="empty"
-                emptyTitle="No payments found"
-                emptyMessage="Record a payment against an invoice to get started."
-              />
-            ) : (
-              data?.results.map((payment) => {
-                const isRefund = payment.payment_type === 'REFUND';
-                return (
-                  <TableRow key={payment.id} hover>
-                    <TableCell>
-                      <Typography variant="body2">{formatDate(payment.payment_date)}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge
-                        label={PAYMENT_TYPE_LABELS[payment.payment_type]}
-                        tone={PAYMENT_TYPE_TONES[payment.payment_type]}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Typography
-                        variant="body2"
-                        sx={{ fontWeight: 600, color: isRefund ? '#8F2F22' : '#242424' }}
-                      >
-                        {isRefund ? '− ' : ''}
-                        {formatCurrency(payment.net_amount)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{payment.payment_method_display}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        component={RouterLink}
-                        to={`/customers/${payment.customer_id}`}
-                        underline="hover"
-                        color="inherit"
-                        sx={{ fontWeight: 500, fontSize: '0.875rem' }}
-                      >
-                        {payment.customer_name}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        component={RouterLink}
-                        to={`/invoices/${payment.invoice_id}`}
-                        underline="hover"
-                        color="inherit"
-                        sx={{ fontWeight: 600, fontSize: '0.875rem' }}
-                      >
-                        {payment.invoice_number}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{payment.recorded_by_name || '-'}</Typography>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </TableCard>
+            ),
+          },
+          {
+            label: 'Amount',
+            render: (payment) => (
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: 600,
+                  color: payment.payment_type === 'REFUND' ? '#8F2F22' : '#242424',
+                }}
+              >
+                {payment.payment_type === 'REFUND' ? '− ' : ''}
+                {formatCurrency(payment.net_amount)}
+              </Typography>
+            ),
+          },
+          {
+            label: 'Method',
+            render: (payment) => (
+              <Typography variant="body2">{payment.payment_method_display}</Typography>
+            ),
+          },
+          {
+            label: 'Customer',
+            primary: true,
+            render: (payment) => (
+              <Link
+                component={RouterLink}
+                to={`/customers/${payment.customer_id}`}
+                underline="hover"
+                color="inherit"
+                sx={{ fontWeight: 500, fontSize: '0.875rem' }}
+                onClick={(event) => event.stopPropagation()}
+              >
+                {payment.customer_name}
+              </Link>
+            ),
+          },
+          {
+            label: 'Invoice',
+            render: (payment) => (
+              <Link
+                component={RouterLink}
+                to={`/invoices/${payment.invoice_id}`}
+                underline="hover"
+                color="inherit"
+                sx={{ fontWeight: 600, fontSize: '0.875rem' }}
+                onClick={(event) => event.stopPropagation()}
+              >
+                {payment.invoice_number}
+              </Link>
+            ),
+          },
+          {
+            label: 'Recorded By',
+            render: (payment) => (
+              <Typography variant="body2">{payment.recorded_by_name || '-'}</Typography>
+            ),
+          },
+        ]}
+      />
 
       {data && data.count > 0 && (
         <AppPagination page={page} count={data.count} pageSize={PAGE_SIZE} onChange={setPage} />

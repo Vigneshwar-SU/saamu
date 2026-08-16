@@ -8,11 +8,6 @@ import {
   MenuItem,
   Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   TextField,
   Tooltip,
   Typography,
@@ -31,8 +26,7 @@ import { getApiErrorMessage } from '../utils/apiErrors';
 import { CustomerFormDialog } from '../components/CustomerFormDialog';
 import { PageHeader } from '../components/ui/PageHeader';
 import { FilterBar } from '../components/ui/FilterBar';
-import { TableCard } from '../components/ui/TableCard';
-import { TableStateRow } from '../components/ui/TableStateRow';
+import { ResponsiveTable } from '../components/ui/ResponsiveTable';
 import { AppPagination } from '../components/ui/AppPagination';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
@@ -43,11 +37,7 @@ import {
   useRestoreCustomer,
   useUpdateCustomer,
 } from '../hooks/useCustomers';
-import type {
-  Customer,
-  CustomerPayload,
-  CustomerStatus,
-} from '../types/customers';
+import type { Customer, CustomerPayload, CustomerStatus } from '../types/customers';
 
 const PAGE_SIZE = 6;
 
@@ -73,14 +63,11 @@ export const Customers: React.FC = () => {
     setPage(1);
   }, [search, status]);
 
-  const {
-    data,
-    isLoading,
-    isError,
-    error,
-    isFetching,
-    refetch,
-  } = useCustomerList({ search, status, page });
+  const { data, isLoading, isError, error, isFetching, refetch } = useCustomerList({
+    search,
+    status,
+    page,
+  });
 
   const createMutation = useCreateCustomer();
   const updateMutation = useUpdateCustomer(editingCustomer?.id ?? 0);
@@ -136,11 +123,7 @@ export const Customers: React.FC = () => {
         crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Customers' }]}
         actions={
           isStaff && (
-            <Button
-              variant="contained"
-              startIcon={<PersonAddAltIcon />}
-              onClick={openCreateDialog}
-            >
+            <Button variant="contained" startIcon={<PersonAddAltIcon />} onClick={openCreateDialog}>
               Add Customer
             </Button>
           )
@@ -178,143 +161,143 @@ export const Customers: React.FC = () => {
         </Stack>
       </FilterBar>
 
-      <TableCard loading={isFetching && !isLoading}>
-        <Table size="medium">
-          <TableHead>
-            <TableRow>
-              <TableCell>Customer</TableCell>
-              <TableCell>Mobile</TableCell>
-              <TableCell>Address</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Created</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isLoading ? (
-              <TableStateRow colSpan={6} state="loading" />
-            ) : isError ? (
-              <TableStateRow
-                colSpan={6}
-                state="error"
-                errorMessage={getApiErrorMessage(error)}
-                onRetry={() => refetch()}
+      <ResponsiveTable
+        data={data?.results ?? []}
+        rowKey={(customer) => customer.id}
+        onRowClick={(customer) => navigate(`/customers/${customer.id}`)}
+        loading={isLoading}
+        refetching={isFetching && !isLoading}
+        error={isError}
+        errorMessage={getApiErrorMessage(error)}
+        onRetry={() => refetch()}
+        emptyTitle={search ? 'No matching customers' : 'No customers yet'}
+        emptyMessage={
+          search
+            ? 'Try a different search or filter.'
+            : 'Add your first customer to start recording orders.'
+        }
+        emptyAction={
+          isStaff ? (
+            <Button variant="contained" startIcon={<PersonAddAltIcon />} onClick={openCreateDialog}>
+              Add Customer
+            </Button>
+          ) : undefined
+        }
+        columns={[
+          {
+            label: 'Customer',
+            primary: true,
+            render: (customer) => (
+              <Box>
+                <Typography sx={{ fontWeight: 600 }}>{customer.full_name}</Typography>
+                <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+                  #{customer.id}
+                </Typography>
+              </Box>
+            ),
+          },
+          {
+            label: 'Mobile',
+            render: (customer) => (
+              <Box>
+                <Typography variant="body2">{customer.mobile_number}</Typography>
+                {customer.alternate_mobile_number && (
+                  <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+                    {customer.alternate_mobile_number}
+                  </Typography>
+                )}
+              </Box>
+            ),
+          },
+          {
+            label: 'Address',
+            hideOnMobile: true,
+            render: (customer) => (
+              <Typography
+                variant="body2"
+                sx={{
+                  maxWidth: 240,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {customer.address || '-'}
+              </Typography>
+            ),
+          },
+          {
+            label: 'Status',
+            render: (customer) => (
+              <StatusBadge
+                label={customer.is_active ? 'Active' : 'Archived'}
+                tone={customer.is_active ? 'success' : 'neutral'}
               />
-            ) : data && data.results.length === 0 ? (
-              <TableStateRow
-                colSpan={6}
-                state="empty"
-                emptyTitle={search ? 'No matching customers' : 'No customers yet'}
-                emptyMessage={
-                  search
-                    ? 'Try a different search or filter.'
-                    : 'Add your first customer to start recording orders.'
-                }
-                emptyAction={
-                  isStaff ? (
-                    <Button variant="contained" startIcon={<PersonAddAltIcon />} onClick={openCreateDialog}>
-                      Add Customer
-                    </Button>
-                  ) : undefined
-                }
-              />
-            ) : (
-              data?.results.map((customer) => (
-                <TableRow
-                  key={customer.id}
-                  hover
-                  sx={{ cursor: 'pointer' }}
-                  onClick={() => navigate(`/customers/${customer.id}`)}
+            ),
+          },
+          {
+            label: 'Created',
+            render: (customer) => (
+              <Typography variant="body2">{formatDate(customer.created_at)}</Typography>
+            ),
+          },
+        ]}
+        actions={(customer) => (
+          <Stack direction="row" spacing={0.5} flexWrap="wrap">
+            <Tooltip title="View details">
+              <Button
+                size="small"
+                startIcon={<VisibilityIcon fontSize="small" />}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  navigate(`/customers/${customer.id}`);
+                }}
+              >
+                View
+              </Button>
+            </Tooltip>
+            {isStaff && (
+              <Tooltip title={customer.is_active ? 'Edit customer' : 'Restore customer'}>
+                <Button
+                  size="small"
+                  startIcon={
+                    customer.is_active ? (
+                      <EditIcon fontSize="small" />
+                    ) : (
+                      <UnarchiveIcon fontSize="small" />
+                    )
+                  }
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (customer.is_active) {
+                      openEditDialog(customer);
+                    } else {
+                      handleRestore(customer);
+                    }
+                  }}
                 >
-                  <TableCell>
-                    <Typography sx={{ fontWeight: 600 }}>{customer.full_name}</Typography>
-                    <Typography variant="caption" sx={{ color: 'text.disabled' }}>
-                      #{customer.id}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{customer.mobile_number}</Typography>
-                    {customer.alternate_mobile_number && (
-                      <Typography variant="caption" sx={{ color: 'text.disabled' }}>
-                        {customer.alternate_mobile_number}
-                      </Typography>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Typography
-                      variant="body2"
-                      sx={{ maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                    >
-                      {customer.address || '-'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge label={customer.is_active ? 'Active' : 'Archived'} tone={customer.is_active ? 'success' : 'neutral'} />
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{formatDate(customer.created_at)}</Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                      <Tooltip title="View details">
-                        <Button
-                          size="small"
-                          startIcon={<VisibilityIcon fontSize="small" />}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            navigate(`/customers/${customer.id}`);
-                          }}
-                        >
-                          View
-                        </Button>
-                      </Tooltip>
-                      {isStaff && (
-                        <Tooltip title={customer.is_active ? 'Edit customer' : 'Restore customer'}>
-                          <Button
-                            size="small"
-                            startIcon={
-                              customer.is_active ? (
-                                <EditIcon fontSize="small" />
-                              ) : (
-                                <UnarchiveIcon fontSize="small" />
-                              )
-                            }
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              if (customer.is_active) {
-                                openEditDialog(customer);
-                              } else {
-                                handleRestore(customer);
-                              }
-                            }}
-                          >
-                            {customer.is_active ? 'Edit' : 'Restore'}
-                          </Button>
-                        </Tooltip>
-                      )}
-                      {isStaff && customer.is_active && (
-                        <Tooltip title="Archive customer">
-                          <Button
-                            size="small"
-                            color="error"
-                            startIcon={<ArchiveIcon fontSize="small" />}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setArchiveTarget(customer);
-                            }}
-                          >
-                            Archive
-                          </Button>
-                        </Tooltip>
-                      )}
-                    </Stack>
-                  </TableCell>
-                </TableRow>
-              ))
+                  {customer.is_active ? 'Edit' : 'Restore'}
+                </Button>
+              </Tooltip>
             )}
-          </TableBody>
-        </Table>
-      </TableCard>
+            {isStaff && customer.is_active && (
+              <Tooltip title="Archive customer">
+                <Button
+                  size="small"
+                  color="error"
+                  startIcon={<ArchiveIcon fontSize="small" />}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setArchiveTarget(customer);
+                  }}
+                >
+                  Archive
+                </Button>
+              </Tooltip>
+            )}
+          </Stack>
+        )}
+      />
 
       {data && data.count > 0 && (
         <AppPagination page={page} count={data.count} pageSize={PAGE_SIZE} onChange={setPage} />

@@ -34,7 +34,7 @@ export const SectionCard: React.FC<SectionCardProps> = ({
       {(title || action) && (
         <Box
           sx={{
-            px: 2.5,
+            px: { xs: 2, sm: 2.5 },
             py: 2,
             display: 'flex',
             alignItems: 'center',
@@ -79,7 +79,7 @@ export const SectionCard: React.FC<SectionCardProps> = ({
           {action && <Box sx={{ flexShrink: 0 }}>{action}</Box>}
         </Box>
       )}
-      <Box sx={noPadding ? undefined : { p: 2.5 }}>{children}</Box>
+      <Box sx={noPadding ? undefined : { p: { xs: 2, sm: 2.5 } }}>{children}</Box>
     </Card>
   );
 };

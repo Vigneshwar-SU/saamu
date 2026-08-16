@@ -7,11 +7,6 @@ import {
   MenuItem,
   Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   TextField,
   Tooltip,
   Typography,
@@ -25,12 +20,15 @@ import { getApiErrorMessage } from '../utils/apiErrors';
 import { AttendanceFormDialog } from '../components/AttendanceFormDialog';
 import { PageHeader } from '../components/ui/PageHeader';
 import { FilterBar } from '../components/ui/FilterBar';
-import { TableCard } from '../components/ui/TableCard';
-import { TableStateRow } from '../components/ui/TableStateRow';
+import { ResponsiveTable } from '../components/ui/ResponsiveTable';
 import { AppPagination } from '../components/ui/AppPagination';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import type { StatusTone } from '../components/ui/StatusBadge';
-import { useCreateAttendance, useAttendanceList, useUpdateAttendance } from '../hooks/useAttendance';
+import {
+  useCreateAttendance,
+  useAttendanceList,
+  useUpdateAttendance,
+} from '../hooks/useAttendance';
 import { useTailorList } from '../hooks/useTailors';
 import { ATTENDANCE_STATUS_LABELS, ATTENDANCE_STATUSES } from '../types/attendance';
 import type { Attendance, AttendancePayload, AttendanceStatus } from '../types/attendance';
@@ -104,11 +102,7 @@ export const AttendancePage: React.FC = () => {
         crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Attendance' }]}
         actions={
           isStaff && (
-            <Button
-              variant="contained"
-              startIcon={<EventNoteIcon />}
-              onClick={openCreateDialog}
-            >
+            <Button variant="contained" startIcon={<EventNoteIcon />} onClick={openCreateDialog}>
               Mark Attendance
             </Button>
           )
@@ -167,77 +161,70 @@ export const AttendancePage: React.FC = () => {
         </Stack>
       </FilterBar>
 
-      <TableCard loading={isFetching && !isLoading}>
-        <Table size="medium">
-          <TableHead>
-            <TableRow>
-              <TableCell>Tailor</TableCell>
-              <TableCell>Date</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Notes</TableCell>
-              <TableCell>Marked By</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isLoading ? (
-              <TableStateRow colSpan={6} state="loading" />
-            ) : isError ? (
-              <TableStateRow
-                colSpan={6}
-                state="error"
-                errorMessage={getApiErrorMessage(error)}
-                onRetry={() => refetch()}
+      <ResponsiveTable
+        data={data?.results ?? []}
+        rowKey={(record) => record.id}
+        loading={isLoading}
+        refetching={isFetching && !isLoading}
+        error={isError}
+        errorMessage={getApiErrorMessage(error)}
+        onRetry={() => refetch()}
+        emptyTitle="No attendance records found"
+        columns={[
+          {
+            label: 'Tailor',
+            primary: true,
+            render: (record) => (
+              <Box>
+                <Typography sx={{ fontWeight: 600 }}>{record.tailor.name}</Typography>
+                <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+                  #{record.tailor.id}
+                </Typography>
+              </Box>
+            ),
+          },
+          {
+            label: 'Date',
+            render: (record) => (
+              <Typography variant="body2">{formatDate(record.attendance_date)}</Typography>
+            ),
+          },
+          {
+            label: 'Status',
+            render: (record) => (
+              <StatusBadge
+                label={ATTENDANCE_STATUS_LABELS[record.status]}
+                tone={ATTENDANCE_STATUS_TONES[record.status]}
               />
-            ) : data && data.results.length === 0 ? (
-              <TableStateRow colSpan={6} state="empty" emptyTitle="No attendance records found" />
-            ) : (
-              data?.results.map((record) => (
-                <TableRow key={record.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                  <TableCell>
-                    <Typography sx={{ fontWeight: 600 }}>{record.tailor.name}</Typography>
-                    <Typography variant="caption" sx={{ color: 'text.disabled' }}>
-                      #{record.tailor.id}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{formatDate(record.attendance_date)}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge
-                      label={ATTENDANCE_STATUS_LABELS[record.status]}
-                      tone={ATTENDANCE_STATUS_TONES[record.status]}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ maxWidth: 260 }}>
-                      {record.notes || '-'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{record.marked_by_name || '-'}</Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    {isStaff && (
-                      <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                        <Tooltip title="Edit record">
-                          <Button
-                            size="small"
-                            startIcon={<EditIcon fontSize="small" />}
-                            onClick={() => openEditDialog(record)}
-                          >
-                            Edit
-                          </Button>
-                        </Tooltip>
-                      </Stack>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableCard>
+            ),
+          },
+          {
+            label: 'Notes',
+            render: (record) => <Typography variant="body2">{record.notes || '-'}</Typography>,
+          },
+          {
+            label: 'Marked By',
+            render: (record) => (
+              <Typography variant="body2">{record.marked_by_name || '-'}</Typography>
+            ),
+          },
+        ]}
+        actions={
+          isStaff
+            ? (record) => (
+                <Tooltip title="Edit record">
+                  <Button
+                    size="small"
+                    startIcon={<EditIcon fontSize="small" />}
+                    onClick={() => openEditDialog(record)}
+                  >
+                    Edit
+                  </Button>
+                </Tooltip>
+              )
+            : undefined
+        }
+      />
 
       {data && data.count > 0 && (
         <AppPagination page={page} count={data.count} pageSize={PAGE_SIZE} onChange={setPage} />

@@ -75,7 +75,14 @@ export const ApplyAdvanceDialog: React.FC<ApplyAdvanceDialogProps> = ({
         <Stack spacing={2.5} sx={{ mt: 0.5 }}>
           {submitError && <Alert severity="error">{submitError}</Alert>}
 
-          <Paper sx={{ p: 2, borderRadius: '12px', border: '1px solid #E7E0D0', backgroundColor: '#FBF6EA' }}>
+          <Paper
+            sx={{
+              p: 2,
+              borderRadius: '12px',
+              border: '1px solid #E7E0D0',
+              backgroundColor: '#FBF6EA',
+            }}
+          >
             <Typography variant="body2" sx={{ color: '#6B6B6B' }}>
               Current outstanding payable:{' '}
               <strong style={{ color: '#7A5E0C' }}>{formatCurrency(outstandingPayable)}</strong>
@@ -118,8 +125,15 @@ export const ApplyAdvanceDialog: React.FC<ApplyAdvanceDialogProps> = ({
           )}
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} color="inherit">
+      <DialogActions
+        sx={{
+          px: { xs: 2, sm: 3 },
+          py: 2,
+          flexDirection: { xs: 'column-reverse', sm: 'row' },
+          gap: 1,
+        }}
+      >
+        <Button onClick={onClose} color="inherit" fullWidth>
           Cancel
         </Button>
         <Button
@@ -127,7 +141,7 @@ export const ApplyAdvanceDialog: React.FC<ApplyAdvanceDialogProps> = ({
           variant="contained"
           disabled={!selectedAdvanceId || submitting || isLoading}
           startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : undefined}
-          
+          fullWidth
         >
           Apply Advance
         </Button>

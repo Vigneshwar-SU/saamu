@@ -182,7 +182,9 @@ export const MeasurementFormDialog: React.FC<MeasurementFormDialogProps> = ({
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
       <DialogTitle sx={{ fontWeight: 700 }}>
-        {initial ? `New ${initial.garment_type} Measurement Version` : `Record ${garmentType} Measurements`}
+        {initial
+          ? `New ${initial.garment_type} Measurement Version`
+          : `Record ${garmentType} Measurements`}
       </DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2.5} sx={{ mt: 0.5 }}>
@@ -207,8 +209,7 @@ export const MeasurementFormDialog: React.FC<MeasurementFormDialogProps> = ({
           />
 
           <Typography variant="caption" sx={{ color: '#6B6B6B' }}>
-            All measurements are in inches. Fields marked with * are required for{' '}
-            {selectedGarment}.
+            All measurements are in inches. Fields marked with * are required for {selectedGarment}.
           </Typography>
 
           <Box
@@ -243,8 +244,15 @@ export const MeasurementFormDialog: React.FC<MeasurementFormDialogProps> = ({
           />
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} color="inherit">
+      <DialogActions
+        sx={{
+          px: { xs: 2, sm: 3 },
+          py: 2,
+          flexDirection: { xs: 'column-reverse', sm: 'row' },
+          gap: 1,
+        }}
+      >
+        <Button onClick={onClose} color="inherit" fullWidth>
           Cancel
         </Button>
         <Button
@@ -252,7 +260,7 @@ export const MeasurementFormDialog: React.FC<MeasurementFormDialogProps> = ({
           variant="contained"
           disabled={isSubmitting}
           startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
-          
+          fullWidth
         >
           {initial ? 'Save New Version' : 'Save Measurements'}
         </Button>

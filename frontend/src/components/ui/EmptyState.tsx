@@ -30,7 +30,10 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ title, message, icon, ac
       </Box>
       <Typography sx={{ fontWeight: 600 }}>{title}</Typography>
       {message && (
-        <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5, maxWidth: 420, mx: 'auto' }}>
+        <Typography
+          variant="body2"
+          sx={{ color: 'text.secondary', mt: 0.5, maxWidth: 420, mx: 'auto' }}
+        >
           {message}
         </Typography>
       )}

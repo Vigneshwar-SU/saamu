@@ -103,22 +103,23 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
     >
       <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 2, sm: 3 }, minHeight: 64 }}>
         {/* Left Side: Toggle & Brand */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, sm: 1.5 } }}>
           <IconButton
             edge="start"
             color="inherit"
             aria-label="open drawer"
             onClick={onToggleSidebar}
+            size="small"
           >
             <MenuIcon />
           </IconButton>
 
-          <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1.5 }}>
-            <BrandMark size={36} />
+          <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 1 }}>
+            <BrandMark size={32} />
             <Typography
               sx={{
                 fontWeight: 800,
-                fontSize: '1rem',
+                fontSize: { xs: '0.875rem', sm: '1rem' },
                 lineHeight: 1.2,
                 color: '#242424',
                 letterSpacing: '-0.01em',
@@ -130,7 +131,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         </Box>
 
         {/* Right Side: Role chip, Server status, User profile */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, sm: 1.5 } }}>
           {role && (
             <Chip
               label={role}
@@ -165,9 +166,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
 
           <Tooltip
             title={
-              badgeCount > 0
-                ? `Notifications (${badgeCount} need attention)`
-                : 'Notifications'
+              badgeCount > 0 ? `Notifications (${badgeCount} need attention)` : 'Notifications'
             }
           >
             <IconButton

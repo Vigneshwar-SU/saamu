@@ -8,11 +8,6 @@ import {
   MenuItem,
   Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   TextField,
   Tooltip,
   Typography,
@@ -29,8 +24,7 @@ import { useOrderList } from '../hooks/useOrders';
 import { CreateOrderDialog } from '../components/CreateOrderDialog';
 import { PageHeader } from '../components/ui/PageHeader';
 import { FilterBar } from '../components/ui/FilterBar';
-import { TableCard } from '../components/ui/TableCard';
-import { TableStateRow } from '../components/ui/TableStateRow';
+import { ResponsiveTable } from '../components/ui/ResponsiveTable';
 import { AppPagination } from '../components/ui/AppPagination';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import type { StatusTone } from '../components/ui/StatusBadge';
@@ -74,10 +68,7 @@ export const Orders: React.FC = () => {
   });
 
   const statusBadge = (orderStatus: OrderStatus) => (
-    <StatusBadge
-      label={ORDER_STATUS_LABELS[orderStatus]}
-      tone={ORDER_STATUS_TONES[orderStatus]}
-    />
+    <StatusBadge label={ORDER_STATUS_LABELS[orderStatus]} tone={ORDER_STATUS_TONES[orderStatus]} />
   );
 
   return (
@@ -134,96 +125,89 @@ export const Orders: React.FC = () => {
         </Stack>
       </FilterBar>
 
-      <TableCard loading={isFetching && !isLoading}>
-        <Table size="medium">
-          <TableHead>
-            <TableRow>
-              <TableCell>Order</TableCell>
-              <TableCell>Customer</TableCell>
-              <TableCell>Items</TableCell>
-              <TableCell align="right">Total</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Delivery</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isLoading ? (
-              <TableStateRow colSpan={7} state="loading" />
-            ) : isError ? (
-              <TableStateRow
-                colSpan={7}
-                state="error"
-                errorMessage={getApiErrorMessage(error)}
-                onRetry={() => refetch()}
-              />
-            ) : data && data.results.length === 0 ? (
-              <TableStateRow colSpan={7} state="empty" emptyTitle="No orders found" />
-            ) : (
-              data?.results.map((order) => (
-                <TableRow
-                  key={order.id}
-                  hover
-                  sx={{ cursor: 'pointer' }}
-                  onClick={() => navigate(`/orders/${order.id}`)}
-                >
-                  <TableCell>
-                    <Typography sx={{ fontWeight: 600 }}>{order.order_number}</Typography>
-                    <Typography variant="caption" sx={{ color: 'text.disabled' }}>
-                      {formatDate(order.order_date)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                      {order.customer.full_name}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: 'text.disabled' }}>
-                      {order.customer.mobile_number}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {order.garment_summary
-                        .map(
-                          (summary) =>
-                            `${summary.quantity}x ${summary.garment_type.toLowerCase()}`
-                        )
-                        .join(', ')}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Typography sx={{ fontWeight: 600 }}>
-                      {formatCurrency(Number(order.total_amount))}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>{statusBadge(order.status)}</TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {order.expected_delivery_date
-                        ? formatDate(order.expected_delivery_date)
-                        : '-'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Tooltip title="View order">
-                      <Button
-                        size="small"
-                        startIcon={<VisibilityIcon fontSize="small" />}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          navigate(`/orders/${order.id}`);
-                        }}
-                      >
-                        View
-                      </Button>
-                    </Tooltip>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableCard>
+      <ResponsiveTable
+        data={data?.results ?? []}
+        rowKey={(order) => order.id}
+        onRowClick={(order) => navigate(`/orders/${order.id}`)}
+        loading={isLoading}
+        refetching={isFetching && !isLoading}
+        error={isError}
+        errorMessage={getApiErrorMessage(error)}
+        onRetry={() => refetch()}
+        emptyTitle="No orders found"
+        columns={[
+          {
+            label: 'Order',
+            primary: true,
+            render: (order) => (
+              <Box>
+                <Typography sx={{ fontWeight: 600 }}>{order.order_number}</Typography>
+                <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+                  {formatDate(order.order_date)}
+                </Typography>
+              </Box>
+            ),
+          },
+          {
+            label: 'Customer',
+            render: (order) => (
+              <Box>
+                <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                  {order.customer.full_name}
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+                  {order.customer.mobile_number}
+                </Typography>
+              </Box>
+            ),
+          },
+          {
+            label: 'Items',
+            render: (order) => (
+              <Typography variant="body2">
+                {order.garment_summary
+                  .map((summary) => `${summary.quantity}x ${summary.garment_type.toLowerCase()}`)
+                  .join(', ')}
+              </Typography>
+            ),
+          },
+          {
+            label: 'Total',
+            align: 'right',
+            render: (order) => (
+              <Typography sx={{ fontWeight: 600 }}>
+                {formatCurrency(Number(order.total_amount))}
+              </Typography>
+            ),
+          },
+          {
+            label: 'Status',
+            render: (order) => statusBadge(order.status),
+          },
+          {
+            label: 'Delivery',
+            render: (order) => (
+              <Typography variant="body2">
+                {order.expected_delivery_date ? formatDate(order.expected_delivery_date) : '-'}
+              </Typography>
+            ),
+          },
+        ]}
+        actions={(order) => (
+          <Tooltip title="View order">
+            <Button
+              size="small"
+              startIcon={<VisibilityIcon fontSize="small" />}
+              onClick={(event) => {
+                event.stopPropagation();
+                navigate(`/orders/${order.id}`);
+              }}
+            >
+              View
+            </Button>
+          </Tooltip>
+        )}
+      />
 
       {data && data.count > 0 && (
         <AppPagination page={page} count={data.count} pageSize={PAGE_SIZE} onChange={setPage} />

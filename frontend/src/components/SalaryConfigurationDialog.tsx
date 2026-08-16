@@ -96,8 +96,7 @@ export const SalaryConfigurationDialog: React.FC<SalaryConfigurationDialogProps>
   });
 
   const salaryModel = watch('salary_model');
-  const requiresFixedSalary =
-    salaryModel === 'FIXED_SALARY' || salaryModel === 'MIXED';
+  const requiresFixedSalary = salaryModel === 'FIXED_SALARY' || salaryModel === 'MIXED';
 
   useEffect(() => {
     if (open) {
@@ -242,7 +241,9 @@ export const SalaryConfigurationDialog: React.FC<SalaryConfigurationDialogProps>
                   size="small"
                   InputLabelProps={{ shrink: true }}
                   error={!!errors.effective_to}
-                  helperText={errors.effective_to?.message ?? 'Leave blank for an open-ended configuration.'}
+                  helperText={
+                    errors.effective_to?.message ?? 'Leave blank for an open-ended configuration.'
+                  }
                 />
               )}
             />
@@ -288,8 +289,15 @@ export const SalaryConfigurationDialog: React.FC<SalaryConfigurationDialogProps>
           />
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} color="inherit">
+      <DialogActions
+        sx={{
+          px: { xs: 2, sm: 3 },
+          py: 2,
+          flexDirection: { xs: 'column-reverse', sm: 'row' },
+          gap: 1,
+        }}
+      >
+        <Button onClick={onClose} color="inherit" fullWidth>
           Cancel
         </Button>
         <Button
@@ -297,7 +305,7 @@ export const SalaryConfigurationDialog: React.FC<SalaryConfigurationDialogProps>
           variant="contained"
           disabled={isSubmitting}
           startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
-          
+          fullWidth
         >
           {config ? 'Save Changes' : 'Add Configuration'}
         </Button>

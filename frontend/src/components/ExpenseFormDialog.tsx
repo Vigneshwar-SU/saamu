@@ -47,11 +47,7 @@ interface ExpenseFormDialogProps {
   submit: (payload: ExpensePayload) => Promise<unknown>;
 }
 
-export const ExpenseFormDialog: React.FC<ExpenseFormDialogProps> = ({
-  open,
-  onClose,
-  submit,
-}) => {
+export const ExpenseFormDialog: React.FC<ExpenseFormDialogProps> = ({ open, onClose, submit }) => {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
@@ -226,8 +222,15 @@ export const ExpenseFormDialog: React.FC<ExpenseFormDialogProps> = ({
           />
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} color="inherit">
+      <DialogActions
+        sx={{
+          px: { xs: 2, sm: 3 },
+          py: 2,
+          flexDirection: { xs: 'column-reverse', sm: 'row' },
+          gap: 1,
+        }}
+      >
+        <Button onClick={onClose} color="inherit" fullWidth>
           Cancel
         </Button>
         <Button
@@ -235,7 +238,7 @@ export const ExpenseFormDialog: React.FC<ExpenseFormDialogProps> = ({
           variant="contained"
           disabled={isSubmitting}
           startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
-          
+          fullWidth
         >
           Save Expense
         </Button>

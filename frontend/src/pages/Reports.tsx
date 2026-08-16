@@ -145,7 +145,12 @@ export const Reports: React.FC = () => {
       />
 
       <FilterBar>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center" flexWrap="wrap">
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={2}
+          alignItems="center"
+          flexWrap="wrap"
+        >
           <TextField
             label="From"
             type="date"
@@ -165,7 +170,11 @@ export const Reports: React.FC = () => {
           <Button variant="contained" onClick={applyFilters} disabled={isFetching}>
             Apply
           </Button>
-          <Button variant="outlined" onClick={resetFilters} disabled={isFetching || (!appliedFrom && !appliedTo)}>
+          <Button
+            variant="outlined"
+            onClick={resetFilters}
+            disabled={isFetching || (!appliedFrom && !appliedTo)}
+          >
             Reset
           </Button>
           <Box sx={{ flexGrow: 1 }} />
@@ -313,19 +322,25 @@ export const Reports: React.FC = () => {
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     Active customers
                   </Typography>
-                  <Typography sx={{ fontWeight: 700 }}>{summary.customers.active_customers}</Typography>
+                  <Typography sx={{ fontWeight: 700 }}>
+                    {summary.customers.active_customers}
+                  </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     New customers in range
                   </Typography>
-                  <Typography sx={{ fontWeight: 700 }}>{summary.customers.new_customers}</Typography>
+                  <Typography sx={{ fontWeight: 700 }}>
+                    {summary.customers.new_customers}
+                  </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     Customers with orders in range
                   </Typography>
-                  <Typography sx={{ fontWeight: 700 }}>{summary.customers.customers_with_orders}</Typography>
+                  <Typography sx={{ fontWeight: 700 }}>
+                    {summary.customers.customers_with_orders}
+                  </Typography>
                 </Box>
               </Stack>
             </SectionCard>
@@ -342,7 +357,9 @@ export const Reports: React.FC = () => {
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     Assigned pieces
                   </Typography>
-                  <Typography sx={{ fontWeight: 700 }}>{summary.tailors.workload.assigned_quantity}</Typography>
+                  <Typography sx={{ fontWeight: 700 }}>
+                    {summary.tailors.workload.assigned_quantity}
+                  </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
@@ -412,14 +429,20 @@ export const Reports: React.FC = () => {
                   </TableHead>
                   <TableBody>
                     {summary.financial.income.by_payment_type.length === 0 ? (
-                      <TableStateRow colSpan={3} state="empty" emptyTitle="No payments in the selected range" />
+                      <TableStateRow
+                        colSpan={3}
+                        state="empty"
+                        emptyTitle="No payments in the selected range"
+                      />
                     ) : (
                       summary.financial.income.by_payment_type.map((row) => {
                         const isRefund = row.payment_type === 'REFUND';
                         return (
                           <TableRow key={row.payment_type}>
                             <TableCell>{PAYMENT_TYPE_LABELS[row.payment_type]}</TableCell>
-                            <TableCell sx={{ fontWeight: 600, color: isRefund ? '#8F2F22' : '#1F5C3C' }}>
+                            <TableCell
+                              sx={{ fontWeight: 600, color: isRefund ? '#8F2F22' : '#1F5C3C' }}
+                            >
                               {formatCurrency(row.total)}
                             </TableCell>
                             <TableCell>{row.count}</TableCell>
@@ -444,7 +467,11 @@ export const Reports: React.FC = () => {
                   </TableHead>
                   <TableBody>
                     {summary.financial.expenses.by_category.length === 0 ? (
-                      <TableStateRow colSpan={3} state="empty" emptyTitle="No expenses in the selected range" />
+                      <TableStateRow
+                        colSpan={3}
+                        state="empty"
+                        emptyTitle="No expenses in the selected range"
+                      />
                     ) : (
                       summary.financial.expenses.by_category.map((row) => (
                         <TableRow key={row.category}>

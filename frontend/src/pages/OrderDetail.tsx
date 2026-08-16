@@ -3,6 +3,7 @@ import {
   Alert,
   Box,
   Button,
+  Card,
   Chip,
   CircularProgress,
   Dialog,
@@ -23,7 +24,9 @@ import {
   TextField,
   Tooltip,
   Typography,
+  useMediaQuery,
 } from '@mui/material';
+import type { Theme } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import CancelIcon from '@mui/icons-material/Cancel';
 import StraightenIcon from '@mui/icons-material/Straighten';
@@ -60,7 +63,7 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import type { StatusTone } from '../components/ui/StatusBadge';
 import { ErrorState } from '../components/ui/ErrorState';
-import { TableStateRow } from '../components/ui/TableStateRow';
+import { ResponsiveTable } from '../components/ui/ResponsiveTable';
 import { MEASUREMENT_FIELD_LABELS } from '../types/customers';
 import type { MeasurementFieldName } from '../types/customers';
 import {
@@ -237,12 +240,190 @@ const MeasurementSnapshotRow: React.FC<{ item: OrderItem }> = ({ item }) => {
   );
 };
 
+const OrderItemsMobile: React.FC<{ items: OrderItem[]; totalAmount: number }> = ({
+  items,
+  totalAmount,
+}) => {
+  const [openSnapshots, setOpenSnapshots] = useState<Set<number>>(new Set());
+
+  const toggleSnapshot = (id: number) =>
+    setOpenSnapshots((current) => {
+      const next = new Set(current);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+
+  return (
+    <Stack spacing={2} sx={{ p: 2 }}>
+      {items.map((item) => {
+        const snapshot = item.measurement_snapshot;
+        const fields = snapshot ? (Object.entries(snapshot) as Array<[string, number | null]>) : [];
+        const open = openSnapshots.has(item.id);
+
+        return (
+          <Card
+            key={item.id}
+            sx={{
+              borderRadius: '12px',
+              border: '1px solid #E7E0D0',
+              boxShadow: '0 1px 3px 0 rgba(58, 48, 20, 0.05)',
+              p: 2,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 1.5,
+            }}
+          >
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                gap: 2,
+              }}
+            >
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={{ fontWeight: 600 }}>{item.garment_type}</Typography>
+                <Chip
+                  label={`V${item.measurement_version ?? '-'}`}
+                  size="small"
+                  variant="outlined"
+                  sx={{ fontWeight: 600, mt: 0.5 }}
+                />
+              </Box>
+              <Box sx={{ textAlign: 'right' }}>
+                <Typography sx={{ fontWeight: 700 }}>
+                  {formatCurrency(Number(item.line_total))}
+                </Typography>
+              </Box>
+            </Box>
+            <Stack spacing={1.25}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'baseline',
+                  gap: 2,
+                }}
+              >
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                  Quantity
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {item.quantity}
+                </Typography>
+              </Box>
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'baseline',
+                  gap: 2,
+                }}
+              >
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                  Unit Price
+                </Typography>
+                <Typography variant="body2">{formatCurrency(Number(item.unit_price))}</Typography>
+              </Box>
+              {item.notes && (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'baseline',
+                    gap: 2,
+                  }}
+                >
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                    Notes
+                  </Typography>
+                  <Typography variant="body2" sx={{ textAlign: 'right' }}>
+                    {item.notes}
+                  </Typography>
+                </Box>
+              )}
+            </Stack>
+            {fields.length > 0 && (
+              <>
+                <Button
+                  size="small"
+                  startIcon={<StraightenIcon fontSize="small" />}
+                  onClick={() => toggleSnapshot(item.id)}
+                  sx={{ textTransform: 'none', alignSelf: 'flex-start' }}
+                >
+                  {open ? 'Hide measurements' : 'View measurements used'}
+                </Button>
+                {open && (
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' },
+                      gap: 1.5,
+                      p: 1.5,
+                      backgroundColor: '#FBF6EA',
+                      borderRadius: '10px',
+                    }}
+                  >
+                    {fields.map(([field, value]) => (
+                      <Box key={field}>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: 'text.secondary',
+                            display: 'block',
+                            fontSize: '0.7rem',
+                            textTransform: 'uppercase',
+                            fontWeight: 600,
+                          }}
+                        >
+                          {MEASUREMENT_FIELD_LABELS[field as MeasurementFieldName] ?? field}
+                        </Typography>
+                        <Typography sx={{ fontWeight: 600, color: 'text.primary' }}>
+                          {value == null ? '-' : `${value} in`}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+              </>
+            )}
+          </Card>
+        );
+      })}
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          px: 2,
+          py: 1.5,
+          backgroundColor: '#FBF6EA',
+          borderRadius: '12px',
+          border: '1px solid #E7E0D0',
+        }}
+      >
+        <Typography sx={{ fontWeight: 700 }}>Total Amount</Typography>
+        <Typography sx={{ fontWeight: 700, color: '#7A5E0C' }}>
+          {formatCurrency(totalAmount)}
+        </Typography>
+      </Box>
+    </Stack>
+  );
+};
+
 export const OrderDetail: React.FC = () => {
   const { id } = useParams();
   const orderId = Number(id);
   const navigate = useNavigate();
   const { role } = useAuth();
   const isStaff = role === 'STAFF';
+  const isMobile = useMediaQuery((theme: Theme) => theme.breakpoints.down('sm'), {
+    noSsr: true,
+  });
 
   const { data: order, isLoading, isError, error, refetch } = useOrder(orderId);
   const updateMutation = useUpdateOrder(orderId);
@@ -537,63 +718,67 @@ export const OrderDetail: React.FC = () => {
         icon={<StraightenIcon />}
         noPadding
       >
-        <TableContainer>
-          <Table size="medium">
-            <TableHead>
-              <TableRow sx={{ backgroundColor: '#FBF6EA' }}>
-                <TableCell sx={{ fontWeight: 700 }}>Garment</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 700 }}>
-                  Qty
-                </TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Version</TableCell>
-                <TableCell align="right" sx={{ fontWeight: 700 }}>
-                  Unit Price
-                </TableCell>
-                <TableCell align="right" sx={{ fontWeight: 700 }}>
-                  Line Total
-                </TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Notes</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {order.items.map((item) => (
-                <React.Fragment key={item.id}>
-                  <TableRow sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                    <TableCell sx={{ fontWeight: 600 }}>{item.garment_type}</TableCell>
-                    <TableCell align="center">{item.quantity}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={`V${item.measurement_version ?? '-'}`}
-                        size="small"
-                        variant="outlined"
-                        sx={{ fontWeight: 600 }}
-                      />
-                    </TableCell>
-                    <TableCell align="right">{formatCurrency(Number(item.unit_price))}</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 700 }}>
-                      {formatCurrency(Number(item.line_total))}
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                        {item.notes || '-'}
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                  <MeasurementSnapshotRow item={item} />
-                </React.Fragment>
-              ))}
-              <TableRow sx={{ backgroundColor: '#FBF6EA' }}>
-                <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
-                  Total Amount
-                </TableCell>
-                <TableCell align="right" sx={{ fontWeight: 700, color: '#7A5E0C' }}>
-                  {formatCurrency(Number(order.total_amount))}
-                </TableCell>
-                <TableCell />
-              </TableRow>
-            </TableBody>
-          </Table>
-        </TableContainer>
+        {isMobile ? (
+          <OrderItemsMobile items={order.items} totalAmount={Number(order.total_amount)} />
+        ) : (
+          <TableContainer>
+            <Table size="medium">
+              <TableHead>
+                <TableRow sx={{ backgroundColor: '#FBF6EA' }}>
+                  <TableCell sx={{ fontWeight: 700 }}>Garment</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 700 }}>
+                    Qty
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Version</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>
+                    Unit Price
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>
+                    Line Total
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Notes</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {order.items.map((item) => (
+                  <React.Fragment key={item.id}>
+                    <TableRow sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                      <TableCell sx={{ fontWeight: 600 }}>{item.garment_type}</TableCell>
+                      <TableCell align="center">{item.quantity}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={`V${item.measurement_version ?? '-'}`}
+                          size="small"
+                          variant="outlined"
+                          sx={{ fontWeight: 600 }}
+                        />
+                      </TableCell>
+                      <TableCell align="right">{formatCurrency(Number(item.unit_price))}</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700 }}>
+                        {formatCurrency(Number(item.line_total))}
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                          {item.notes || '-'}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                    <MeasurementSnapshotRow item={item} />
+                  </React.Fragment>
+                ))}
+                <TableRow sx={{ backgroundColor: '#FBF6EA' }}>
+                  <TableCell colSpan={4} sx={{ fontWeight: 700 }}>
+                    Total Amount
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, color: '#7A5E0C' }}>
+                    {formatCurrency(Number(order.total_amount))}
+                  </TableCell>
+                  <TableCell />
+                </TableRow>
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
       </SectionCard>
 
       <SectionCard
@@ -617,162 +802,143 @@ export const OrderDetail: React.FC = () => {
                 <MenuItem value="COMPLETED">Completed</MenuItem>
               </Select>
             </FormControl>
-          {isStaff && order.assignment_summary?.can_assign_work && (
-            <Button
-              variant="contained"
-              startIcon={<PersonAddAltIcon />}
-              onClick={() => setAssignOpen(true)}
-            >
-              Assign Work
-            </Button>
-          )}
+            {isStaff && order.assignment_summary?.can_assign_work && (
+              <Button
+                variant="contained"
+                startIcon={<PersonAddAltIcon />}
+                onClick={() => setAssignOpen(true)}
+              >
+                Assign Work
+              </Button>
+            )}
           </Stack>
         }
         noPadding
       >
-        <TableContainer>
-          <Table size="medium">
-            <TableHead>
-              <TableRow sx={{ backgroundColor: '#FBF6EA' }}>
-                <TableCell sx={{ fontWeight: 700 }}>Tailor</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Garment</TableCell>
-                <TableCell align="center" sx={{ fontWeight: 700 }}>
-                  Assigned
-                </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 700 }}>
-                  Completed
-                </TableCell>
-                <TableCell align="center" sx={{ fontWeight: 700 }}>
-                  Outstanding
-                </TableCell>
-                <TableCell align="right" sx={{ fontWeight: 700 }}>
-                  Rate
-                </TableCell>
-                <TableCell align="right" sx={{ fontWeight: 700 }}>
-                  Earned
-                </TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                {isStaff && (
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>
-                    Actions
-                  </TableCell>
-                )}
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {assignments.length === 0 ? (
-                <TableStateRow
-                  colSpan={isStaff ? 9 : 8}
-                  state="empty"
-                  emptyTitle={
-                    statusFilter
-                      ? 'No assignments match this status.'
-                      : 'No work assigned for this order yet.'
-                  }
-                />
-              ) : (
-                assignments.map((assignment) => {
+        <ResponsiveTable
+          data={assignments}
+          rowKey={(assignment) => assignment.id}
+          emptyTitle={
+            statusFilter
+              ? 'No assignments match this status.'
+              : 'No work assigned for this order yet.'
+          }
+          columns={[
+            {
+              label: 'Tailor',
+              primary: true,
+              render: (assignment) => (
+                <Typography sx={{ fontWeight: 600 }}>{assignment.tailor.name}</Typography>
+              ),
+            },
+            {
+              label: 'Garment',
+              render: (assignment) => (
+                <Typography sx={{ fontWeight: 600 }}>
+                  {assignment.order_item.garment_type}
+                </Typography>
+              ),
+            },
+            {
+              label: 'Assigned',
+              render: (assignment) => (
+                <Typography variant="body2">
+                  {formatPieces(assignment.assigned_quantity)}
+                </Typography>
+              ),
+            },
+            {
+              label: 'Completed',
+              render: (assignment) => (
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {formatPieces(assignment.completed_quantity)}
+                </Typography>
+              ),
+            },
+            {
+              label: 'Outstanding',
+              render: (assignment) => (
+                <Typography variant="body2" sx={{ fontWeight: 600, color: '#8F4A00' }}>
+                  {formatPieces(assignment.assigned_quantity - assignment.completed_quantity)}
+                </Typography>
+              ),
+            },
+            {
+              label: 'Rate',
+              render: (assignment) => (
+                <Typography variant="body2">
+                  {formatCurrency(assignment.rate_per_piece_snapshot)}
+                </Typography>
+              ),
+            },
+            {
+              label: 'Earned',
+              render: (assignment) => (
+                <Typography variant="body2" sx={{ fontWeight: 600, color: '#1F5C3C' }}>
+                  {formatCurrency(assignment.earned_amount)}
+                </Typography>
+              ),
+            },
+            {
+              label: 'Status',
+              render: (assignment) => <WorkAssignmentStatusChip status={assignment.status} />,
+            },
+          ]}
+          actions={
+            isStaff
+              ? (assignment) => {
                   const nextStatus = NEXT_ASSIGNMENT_STATUS[assignment.status];
-                  return (
-                    <TableRow key={assignment.id} hover>
-                      <TableCell>
-                        <Typography sx={{ fontWeight: 600 }}>{assignment.tailor.name}</Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography sx={{ fontWeight: 600 }}>
-                          {assignment.order_item.garment_type}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Typography variant="body2">
-                          {formatPieces(assignment.assigned_quantity)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {formatPieces(assignment.completed_quantity)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#8F4A00' }}>
-                          {formatPieces(
-                            assignment.assigned_quantity - assignment.completed_quantity
-                          )}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="body2">
-                          {formatCurrency(assignment.rate_per_piece_snapshot)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: '#1F5C3C' }}>
-                          {formatCurrency(assignment.earned_amount)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <WorkAssignmentStatusChip status={assignment.status} />
-                      </TableCell>
-                      {isStaff && (
-                        <TableCell align="right">
-                          {nextStatus && (
-                            <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                              <Tooltip title="Report completed quantity">
-                                <Button
-                                  size="small"
-                                  startIcon={<EditIcon fontSize="small" />}
-                                  disabled={assignmentProgressMutation.isPending}
-                                  onClick={() => {
-                                    setSelectedAssignment(assignment);
-                                    setProgressOpen(true);
-                                  }}
-                                >
-                                  Progress
-                                </Button>
-                              </Tooltip>
-                              <Tooltip
-                                title={`Move to ${WORK_ASSIGNMENT_STATUS_LABELS[nextStatus]}`}
-                              >
-                                <Button
-                                  size="small"
-                                  variant="contained"
-                                  color={nextStatus === 'COMPLETED' ? 'success' : 'primary'}
-                                  disabled={assignmentStatusMutation.isPending}
-                                  startIcon={
-                                    nextStatus === 'COMPLETED' ? (
-                                      <CheckCircleIcon fontSize="small" />
-                                    ) : (
-                                      <PlayArrowIcon fontSize="small" />
-                                    )
-                                  }
-                                  onClick={async () => {
-                                    setActionError(null);
-                                    try {
-                                      await assignmentStatusMutation.mutateAsync({
-                                        id: assignment.id,
-                                        status: nextStatus,
-                                      });
-                                    } catch (transitionError) {
-                                      setActionError(getApiErrorMessage(transitionError));
-                                    }
-                                  }}
-                                >
-                                  {nextStatus === 'COMPLETED'
-                                    ? 'Complete'
-                                    : WORK_ASSIGNMENT_STATUS_LABELS[nextStatus]}
-                                </Button>
-                              </Tooltip>
-                            </Stack>
-                          )}
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                  return nextStatus ? (
+                    <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                      <Tooltip title="Report completed quantity">
+                        <Button
+                          size="small"
+                          startIcon={<EditIcon fontSize="small" />}
+                          disabled={assignmentProgressMutation.isPending}
+                          onClick={() => {
+                            setSelectedAssignment(assignment);
+                            setProgressOpen(true);
+                          }}
+                        >
+                          Progress
+                        </Button>
+                      </Tooltip>
+                      <Tooltip title={`Move to ${WORK_ASSIGNMENT_STATUS_LABELS[nextStatus]}`}>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          color={nextStatus === 'COMPLETED' ? 'success' : 'primary'}
+                          disabled={assignmentStatusMutation.isPending}
+                          startIcon={
+                            nextStatus === 'COMPLETED' ? (
+                              <CheckCircleIcon fontSize="small" />
+                            ) : (
+                              <PlayArrowIcon fontSize="small" />
+                            )
+                          }
+                          onClick={async () => {
+                            setActionError(null);
+                            try {
+                              await assignmentStatusMutation.mutateAsync({
+                                id: assignment.id,
+                                status: nextStatus,
+                              });
+                            } catch (transitionError) {
+                              setActionError(getApiErrorMessage(transitionError));
+                            }
+                          }}
+                        >
+                          {nextStatus === 'COMPLETED'
+                            ? 'Complete'
+                            : WORK_ASSIGNMENT_STATUS_LABELS[nextStatus]}
+                        </Button>
+                      </Tooltip>
+                    </Stack>
+                  ) : null;
+                }
+              : undefined
+          }
+        />
       </SectionCard>
 
       <SectionCard

@@ -1,13 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Alert,
-  Box,
-  Button,
-  CircularProgress,
-  Paper,
-  Stack,
-  Typography,
-} from '@mui/material';
+import { Alert, Box, Button, CircularProgress, Paper, Stack, Typography } from '@mui/material';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -114,8 +106,8 @@ const ReminderCard: React.FC<{ reminder: ReminderCandidate }> = ({ reminder }) =
 
       {!usableNumber && (
         <Typography variant="body2" sx={{ color: 'warning.dark', mt: 1.5 }}>
-          No usable WhatsApp number is recorded for this customer, so Open
-          WhatsApp is disabled. The message can still be copied.
+          No usable WhatsApp number is recorded for this customer, so Open WhatsApp is disabled. The
+          message can still be copied.
         </Typography>
       )}
 
@@ -125,12 +117,13 @@ const ReminderCard: React.FC<{ reminder: ReminderCandidate }> = ({ reminder }) =
         </Alert>
       )}
 
-      <Stack direction="row" spacing={1.5} sx={{ mt: 2 }} flexWrap="wrap">
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mt: 2 }}>
         <Button
           variant="outlined"
           startIcon={copied ? <CheckIcon /> : <ContentCopyIcon />}
           disabled={isOpening}
           onClick={copy}
+          fullWidth
           sx={copied ? { color: 'success.dark', borderColor: 'success.light' } : undefined}
         >
           {copied ? 'Copied' : 'Copy WhatsApp Message'}
@@ -140,6 +133,7 @@ const ReminderCard: React.FC<{ reminder: ReminderCandidate }> = ({ reminder }) =
           startIcon={<ChatIcon />}
           disabled={!usableNumber || isOpening}
           onClick={open}
+          fullWidth
         >
           {isOpening ? 'Preparing...' : 'Open WhatsApp'}
         </Button>
@@ -180,7 +174,14 @@ export const Reminders: React.FC = () => {
       )}
 
       {isError && !isLoading && (
-        <Paper sx={{ p: 3, borderRadius: '12px', border: '1px solid #FBE9E6', backgroundColor: '#FEF2F2' }}>
+        <Paper
+          sx={{
+            p: 3,
+            borderRadius: '12px',
+            border: '1px solid #FBE9E6',
+            backgroundColor: '#FEF2F2',
+          }}
+        >
           <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="space-between">
             <Alert severity="error" sx={{ flex: 1 }}>
               {getApiErrorMessage(error)}
@@ -193,10 +194,12 @@ export const Reminders: React.FC = () => {
       )}
 
       {!isLoading && !isError && reminders.length === 0 && (
-        <Paper sx={{ p: 6, borderRadius: '12px', border: '1px solid #E7E0D0', textAlign: 'center' }}>
+        <Paper
+          sx={{ p: 6, borderRadius: '12px', border: '1px solid #E7E0D0', textAlign: 'center' }}
+        >
           <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-            No pending reminders. Reminders appear here for active orders that
-            are ready for collection or have an outstanding balance.
+            No pending reminders. Reminders appear here for active orders that are ready for
+            collection or have an outstanding balance.
           </Typography>
         </Paper>
       )}

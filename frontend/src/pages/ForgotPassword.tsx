@@ -106,7 +106,12 @@ export const ForgotPassword: React.FC = () => {
             <Box>
               <Typography
                 variant="h4"
-                sx={{ fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.02em', lineHeight: 1.2 }}
+                sx={{
+                  fontWeight: 800,
+                  color: '#FFFFFF',
+                  letterSpacing: '-0.02em',
+                  lineHeight: 1.2,
+                }}
               >
                 Saamu Tailors
               </Typography>
@@ -123,9 +128,9 @@ export const ForgotPassword: React.FC = () => {
                   Check Your Inbox
                 </Typography>
                 <Alert severity="success" sx={{ borderRadius: '10px' }}>
-                  If an account exists with this email address, a password reset
-                  link has been sent. Please check your inbox (and spam folder)
-                  and follow the link. The link is valid for 15 minutes.
+                  If an account exists with this email address, a password reset link has been sent.
+                  Please check your inbox (and spam folder) and follow the link. The link is valid
+                  for 15 minutes.
                 </Alert>
                 <Button
                   variant="contained"
@@ -142,8 +147,8 @@ export const ForgotPassword: React.FC = () => {
                   Reset Your Password
                 </Typography>
                 <Typography variant="body2" sx={{ color: '#6B6B6B', mb: 3 }}>
-                  Enter the email address linked to your account and we will send
-                  you a password reset link.
+                  Enter the email address linked to your account and we will send you a password
+                  reset link.
                 </Typography>
 
                 {resetError && (

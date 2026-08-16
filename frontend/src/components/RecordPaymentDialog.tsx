@@ -131,11 +131,27 @@ export const RecordPaymentDialog: React.FC<RecordPaymentDialogProps> = ({
         <Stack spacing={2.5} sx={{ mt: 0.5 }}>
           {submitError && <Alert severity="error">{submitError}</Alert>}
 
-          <Paper sx={{ p: 2, borderRadius: '12px', border: '1px solid #E7E0D0', backgroundColor: '#FBF6EA' }}>
+          <Paper
+            sx={{
+              p: 2,
+              borderRadius: '12px',
+              border: '1px solid #E7E0D0',
+              backgroundColor: '#FBF6EA',
+            }}
+          >
             <Stack spacing={1}>
-              <SettlementRow label="Gross Payable" value={formatCurrency(settlement.gross_payable)} />
-              <SettlementRow label="Advance Deductions" value={formatCurrency(settlement.advance_deductions)} />
-              <SettlementRow label="Paid Amount" value={formatCurrency(settlement.payments_recorded)} />
+              <SettlementRow
+                label="Gross Payable"
+                value={formatCurrency(settlement.gross_payable)}
+              />
+              <SettlementRow
+                label="Advance Deductions"
+                value={formatCurrency(settlement.advance_deductions)}
+              />
+              <SettlementRow
+                label="Paid Amount"
+                value={formatCurrency(settlement.payments_recorded)}
+              />
               <SettlementRow
                 label="Current Outstanding"
                 value={formatCurrency(outstanding)}
@@ -243,8 +259,15 @@ export const RecordPaymentDialog: React.FC<RecordPaymentDialogProps> = ({
           />
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} color="inherit">
+      <DialogActions
+        sx={{
+          px: { xs: 2, sm: 3 },
+          py: 2,
+          flexDirection: { xs: 'column-reverse', sm: 'row' },
+          gap: 1,
+        }}
+      >
+        <Button onClick={onClose} color="inherit" fullWidth>
           Cancel
         </Button>
         <Button
@@ -252,7 +275,7 @@ export const RecordPaymentDialog: React.FC<RecordPaymentDialogProps> = ({
           variant="contained"
           disabled={isSubmitting}
           startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
-          
+          fullWidth
         >
           {settleInFull ? 'Settle in Full' : 'Record Payment'}
         </Button>

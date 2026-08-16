@@ -92,7 +92,7 @@ export const InvoiceBill: React.FC = () => {
         id="printable-bill"
         className="print-bill"
         sx={{
-          maxWidth: 860,
+          maxWidth: { xs: '100%', sm: 860 },
           width: '100%',
           mx: 'auto',
           p: { xs: 3, md: 5 },

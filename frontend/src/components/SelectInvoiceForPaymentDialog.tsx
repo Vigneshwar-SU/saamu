@@ -55,7 +55,11 @@ export const SelectInvoiceForPaymentDialog: React.FC<SelectInvoiceForPaymentDial
     { search: search || undefined, status: MODE_STATUSES[mode][0], page: 1 },
     open
   );
-  const { data: secondStatusData, isLoading: secondStatusLoading, isError } = useInvoiceList(
+  const {
+    data: secondStatusData,
+    isLoading: secondStatusLoading,
+    isError,
+  } = useInvoiceList(
     { search: search || undefined, status: MODE_STATUSES[mode][1], page: 1 },
     open
   );
@@ -126,8 +130,7 @@ export const SelectInvoiceForPaymentDialog: React.FC<SelectInvoiceForPaymentDial
             >
               <Stack spacing={1}>
                 <Typography variant="caption" sx={{ color: '#6B6B6B' }}>
-                  {selectedInvoice.invoice_number} ·{' '}
-                  {INVOICE_STATUS_LABELS[selectedInvoice.status]}
+                  {selectedInvoice.invoice_number} · {INVOICE_STATUS_LABELS[selectedInvoice.status]}
                 </Typography>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2" sx={{ color: '#6B6B6B' }}>
@@ -160,9 +163,7 @@ export const SelectInvoiceForPaymentDialog: React.FC<SelectInvoiceForPaymentDial
                     }}
                   >
                     {formatCurrency(
-                      mode === 'REFUND'
-                        ? selectedInvoice.amount_paid
-                        : selectedInvoice.balance_due
+                      mode === 'REFUND' ? selectedInvoice.amount_paid : selectedInvoice.balance_due
                     )}
                   </Typography>
                 </Box>
@@ -171,15 +172,22 @@ export const SelectInvoiceForPaymentDialog: React.FC<SelectInvoiceForPaymentDial
           )}
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} color="inherit">
+      <DialogActions
+        sx={{
+          px: { xs: 2, sm: 3 },
+          py: 2,
+          flexDirection: { xs: 'column-reverse', sm: 'row' },
+          gap: 1,
+        }}
+      >
+        <Button onClick={onClose} color="inherit" fullWidth>
           Cancel
         </Button>
         <Button
           variant="contained"
           disabled={!selectedInvoice}
           onClick={() => selectedInvoice && onSelect(selectedInvoice)}
-          
+          fullWidth
         >
           Continue
         </Button>

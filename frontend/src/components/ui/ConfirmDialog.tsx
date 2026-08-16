@@ -6,7 +6,6 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
-  Stack,
 } from '@mui/material';
 
 type ConfirmTone = 'primary' | 'error' | 'warning';
@@ -34,8 +33,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onConfirm,
   onCancel,
 }) => {
-  const confirmColor =
-    tone === 'error' ? 'error' : tone === 'warning' ? 'warning' : 'primary';
+  const confirmColor = tone === 'error' ? 'error' : tone === 'warning' ? 'warning' : 'primary';
 
   return (
     <Dialog open={open} onClose={loading ? undefined : onCancel} maxWidth="xs" fullWidth>
@@ -43,20 +41,21 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       <DialogContent>
         <DialogContentText>{message}</DialogContentText>
       </DialogContent>
-      <DialogActions>
-        <Stack direction="row" spacing={1.5}>
-          <Button onClick={onCancel} disabled={loading} variant="outlined">
-            {cancelLabel}
-          </Button>
-          <Button
-            onClick={onConfirm}
-            disabled={loading}
-            variant="contained"
-            color={confirmColor}
-          >
-            {confirmLabel}
-          </Button>
-        </Stack>
+      <DialogActions
+        sx={{ px: 3, py: 2, flexDirection: { xs: 'column-reverse', sm: 'row' }, gap: 1 }}
+      >
+        <Button
+          onClick={onConfirm}
+          disabled={loading}
+          variant="contained"
+          color={confirmColor}
+          fullWidth
+        >
+          {confirmLabel}
+        </Button>
+        <Button onClick={onCancel} disabled={loading} variant="outlined" fullWidth>
+          {cancelLabel}
+        </Button>
       </DialogActions>
     </Dialog>
   );

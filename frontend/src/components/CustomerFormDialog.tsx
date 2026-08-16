@@ -58,7 +58,13 @@ const customerSchema = z
     }
   );
 
-const FIELD_KEYS = ['full_name', 'mobile_number', 'alternate_mobile_number', 'address', 'notes'] as const;
+const FIELD_KEYS = [
+  'full_name',
+  'mobile_number',
+  'alternate_mobile_number',
+  'address',
+  'notes',
+] as const;
 
 type CustomerFormData = z.infer<typeof customerSchema>;
 
@@ -123,7 +129,8 @@ export const CustomerFormDialog: React.FC<CustomerFormDialogProps> = ({
     } catch (error) {
       const apiError = normalizeApiError(error);
       setSubmitError(apiError.message);
-      const details = apiError.details as Partial<Record<(typeof FIELD_KEYS)[number], string[]>> | undefined;
+      const details = apiError.details as
+        Partial<Record<(typeof FIELD_KEYS)[number], string[]>> | undefined;
       const fieldKey = details ? FIELD_KEYS.find((key) => details[key]?.[0]) : undefined;
       if (fieldKey && details) {
         setError(fieldKey, { message: details[fieldKey]![0] });
@@ -220,8 +227,15 @@ export const CustomerFormDialog: React.FC<CustomerFormDialogProps> = ({
           />
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} color="inherit">
+      <DialogActions
+        sx={{
+          px: { xs: 2, sm: 3 },
+          py: 2,
+          flexDirection: { xs: 'column-reverse', sm: 'row' },
+          gap: 1,
+        }}
+      >
+        <Button onClick={onClose} color="inherit" fullWidth>
           Cancel
         </Button>
         <Button
@@ -229,7 +243,7 @@ export const CustomerFormDialog: React.FC<CustomerFormDialogProps> = ({
           variant="contained"
           disabled={isSubmitting}
           startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
-          
+          fullWidth
         >
           {initial ? 'Save Changes' : 'Create Customer'}
         </Button>

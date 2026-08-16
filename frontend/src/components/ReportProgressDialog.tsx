@@ -21,7 +21,12 @@ interface ReportProgressDialogProps {
   submit: (completedQuantity: number) => Promise<unknown>;
 }
 
-const ReportProgressDialog: React.FC<ReportProgressDialogProps> = ({ open, assignment, onClose, submit }) => {
+const ReportProgressDialog: React.FC<ReportProgressDialogProps> = ({
+  open,
+  assignment,
+  onClose,
+  submit,
+}) => {
   const [value, setValue] = useState('');
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -75,8 +80,15 @@ const ReportProgressDialog: React.FC<ReportProgressDialogProps> = ({ open, assig
           />
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} color="inherit">
+      <DialogActions
+        sx={{
+          px: { xs: 2, sm: 3 },
+          py: 2,
+          flexDirection: { xs: 'column-reverse', sm: 'row' },
+          gap: 1,
+        }}
+      >
+        <Button onClick={onClose} color="inherit" fullWidth>
           Cancel
         </Button>
         <Button
@@ -84,7 +96,7 @@ const ReportProgressDialog: React.FC<ReportProgressDialogProps> = ({ open, assig
           variant="contained"
           disabled={isSubmitting}
           startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
-          
+          fullWidth
         >
           Save
         </Button>

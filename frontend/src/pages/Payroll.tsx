@@ -1,16 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Box,
-  Button,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Tooltip,
-  Typography,
-} from '@mui/material';
+import { Box, Button, Stack, Tooltip, Typography } from '@mui/material';
 import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
 import AddCardIcon from '@mui/icons-material/AddCard';
 import CalculateIcon from '@mui/icons-material/Calculate';
@@ -27,14 +16,10 @@ import {
   useFinalizePayrollPeriod,
   usePayrollPeriodList,
 } from '../hooks/usePayroll';
-import {
-  PAYROLL_PERIOD_STATUS_LABELS,
-  SETTLEMENT_STATUS_LABELS,
-} from '../types/payroll';
+import { PAYROLL_PERIOD_STATUS_LABELS, SETTLEMENT_STATUS_LABELS } from '../types/payroll';
 import type { PayrollPeriod, PayrollPeriodPayload } from '../types/payroll';
 import { PageHeader } from '../components/ui/PageHeader';
-import { TableCard } from '../components/ui/TableCard';
-import { TableStateRow } from '../components/ui/TableStateRow';
+import { ResponsiveTable } from '../components/ui/ResponsiveTable';
 import { AppPagination } from '../components/ui/AppPagination';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { ConfirmDialog } from '../components/ui/ConfirmDialog';
@@ -110,167 +95,165 @@ export const Payroll: React.FC = () => {
         crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Payroll' }]}
         actions={
           isStaff && (
-            <Button variant="contained" startIcon={<AddCardIcon />} onClick={() => setDialogOpen(true)}>
+            <Button
+              variant="contained"
+              startIcon={<AddCardIcon />}
+              onClick={() => setDialogOpen(true)}
+            >
               New Period
             </Button>
           )
         }
       />
 
-      <TableCard loading={isFetching && !isLoading}>
-        <Table size="medium">
-          <TableHead>
-            <TableRow>
-              <TableCell>Period</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Completed Pieces</TableCell>
-              <TableCell>Piece Rate Earnings</TableCell>
-              <TableCell>Attendance</TableCell>
-              <TableCell>Total Payable</TableCell>
-              <TableCell>Paid</TableCell>
-              <TableCell>Outstanding</TableCell>
-              <TableCell>Settlement</TableCell>
-              <TableCell>Tailors</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isLoading ? (
-              <TableStateRow colSpan={11} state="loading" />
-            ) : isError ? (
-              <TableStateRow
-                colSpan={11}
-                state="error"
-                errorMessage={getApiErrorMessage(error)}
-                onRetry={() => refetch()}
+      <ResponsiveTable
+        data={data?.results ?? []}
+        rowKey={(period) => period.id}
+        onRowClick={(period) => navigate(`/payroll/${period.id}`)}
+        loading={isLoading}
+        refetching={isFetching && !isLoading}
+        error={isError}
+        errorMessage={getApiErrorMessage(error)}
+        onRetry={() => refetch()}
+        emptyTitle="No payroll periods yet"
+        emptyMessage="Create a payroll period to start tracking earnings."
+        columns={[
+          {
+            label: 'Period',
+            primary: true,
+            render: (period) => (
+              <Box>
+                <Typography sx={{ fontWeight: 600 }}>
+                  {formatDate(period.period_start)} – {formatDate(period.period_end)}
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+                  #{period.id}
+                </Typography>
+              </Box>
+            ),
+          },
+          {
+            label: 'Status',
+            render: (period) => (
+              <StatusBadge
+                label={PAYROLL_PERIOD_STATUS_LABELS[period.status]}
+                tone={PERIOD_TONES[period.status] ?? 'neutral'}
               />
-            ) : data && data.results.length === 0 ? (
-              <TableStateRow
-                colSpan={11}
-                state="empty"
-                emptyTitle="No payroll periods yet"
-                emptyMessage="Create a payroll period to start tracking earnings."
+            ),
+          },
+          {
+            label: 'Completed Pieces',
+            render: (period) => (
+              <Typography variant="body2">{formatPieces(period.total_completed_pieces)}</Typography>
+            ),
+          },
+          {
+            label: 'Piece Rate Earnings',
+            render: (period) => (
+              <Typography variant="body2">
+                {formatCurrency(period.total_piece_rate_earnings)}
+              </Typography>
+            ),
+          },
+          {
+            label: 'Attendance',
+            render: (period) => (
+              <Typography variant="body2">
+                {formatCurrency(period.total_attendance_amount)}
+              </Typography>
+            ),
+          },
+          {
+            label: 'Total Payable',
+            render: (period) => (
+              <Typography variant="body2" sx={{ fontWeight: 600, color: '#1F5C3C' }}>
+                {formatCurrency(period.total_payable)}
+              </Typography>
+            ),
+          },
+          {
+            label: 'Paid',
+            render: (period) => (
+              <Typography variant="body2">
+                {formatCurrency(period.settlement.payments_recorded)}
+              </Typography>
+            ),
+          },
+          {
+            label: 'Outstanding',
+            render: (period) => (
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: 600,
+                  color: period.settlement.outstanding_payable > 0 ? '#8F4A00' : '#1F5C3C',
+                }}
+              >
+                {formatCurrency(period.settlement.outstanding_payable)}
+              </Typography>
+            ),
+          },
+          {
+            label: 'Settlement',
+            render: (period) => (
+              <StatusBadge
+                label={SETTLEMENT_STATUS_LABELS[period.settlement.settlement_status]}
+                tone={SETTLEMENT_TONES[period.settlement.settlement_status] ?? 'neutral'}
               />
-            ) : (
-              data?.results.map((period) => (
-                <TableRow
-                  key={period.id}
-                  hover
-                  sx={{ cursor: 'pointer', '&:last-child td, &:last-child th': { border: 0 } }}
-                  onClick={() => navigate(`/payroll/${period.id}`)}
+            ),
+          },
+          {
+            label: 'Tailors',
+            render: (period) => <Typography variant="body2">{period.entry_count}</Typography>,
+          },
+        ]}
+        actions={(period) => (
+          <Stack direction="row" spacing={0.5} flexWrap="wrap">
+            <Tooltip title="View period">
+              <Button
+                size="small"
+                startIcon={<VisibilityIcon fontSize="small" />}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  navigate(`/payroll/${period.id}`);
+                }}
+              >
+                View
+              </Button>
+            </Tooltip>
+            {isStaff && period.status === 'DRAFT' && (
+              <Tooltip title="Calculate payroll">
+                <Button
+                  size="small"
+                  startIcon={<CalculateIcon fontSize="small" />}
+                  disabled={calculateMutation.isPending || finalizeMutation.isPending}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    openConfirm('calculate', period);
+                  }}
                 >
-                  <TableCell>
-                    <Typography sx={{ fontWeight: 600 }}>
-                      {formatDate(period.period_start)} – {formatDate(period.period_end)}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: 'text.disabled' }}>
-                      #{period.id}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge
-                      label={PAYROLL_PERIOD_STATUS_LABELS[period.status]}
-                      tone={PERIOD_TONES[period.status] ?? 'neutral'}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {formatPieces(period.total_completed_pieces)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {formatCurrency(period.total_piece_rate_earnings)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {formatCurrency(period.total_attendance_amount)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 600, color: '#1F5C3C' }}>
-                      {formatCurrency(period.total_payable)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {formatCurrency(period.settlement.payments_recorded)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        fontWeight: 600,
-                        color:
-                          period.settlement.outstanding_payable > 0 ? '#8F4A00' : '#1F5C3C',
-                      }}
-                    >
-                      {formatCurrency(period.settlement.outstanding_payable)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge
-                      label={SETTLEMENT_STATUS_LABELS[period.settlement.settlement_status]}
-                      tone={SETTLEMENT_TONES[period.settlement.settlement_status] ?? 'neutral'}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{period.entry_count}</Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                      <Tooltip title="View period">
-                        <Button
-                          size="small"
-                          startIcon={<VisibilityIcon fontSize="small" />}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            navigate(`/payroll/${period.id}`);
-                          }}
-                        >
-                          View
-                        </Button>
-                      </Tooltip>
-                      {isStaff && period.status === 'DRAFT' && (
-                        <Tooltip title="Calculate payroll">
-                          <Button
-                            size="small"
-                            startIcon={<CalculateIcon fontSize="small" />}
-                            disabled={calculateMutation.isPending || finalizeMutation.isPending}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              openConfirm('calculate', period);
-                            }}
-                          >
-                            Calculate
-                          </Button>
-                        </Tooltip>
-                      )}
-                      {isStaff && period.status === 'CALCULATED' && (
-                        <Tooltip title="Finalize payroll">
-                          <Button
-                            size="small"
-                            startIcon={<CheckCircleOutlineIcon fontSize="small" />}
-                            disabled={calculateMutation.isPending || finalizeMutation.isPending}
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              openConfirm('finalize', period);
-                            }}
-                          >
-                            Finalize
-                          </Button>
-                        </Tooltip>
-                      )}
-                    </Stack>
-                  </TableCell>
-                </TableRow>
-              ))
+                  Calculate
+                </Button>
+              </Tooltip>
             )}
-          </TableBody>
-        </Table>
-      </TableCard>
+            {isStaff && period.status === 'CALCULATED' && (
+              <Tooltip title="Finalize payroll">
+                <Button
+                  size="small"
+                  startIcon={<CheckCircleOutlineIcon fontSize="small" />}
+                  disabled={calculateMutation.isPending || finalizeMutation.isPending}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    openConfirm('finalize', period);
+                  }}
+                >
+                  Finalize
+                </Button>
+              </Tooltip>
+            )}
+          </Stack>
+        )}
+      />
 
       {data && data.count > 0 && (
         <AppPagination page={page} count={data.count} pageSize={PAGE_SIZE} onChange={setPage} />

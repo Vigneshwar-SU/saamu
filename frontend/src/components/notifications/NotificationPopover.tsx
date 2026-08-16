@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Button, Divider, Popover, Skeleton, Stack, Typography } from '@mui/material';
+import { Box, Button, Divider, Popover, Skeleton, Stack, Typography, useMediaQuery, useTheme } from '@mui/material';
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -29,23 +29,35 @@ export const NotificationPopover: React.FC<NotificationPopoverProps> = ({
   isError,
   onRetry,
 }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   return (
     <Popover
       open={open}
       anchorEl={anchorEl}
       onClose={onClose}
-      anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-      marginThreshold={8}
+      anchorOrigin={{ vertical: 'bottom', horizontal: isMobile ? 'center' : 'right' }}
+      transformOrigin={{ vertical: 'top', horizontal: isMobile ? 'center' : 'right' }}
+      marginThreshold={isMobile ? 16 : 8}
       PaperProps={{
         elevation: 3,
         sx: {
-          width: { xs: 'calc(100vw - 24px)', sm: 380, md: 400 },
+          width: { xs: 'calc(100vw - 32px)', sm: 380, md: 400 },
           mt: 1,
           borderRadius: '14px',
           border: '1px solid #E7E0D0',
           boxShadow: '0 18px 40px -12px rgba(58, 48, 20, 0.25)',
           overflow: 'hidden',
+          '@media (max-width: 599.95px)': {
+            position: 'fixed !important',
+            left: '50% !important',
+            right: 'auto !important',
+            top: '72px !important',
+            bottom: 'auto !important',
+            transform: 'translateX(-50%) !important',
+            mt: 0,
+          },
         },
       }}
     >

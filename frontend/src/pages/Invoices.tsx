@@ -7,11 +7,6 @@ import {
   MenuItem,
   Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
 } from '@mui/material';
@@ -27,8 +22,7 @@ import { INVOICE_STATUSES, INVOICE_STATUS_LABELS } from '../types/billing';
 import type { InvoiceCreatePayload, InvoiceStatus } from '../types/billing';
 import { PageHeader } from '../components/ui/PageHeader';
 import { FilterBar } from '../components/ui/FilterBar';
-import { TableCard } from '../components/ui/TableCard';
-import { TableStateRow } from '../components/ui/TableStateRow';
+import { ResponsiveTable } from '../components/ui/ResponsiveTable';
 import { AppPagination } from '../components/ui/AppPagination';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import type { StatusTone } from '../components/ui/StatusBadge';
@@ -78,7 +72,11 @@ export const Invoices: React.FC = () => {
         crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Invoices' }]}
         actions={
           isStaff && (
-            <Button variant="contained" startIcon={<AddCardIcon />} onClick={() => setDialogOpen(true)}>
+            <Button
+              variant="contained"
+              startIcon={<AddCardIcon />}
+              onClick={() => setDialogOpen(true)}
+            >
               Create Invoice
             </Button>
           )
@@ -129,80 +127,81 @@ export const Invoices: React.FC = () => {
         </Stack>
       </FilterBar>
 
-      <TableCard loading={isFetching && !isLoading}>
-        <Table size="medium">
-          <TableHead>
-            <TableRow>
-              <TableCell>Invoice</TableCell>
-              <TableCell>Customer</TableCell>
-              <TableCell>Order</TableCell>
-              <TableCell>Date</TableCell>
-              <TableCell>Total</TableCell>
-              <TableCell>Paid</TableCell>
-              <TableCell>Balance Due</TableCell>
-              <TableCell>Status</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isLoading ? (
-              <TableStateRow colSpan={8} state="loading" />
-            ) : isError ? (
-              <TableStateRow
-                colSpan={8}
-                state="error"
-                errorMessage={getApiErrorMessage(error)}
-                onRetry={() => refetch()}
+      <ResponsiveTable
+        data={data?.results ?? []}
+        rowKey={(invoice) => invoice.id}
+        onRowClick={(invoice) => navigate(`/invoices/${invoice.id}`)}
+        loading={isLoading}
+        refetching={isFetching && !isLoading}
+        error={isError}
+        errorMessage={getApiErrorMessage(error)}
+        onRetry={() => refetch()}
+        emptyTitle="No invoices found"
+        columns={[
+          {
+            label: 'Invoice',
+            primary: true,
+            render: (invoice) => (
+              <Typography sx={{ fontWeight: 600 }}>{invoice.invoice_number}</Typography>
+            ),
+          },
+          {
+            label: 'Customer',
+            render: (invoice) => (
+              <Typography variant="body2">{invoice.customer.full_name}</Typography>
+            ),
+          },
+          {
+            label: 'Order',
+            render: (invoice) => (
+              <Typography variant="body2">{invoice.order.order_number}</Typography>
+            ),
+          },
+          {
+            label: 'Date',
+            render: (invoice) => (
+              <Typography variant="body2">{formatDate(invoice.invoice_date)}</Typography>
+            ),
+          },
+          {
+            label: 'Total',
+            render: (invoice) => (
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                {formatCurrency(invoice.total_amount)}
+              </Typography>
+            ),
+          },
+          {
+            label: 'Paid',
+            render: (invoice) => (
+              <Typography variant="body2">{formatCurrency(invoice.amount_paid)}</Typography>
+            ),
+          },
+          {
+            label: 'Balance Due',
+            render: (invoice) => (
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: 600,
+                  color: invoice.balance_due > 0 ? '#8F4A00' : '#1F5C3C',
+                }}
+              >
+                {formatCurrency(invoice.balance_due)}
+              </Typography>
+            ),
+          },
+          {
+            label: 'Status',
+            render: (invoice) => (
+              <StatusBadge
+                label={INVOICE_STATUS_LABELS[invoice.status]}
+                tone={STATUS_TONES[invoice.status]}
               />
-            ) : data && data.results.length === 0 ? (
-              <TableStateRow colSpan={8} state="empty" emptyTitle="No invoices found" />
-            ) : (
-              data?.results.map((invoice) => (
-                <TableRow
-                  key={invoice.id}
-                  hover
-                  sx={{ cursor: 'pointer' }}
-                  onClick={() => navigate(`/invoices/${invoice.id}`)}
-                >
-                  <TableCell>
-                    <Typography sx={{ fontWeight: 600 }}>{invoice.invoice_number}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{invoice.customer.full_name}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{invoice.order.order_number}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{formatDate(invoice.invoice_date)}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {formatCurrency(invoice.total_amount)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{formatCurrency(invoice.amount_paid)}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        fontWeight: 600,
-                        color: invoice.balance_due > 0 ? '#8F4A00' : '#1F5C3C',
-                      }}
-                    >
-                      {formatCurrency(invoice.balance_due)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge label={INVOICE_STATUS_LABELS[invoice.status]} tone={STATUS_TONES[invoice.status]} />
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableCard>
+            ),
+          },
+        ]}
+      />
 
       {data && data.count > 0 && (
         <AppPagination page={page} count={data.count} pageSize={PAGE_SIZE} onChange={setPage} />

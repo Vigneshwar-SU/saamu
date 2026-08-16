@@ -172,7 +172,9 @@ const AssignWorkDialog: React.FC<AssignWorkDialogProps> = ({
                     <MenuItem value="">Loading…</MenuItem>
                   ) : orders.length === 0 ? (
                     <MenuItem value="" disabled>
-                      {orderSearch ? 'No unassigned work matches this search' : 'No unassigned work available'}
+                      {orderSearch
+                        ? 'No unassigned work matches this search'
+                        : 'No unassigned work available'}
                     </MenuItem>
                   ) : (
                     orders.map((entry) => (
@@ -220,7 +222,10 @@ const AssignWorkDialog: React.FC<AssignWorkDialogProps> = ({
               </FormControl>
 
               {selectedItem && (
-                <Paper variant="outlined" sx={{ p: 2, borderRadius: '10px', backgroundColor: '#FBF6EA' }}>
+                <Paper
+                  variant="outlined"
+                  sx={{ p: 2, borderRadius: '10px', backgroundColor: '#FBF6EA' }}
+                >
                   <Typography variant="caption" sx={{ color: '#6B6B6B', display: 'block', mb: 1 }}>
                     {selectedItem.garment_type} · {selectedItem.quantity} ordered ·{' '}
                     {selectedItem.remaining_quantity} remaining
@@ -244,8 +249,15 @@ const AssignWorkDialog: React.FC<AssignWorkDialogProps> = ({
           )}
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} color="inherit">
+      <DialogActions
+        sx={{
+          px: { xs: 2, sm: 3 },
+          py: 2,
+          flexDirection: { xs: 'column-reverse', sm: 'row' },
+          gap: 1,
+        }}
+      >
+        <Button onClick={onClose} color="inherit" fullWidth>
           Cancel
         </Button>
         <Button
@@ -253,7 +265,7 @@ const AssignWorkDialog: React.FC<AssignWorkDialogProps> = ({
           variant="contained"
           disabled={isSubmitting}
           startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
-          
+          fullWidth
         >
           Assign Work
         </Button>

@@ -7,11 +7,6 @@ import {
   MenuItem,
   Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
 } from '@mui/material';
@@ -23,15 +18,11 @@ import { getApiErrorMessage } from '../utils/apiErrors';
 import { AddAdvanceDialog } from '../components/AddAdvanceDialog';
 import { useAdvanceList, useCreateAdvance } from '../hooks/useAdvances';
 import { useTailorList } from '../hooks/useTailors';
-import {
-  ADVANCE_STATUS_LABELS,
-  ADVANCE_STATUSES,
-} from '../types/advances';
+import { ADVANCE_STATUS_LABELS, ADVANCE_STATUSES } from '../types/advances';
 import type { AdvancePayload, AdvanceStatus } from '../types/advances';
 import { PageHeader } from '../components/ui/PageHeader';
 import { FilterBar } from '../components/ui/FilterBar';
-import { TableCard } from '../components/ui/TableCard';
-import { TableStateRow } from '../components/ui/TableStateRow';
+import { ResponsiveTable } from '../components/ui/ResponsiveTable';
 import { AppPagination } from '../components/ui/AppPagination';
 import { StatusBadge } from '../components/ui/StatusBadge';
 
@@ -76,7 +67,11 @@ export const Advances: React.FC = () => {
         crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Advances' }]}
         actions={
           isStaff && (
-            <Button variant="contained" startIcon={<AddCardIcon />} onClick={() => setDialogOpen(true)}>
+            <Button
+              variant="contained"
+              startIcon={<AddCardIcon />}
+              onClick={() => setDialogOpen(true)}
+            >
               Add Advance
             </Button>
           )
@@ -135,67 +130,63 @@ export const Advances: React.FC = () => {
         </Stack>
       </FilterBar>
 
-      <TableCard loading={isFetching && !isLoading}>
-        <Table size="medium">
-          <TableHead>
-            <TableRow>
-              <TableCell>Tailor</TableCell>
-              <TableCell>Amount</TableCell>
-              <TableCell>Date</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Notes</TableCell>
-              <TableCell>Recorded By</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isLoading ? (
-              <TableStateRow colSpan={6} state="loading" />
-            ) : isError ? (
-              <TableStateRow
-                colSpan={6}
-                state="error"
-                errorMessage={getApiErrorMessage(error)}
-                onRetry={() => refetch()}
+      <ResponsiveTable
+        data={data?.results ?? []}
+        rowKey={(advance) => advance.id}
+        loading={isLoading}
+        refetching={isFetching && !isLoading}
+        error={isError}
+        errorMessage={getApiErrorMessage(error)}
+        onRetry={() => refetch()}
+        emptyTitle="No advances found"
+        columns={[
+          {
+            label: 'Tailor',
+            primary: true,
+            render: (advance) => (
+              <Box>
+                <Typography sx={{ fontWeight: 600 }}>{advance.tailor.name}</Typography>
+                <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+                  #{advance.tailor.id}
+                </Typography>
+              </Box>
+            ),
+          },
+          {
+            label: 'Amount',
+            render: (advance) => (
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                {formatCurrency(advance.amount)}
+              </Typography>
+            ),
+          },
+          {
+            label: 'Date',
+            render: (advance) => (
+              <Typography variant="body2">{formatDate(advance.advance_date)}</Typography>
+            ),
+          },
+          {
+            label: 'Status',
+            render: (advance) => (
+              <StatusBadge
+                label={ADVANCE_STATUS_LABELS[advance.status]}
+                tone={advance.status === 'OUTSTANDING' ? 'warning' : 'neutral'}
               />
-            ) : data && data.results.length === 0 ? (
-              <TableStateRow colSpan={6} state="empty" emptyTitle="No advances found" />
-            ) : (
-              data?.results.map((advance) => (
-                <TableRow key={advance.id} hover>
-                  <TableCell>
-                    <Typography sx={{ fontWeight: 600 }}>{advance.tailor.name}</Typography>
-                    <Typography variant="caption" sx={{ color: 'text.disabled' }}>
-                      #{advance.tailor.id}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {formatCurrency(advance.amount)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{formatDate(advance.advance_date)}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge
-                      label={ADVANCE_STATUS_LABELS[advance.status]}
-                      tone={advance.status === 'OUTSTANDING' ? 'warning' : 'neutral'}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ maxWidth: 260 }}>
-                      {advance.notes || '-'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{advance.recorded_by_name || '-'}</Typography>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableCard>
+            ),
+          },
+          {
+            label: 'Notes',
+            render: (advance) => <Typography variant="body2">{advance.notes || '-'}</Typography>,
+          },
+          {
+            label: 'Recorded By',
+            render: (advance) => (
+              <Typography variant="body2">{advance.recorded_by_name || '-'}</Typography>
+            ),
+          },
+        ]}
+      />
 
       {data && data.count > 0 && (
         <AppPagination page={page} count={data.count} pageSize={PAGE_SIZE} onChange={setPage} />

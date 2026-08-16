@@ -17,19 +17,31 @@ export const MainLayout: React.FC = () => {
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', backgroundColor: '#FAF6EC' }}>
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh',
+        backgroundColor: '#FAF6EC',
+      }}
+    >
       {/* Top Navigation Bar */}
       <Header onToggleSidebar={handleToggleSidebar} />
 
       <Box sx={{ display: 'flex', flexGrow: 1 }}>
         {/* Left Sidebar */}
-        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} drawerWidth={DRAWER_WIDTH} />
+        <Sidebar
+          open={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          drawerWidth={DRAWER_WIDTH}
+        />
 
         {/* Main Content Area */}
         <Box
           component="main"
           sx={{
             flexGrow: 1,
+            minWidth: 0,
             display: 'flex',
             flexDirection: 'column',
             width: {
@@ -40,10 +52,12 @@ export const MainLayout: React.FC = () => {
               easing: theme.transitions.easing.sharp,
               duration: theme.transitions.duration.enteringScreen,
             }),
-            minHeight: 'calc(100vh - 64px)',
           }}
         >
-          <Box className="page-content" sx={{ p: { xs: 2, sm: 3, md: 4 }, flexGrow: 1 }}>
+          <Box
+            className="page-content"
+            sx={{ p: { xs: 2, sm: 3, md: 4 }, flexGrow: 1, minWidth: 0 }}
+          >
             <PageContainer>
               <Outlet />
             </PageContainer>

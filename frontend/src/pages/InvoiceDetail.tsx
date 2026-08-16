@@ -1,16 +1,5 @@
 import React, { useState } from 'react';
-import {
-  Box,
-  Button,
-  Link,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Typography,
-} from '@mui/material';
+import { Box, Button, Link, Stack, Typography } from '@mui/material';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
@@ -26,8 +15,7 @@ import { INVOICE_STATUS_LABELS, PAYMENT_TYPE_LABELS } from '../types/billing';
 import type { CustomerPaymentPayload } from '../types/billing';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SectionCard } from '../components/ui/SectionCard';
-import { TableCard } from '../components/ui/TableCard';
-import { TableStateRow } from '../components/ui/TableStateRow';
+import { ResponsiveTable } from '../components/ui/ResponsiveTable';
 import { StatCard } from '../components/ui/StatCard';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { ErrorState } from '../components/ui/ErrorState';
@@ -257,125 +245,107 @@ export const InvoiceDetail: React.FC = () => {
       </Box>
 
       <SectionCard title="Line Items" icon={<ReceiptLongIcon />} noPadding>
-        <TableCard sx={{ border: 'none', borderRadius: 0 }}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Garment</TableCell>
-                <TableCell>Code</TableCell>
-                <TableCell>Qty</TableCell>
-                <TableCell>Unit Price</TableCell>
-                <TableCell>Line Total</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {invoice.items.length === 0 ? (
-                <TableStateRow
-                  colSpan={5}
-                  state="empty"
-                  emptyTitle="No line items"
-                  emptyMessage="No line items on this invoice."
-                />
-              ) : (
-                invoice.items.map((item) => (
-                  <TableRow
-                    key={item.id}
-                    sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                  >
-                    <TableCell>
-                      <Typography variant="body2">{item.garment_type}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{item.garment_code}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{item.quantity}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{formatCurrency(item.unit_price)}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {formatCurrency(item.line_total)}
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableCard>
+        <ResponsiveTable
+          size="small"
+          data={invoice.items}
+          rowKey={(item) => item.id}
+          emptyTitle="No line items"
+          emptyMessage="No line items on this invoice."
+          columns={[
+            {
+              label: 'Garment',
+              primary: true,
+              render: (item) => <Typography variant="body2">{item.garment_type}</Typography>,
+            },
+            {
+              label: 'Code',
+              render: (item) => <Typography variant="body2">{item.garment_code}</Typography>,
+            },
+            {
+              label: 'Qty',
+              render: (item) => <Typography variant="body2">{item.quantity}</Typography>,
+            },
+            {
+              label: 'Unit Price',
+              render: (item) => (
+                <Typography variant="body2">{formatCurrency(item.unit_price)}</Typography>
+              ),
+            },
+            {
+              label: 'Line Total',
+              render: (item) => (
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {formatCurrency(item.line_total)}
+                </Typography>
+              ),
+            },
+          ]}
+        />
       </SectionCard>
 
       <SectionCard title="Payment History" icon={<PaymentsIcon />} noPadding>
-        <TableCard sx={{ border: 'none', borderRadius: 0 }}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Date</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Amount</TableCell>
-                <TableCell>Method</TableCell>
-                <TableCell>Reference</TableCell>
-                <TableCell>Notes</TableCell>
-                <TableCell>Recorded By</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {payments.length === 0 ? (
-                <TableStateRow
-                  colSpan={7}
-                  state="empty"
-                  emptyTitle="No payments recorded yet"
-                  emptyMessage="Payments for this invoice will appear here."
+        <ResponsiveTable
+          size="small"
+          data={payments}
+          rowKey={(payment) => payment.id}
+          emptyTitle="No payments recorded yet"
+          emptyMessage="Payments for this invoice will appear here."
+          columns={[
+            {
+              label: 'Date',
+              render: (payment) => (
+                <Typography variant="body2">{formatDate(payment.payment_date)}</Typography>
+              ),
+            },
+            {
+              label: 'Type',
+              render: (payment) => (
+                <StatusBadge
+                  label={PAYMENT_TYPE_LABELS[payment.payment_type]}
+                  tone={PAYMENT_TYPE_TONES[payment.payment_type] ?? 'neutral'}
                 />
-              ) : (
-                payments.map((payment) => (
-                  <TableRow
-                    key={payment.id}
-                    sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                  >
-                    <TableCell>
-                      <Typography variant="body2">{formatDate(payment.payment_date)}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge
-                        label={PAYMENT_TYPE_LABELS[payment.payment_type]}
-                        tone={PAYMENT_TYPE_TONES[payment.payment_type] ?? 'neutral'}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          fontWeight: 600,
-                          color: payment.payment_type === 'REFUND' ? '#8F2F22' : 'inherit',
-                        }}
-                      >
-                        {payment.payment_type === 'REFUND' ? '− ' : ''}
-                        {formatCurrency(payment.amount)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{payment.payment_method_display}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{payment.reference || '-'}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ maxWidth: 220 }}>
-                        {payment.notes || '-'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{payment.recorded_by_name || '-'}</Typography>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableCard>
+              ),
+            },
+            {
+              label: 'Amount',
+              primary: true,
+              render: (payment) => (
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 600,
+                    color: payment.payment_type === 'REFUND' ? '#8F2F22' : 'inherit',
+                  }}
+                >
+                  {payment.payment_type === 'REFUND' ? '− ' : ''}
+                  {formatCurrency(payment.amount)}
+                </Typography>
+              ),
+            },
+            {
+              label: 'Method',
+              render: (payment) => (
+                <Typography variant="body2">{payment.payment_method_display}</Typography>
+              ),
+            },
+            {
+              label: 'Reference',
+              render: (payment) => (
+                <Typography variant="body2">{payment.reference || '-'}</Typography>
+              ),
+            },
+            {
+              label: 'Notes',
+              render: (payment) => <Typography variant="body2">{payment.notes || '-'}</Typography>,
+            },
+            {
+              label: 'Recorded By',
+              render: (payment) => (
+                <Typography variant="body2">{payment.recorded_by_name || '-'}</Typography>
+              ),
+            },
+          ]}
+        />
       </SectionCard>
 
       {canRecord && (

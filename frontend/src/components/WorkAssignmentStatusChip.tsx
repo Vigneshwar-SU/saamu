@@ -1,9 +1,6 @@
 import React from 'react';
 import { Chip } from '@mui/material';
-import {
-  WORK_ASSIGNMENT_STATUS_COLORS,
-  WORK_ASSIGNMENT_STATUS_LABELS,
-} from '../types/tailors';
+import { WORK_ASSIGNMENT_STATUS_COLORS, WORK_ASSIGNMENT_STATUS_LABELS } from '../types/tailors';
 import type { WorkAssignmentStatus } from '../types/tailors';
 
 const WorkAssignmentStatusChip: React.FC<{ status: WorkAssignmentStatus }> = ({ status }) => {

@@ -7,11 +7,6 @@ import {
   MenuItem,
   Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
 } from '@mui/material';
@@ -31,8 +26,7 @@ import {
 import type { ExpenseCategory, ExpensePayload, PaymentMethod } from '../types/finance';
 import { PageHeader } from '../components/ui/PageHeader';
 import { FilterBar } from '../components/ui/FilterBar';
-import { TableCard } from '../components/ui/TableCard';
-import { TableStateRow } from '../components/ui/TableStateRow';
+import { ResponsiveTable } from '../components/ui/ResponsiveTable';
 import { AppPagination } from '../components/ui/AppPagination';
 import { StatCard } from '../components/ui/StatCard';
 import { StatusBadge } from '../components/ui/StatusBadge';
@@ -81,7 +75,11 @@ export const Expenses: React.FC = () => {
         crumbs={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Expenses' }]}
         actions={
           isStaff && (
-            <Button variant="contained" startIcon={<AddCardIcon />} onClick={() => setDialogOpen(true)}>
+            <Button
+              variant="contained"
+              startIcon={<AddCardIcon />}
+              onClick={() => setDialogOpen(true)}
+            >
               Add Expense
             </Button>
           )
@@ -160,9 +158,7 @@ export const Expenses: React.FC = () => {
             <Select
               value={paymentMethodFilter}
               label="Payment Method"
-              onChange={(event) =>
-                setPaymentMethodFilter(event.target.value as PaymentMethod | '')
-              }
+              onChange={(event) => setPaymentMethodFilter(event.target.value as PaymentMethod | '')}
             >
               <MenuItem value="">All methods</MenuItem>
               {PAYMENT_METHODS.map((method) => (
@@ -175,65 +171,61 @@ export const Expenses: React.FC = () => {
         </Stack>
       </FilterBar>
 
-      <TableCard loading={isFetching && !isLoading}>
-        <Table size="medium">
-          <TableHead>
-            <TableRow>
-              <TableCell>Date</TableCell>
-              <TableCell>Category</TableCell>
-              <TableCell>Amount</TableCell>
-              <TableCell>Payment Method</TableCell>
-              <TableCell>Reference</TableCell>
-              <TableCell>Description</TableCell>
-              <TableCell>Recorded By</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isLoading ? (
-              <TableStateRow colSpan={7} state="loading" />
-            ) : isError ? (
-              <TableStateRow
-                colSpan={7}
-                state="error"
-                errorMessage={getApiErrorMessage(error)}
-                onRetry={() => refetch()}
-              />
-            ) : data && data.results.length === 0 ? (
-              <TableStateRow colSpan={7} state="empty" emptyTitle="No expense records found" />
-            ) : (
-              data?.results.map((expense) => (
-                <TableRow key={expense.id} hover>
-                  <TableCell>
-                    <Typography variant="body2">{formatDate(expense.expense_date)}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge label={expense.category_display} tone="neutral" />
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {formatCurrency(expense.amount)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{expense.payment_method_display}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{expense.reference || '-'}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ maxWidth: 260 }}>
-                      {expense.description || '-'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{expense.recorded_by_name || '-'}</Typography>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableCard>
+      <ResponsiveTable
+        data={data?.results ?? []}
+        rowKey={(expense) => expense.id}
+        loading={isLoading}
+        refetching={isFetching && !isLoading}
+        error={isError}
+        errorMessage={getApiErrorMessage(error)}
+        onRetry={() => refetch()}
+        emptyTitle="No expense records found"
+        columns={[
+          {
+            label: 'Date',
+            render: (expense) => (
+              <Typography variant="body2">{formatDate(expense.expense_date)}</Typography>
+            ),
+          },
+          {
+            label: 'Category',
+            render: (expense) => <StatusBadge label={expense.category_display} tone="neutral" />,
+          },
+          {
+            label: 'Amount',
+            primary: true,
+            render: (expense) => (
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                {formatCurrency(expense.amount)}
+              </Typography>
+            ),
+          },
+          {
+            label: 'Payment Method',
+            render: (expense) => (
+              <Typography variant="body2">{expense.payment_method_display}</Typography>
+            ),
+          },
+          {
+            label: 'Reference',
+            render: (expense) => (
+              <Typography variant="body2">{expense.reference || '-'}</Typography>
+            ),
+          },
+          {
+            label: 'Description',
+            render: (expense) => (
+              <Typography variant="body2">{expense.description || '-'}</Typography>
+            ),
+          },
+          {
+            label: 'Recorded By',
+            render: (expense) => (
+              <Typography variant="body2">{expense.recorded_by_name || '-'}</Typography>
+            ),
+          },
+        ]}
+      />
 
       {data && data.count > 0 && (
         <AppPagination page={page} count={data.count} pageSize={PAGE_SIZE} onChange={setPage} />

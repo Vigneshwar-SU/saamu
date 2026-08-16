@@ -38,9 +38,10 @@ DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes", "t")
 
 ALLOWED_HOSTS = [
     host.strip()
-    for host in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+    for host in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,pc6w9n8f-8000.inc1.devtunnels.ms").split(",")
     if host.strip()
 ]
+
 
 # Logging configuration
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -270,7 +271,7 @@ CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
         "CORS_ALLOWED_ORIGINS",
-        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5175,http://127.0.0.1:5175",
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5175,http://127.0.0.1:5175,https://pc6w9n8f-5173.inc1.devtunnels.ms",
     ).split(",")
     if origin.strip()
 ]

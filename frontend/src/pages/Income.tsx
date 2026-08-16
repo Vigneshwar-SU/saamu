@@ -27,9 +27,9 @@ import {
 import type { PaymentMethod, PaymentType } from '../types/finance';
 import { PageHeader } from '../components/ui/PageHeader';
 import { FilterBar } from '../components/ui/FilterBar';
-import { TableCard } from '../components/ui/TableCard';
-import { TableStateRow } from '../components/ui/TableStateRow';
+import { ResponsiveTable } from '../components/ui/ResponsiveTable';
 import { AppPagination } from '../components/ui/AppPagination';
+import { TableStateRow } from '../components/ui/TableStateRow';
 import { StatCard } from '../components/ui/StatCard';
 import { SectionCard } from '../components/ui/SectionCard';
 import { StatusBadge } from '../components/ui/StatusBadge';
@@ -122,9 +122,7 @@ export const Income: React.FC = () => {
             <Select
               value={paymentMethodFilter}
               label="Payment Method"
-              onChange={(event) =>
-                setPaymentMethodFilter(event.target.value as PaymentMethod | '')
-              }
+              onChange={(event) => setPaymentMethodFilter(event.target.value as PaymentMethod | '')}
             >
               <MenuItem value="">All methods</MenuItem>
               {PAYMENT_METHODS.map((method) => (
@@ -152,69 +150,68 @@ export const Income: React.FC = () => {
         </Stack>
       </FilterBar>
 
-      <TableCard loading={isFetching && !isLoading}>
-        <Table size="medium">
-          <TableHead>
-            <TableRow>
-              <TableCell>Date</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell>Method</TableCell>
-              <TableCell>Amount</TableCell>
-              <TableCell>Customer</TableCell>
-              <TableCell>Invoice</TableCell>
-              <TableCell>Recorded By</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isLoading ? (
-              <TableStateRow colSpan={7} state="loading" />
-            ) : isError ? (
-              <TableStateRow
-                colSpan={7}
-                state="error"
-                errorMessage={getApiErrorMessage(error)}
-                onRetry={() => refetch()}
+      <ResponsiveTable
+        data={data?.results ?? []}
+        rowKey={(income) => income.id}
+        loading={isLoading}
+        refetching={isFetching && !isLoading}
+        error={isError}
+        errorMessage={getApiErrorMessage(error)}
+        onRetry={() => refetch()}
+        emptyTitle="No customer payments found"
+        columns={[
+          {
+            label: 'Date',
+            render: (income) => (
+              <Typography variant="body2">{formatDate(income.payment_date)}</Typography>
+            ),
+          },
+          {
+            label: 'Type',
+            render: (income) => (
+              <StatusBadge
+                label={income.payment_type_display}
+                tone={income.payment_type === 'REFUND' ? 'error' : 'success'}
               />
-            ) : data && data.results.length === 0 ? (
-              <TableStateRow colSpan={7} state="empty" emptyTitle="No customer payments found" />
-            ) : (
-              data?.results.map((income) => {
-                const isRefund = income.payment_type === 'REFUND';
-                return (
-                  <TableRow key={income.id} hover>
-                    <TableCell>
-                      <Typography variant="body2">{formatDate(income.payment_date)}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge label={income.payment_type_display} tone={isRefund ? 'error' : 'success'} />
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{income.payment_method_display}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography
-                        variant="body2"
-                        sx={{ fontWeight: 600, color: isRefund ? '#8F2F22' : '#1F5C3C' }}
-                      >
-                        {formatCurrency(income.net_amount)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{income.customer_name}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{income.invoice_number}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{income.recorded_by_name || '-'}</Typography>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-      </TableCard>
+            ),
+          },
+          {
+            label: 'Method',
+            render: (income) => (
+              <Typography variant="body2">{income.payment_method_display}</Typography>
+            ),
+          },
+          {
+            label: 'Amount',
+            primary: true,
+            render: (income) => (
+              <Typography
+                variant="body2"
+                sx={{
+                  fontWeight: 600,
+                  color: income.payment_type === 'REFUND' ? '#8F2F22' : '#1F5C3C',
+                }}
+              >
+                {formatCurrency(income.net_amount)}
+              </Typography>
+            ),
+          },
+          {
+            label: 'Customer',
+            render: (income) => <Typography variant="body2">{income.customer_name}</Typography>,
+          },
+          {
+            label: 'Invoice',
+            render: (income) => <Typography variant="body2">{income.invoice_number}</Typography>,
+          },
+          {
+            label: 'Recorded By',
+            render: (income) => (
+              <Typography variant="body2">{income.recorded_by_name || '-'}</Typography>
+            ),
+          },
+        ]}
+      />
 
       {data && data.count > 0 && (
         <AppPagination page={page} count={data.count} pageSize={PAGE_SIZE} onChange={setPage} />
@@ -238,12 +235,18 @@ export const Income: React.FC = () => {
             </TableHead>
             <TableBody>
               {summary && summary.by_payment_method.length === 0 ? (
-                <TableStateRow colSpan={3} state="empty" emptyTitle="No payments in the selected range" />
+                <TableStateRow
+                  colSpan={3}
+                  state="empty"
+                  emptyTitle="No payments in the selected range"
+                />
               ) : (
                 summary?.by_payment_method.map((row) => (
                   <TableRow key={row.payment_method}>
                     <TableCell>{row.payment_method_display}</TableCell>
-                    <TableCell sx={{ fontWeight: 600, color: row.total < 0 ? '#8F2F22' : '#1F5C3C' }}>
+                    <TableCell
+                      sx={{ fontWeight: 600, color: row.total < 0 ? '#8F2F22' : '#1F5C3C' }}
+                    >
                       {formatCurrency(row.total)}
                     </TableCell>
                     <TableCell>{row.count}</TableCell>
@@ -265,7 +268,11 @@ export const Income: React.FC = () => {
             </TableHead>
             <TableBody>
               {summary && summary.by_payment_type.length === 0 ? (
-                <TableStateRow colSpan={3} state="empty" emptyTitle="No payments in the selected range" />
+                <TableStateRow
+                  colSpan={3}
+                  state="empty"
+                  emptyTitle="No payments in the selected range"
+                />
               ) : (
                 summary?.by_payment_type.map((row) => {
                   const isRefund = row.payment_type === 'REFUND';

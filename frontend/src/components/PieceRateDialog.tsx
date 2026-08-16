@@ -98,7 +98,10 @@ export const PieceRateDialog: React.FC<PieceRateDialogProps> = ({ open, onClose 
     }
     setActionLoading(true);
     try {
-      await updateMutation.mutateAsync({ id: pieceRate.id, payload: { rate_per_piece: rateValue } });
+      await updateMutation.mutateAsync({
+        id: pieceRate.id,
+        payload: { rate_per_piece: rateValue },
+      });
       setEditingId(null);
     } catch (updateError) {
       setActionError(getApiErrorMessage(updateError));
@@ -155,7 +158,9 @@ export const PieceRateDialog: React.FC<PieceRateDialogProps> = ({ open, onClose 
               />
               <Button
                 variant="contained"
-                startIcon={actionLoading ? <CircularProgress size={16} color="inherit" /> : <AddIcon />}
+                startIcon={
+                  actionLoading ? <CircularProgress size={16} color="inherit" /> : <AddIcon />
+                }
                 onClick={handleAdd}
                 disabled={actionLoading}
                 sx={{ minWidth: 120 }}
@@ -228,7 +233,11 @@ export const PieceRateDialog: React.FC<PieceRateDialogProps> = ({ open, onClose 
                       <TableCell align="right">
                         {editingId === pieceRate.id ? (
                           <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                            <Button size="small" color="primary" onClick={() => saveEdit(pieceRate)}>
+                            <Button
+                              size="small"
+                              color="primary"
+                              onClick={() => saveEdit(pieceRate)}
+                            >
                               Save
                             </Button>
                             <Button size="small" color="inherit" onClick={() => setEditingId(null)}>
@@ -242,7 +251,9 @@ export const PieceRateDialog: React.FC<PieceRateDialogProps> = ({ open, onClose 
                                 <EditIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title={pieceRate.is_active ? 'Deactivate rate' : 'Activate rate'}>
+                            <Tooltip
+                              title={pieceRate.is_active ? 'Deactivate rate' : 'Activate rate'}
+                            >
                               <IconButton size="small" onClick={() => toggleActive(pieceRate)}>
                                 {pieceRate.is_active ? (
                                   <BlockIcon fontSize="small" color="error" />

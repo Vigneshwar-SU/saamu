@@ -130,7 +130,12 @@ export const Login: React.FC = () => {
             <Box>
               <Typography
                 variant="h4"
-                sx={{ fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.02em', lineHeight: 1.2 }}
+                sx={{
+                  fontWeight: 800,
+                  color: '#FFFFFF',
+                  letterSpacing: '-0.02em',
+                  lineHeight: 1.2,
+                }}
               >
                 Saamu Tailors
               </Typography>
@@ -240,14 +245,26 @@ export const Login: React.FC = () => {
                 />
 
                 {/* Remember Me & Forgot Password */}
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: 1,
+                  }}
+                >
                   <Controller
                     name="rememberMe"
                     control={control}
                     render={({ field }) => (
                       <FormControlLabel
                         control={<Checkbox {...field} checked={field.value} color="primary" />}
-                        label={<Typography variant="body2" sx={{ color: 'text.secondary' }}>Remember Me</Typography>}
+                        label={
+                          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                            Remember Me
+                          </Typography>
+                        }
                       />
                     )}
                   />
@@ -278,7 +295,9 @@ export const Login: React.FC = () => {
                   fullWidth
                   size="large"
                   disabled={isSubmitting}
-                  startIcon={isSubmitting ? <CircularProgress size={18} color="inherit" /> : undefined}
+                  startIcon={
+                    isSubmitting ? <CircularProgress size={18} color="inherit" /> : undefined
+                  }
                 >
                   {isSubmitting ? 'Signing In...' : 'Sign In'}
                 </Button>

@@ -13,7 +13,8 @@ export const Footer: React.FC = () => {
       component="footer"
       sx={{
         py: 2,
-        px: 3,
+        px: { xs: 2, sm: 3 },
+        pb: { xs: 3, sm: 2 },
         mt: 'auto',
         backgroundColor: '#FFFFFF',
         borderTop: '1px solid #E7E0D0',
@@ -27,8 +28,8 @@ export const Footer: React.FC = () => {
           spacing={1}
         >
           <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-            © {currentYear} <strong style={{ color: '#242424' }}>Saamu Tailors</strong>. Enterprise Tailoring
-            Management System. All rights reserved.
+            © {currentYear} <strong style={{ color: '#242424' }}>Saamu Tailors</strong>. Enterprise
+            Tailoring Management System. All rights reserved.
           </Typography>
 
           <Stack direction="row" spacing={2} alignItems="center">
@@ -38,8 +39,8 @@ export const Footer: React.FC = () => {
                 health
                   ? `Backend connected: ${health.application} v${health.version}`
                   : isError
-                  ? 'Backend unreachable or PostgreSQL offline'
-                  : 'Checking backend status...'
+                    ? 'Backend unreachable or PostgreSQL offline'
+                    : 'Checking backend status...'
               }
             >
               <Stack direction="row" spacing={0.75} alignItems="center">
@@ -54,15 +55,16 @@ export const Footer: React.FC = () => {
                   variant="caption"
                   sx={{
                     fontWeight: 600,
-                    color: health?.status === 'ok' ? '#1F5C3C' : isError ? '#8F2F22' : 'text.secondary',
+                    color:
+                      health?.status === 'ok' ? '#1F5C3C' : isError ? '#8F2F22' : 'text.secondary',
                     fontSize: '0.75rem',
                   }}
                 >
                   {isLoading
                     ? 'Connecting API...'
                     : health?.status === 'ok'
-                    ? 'Backend API: Online'
-                    : 'Backend API: Offline'}
+                      ? 'Backend API: Online'
+                      : 'Backend API: Offline'}
                 </Typography>
               </Stack>
             </Tooltip>

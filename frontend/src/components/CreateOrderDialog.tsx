@@ -65,7 +65,11 @@ const emptyItem = (): ItemDraft => ({
   notes: '',
 });
 
-export const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onClose, onCreated }) => {
+export const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({
+  open,
+  onClose,
+  onCreated,
+}) => {
   const createMutation = useCreateOrder();
 
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -124,9 +128,7 @@ export const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onCl
 
   const handleCustomerChange = (customer: Customer | null) => {
     setSelectedCustomer(customer);
-    setItems((current) =>
-      current.map((item) => ({ ...item, measurement_id: null }))
-    );
+    setItems((current) => current.map((item) => ({ ...item, measurement_id: null })));
   };
 
   const handleCustomerInputChange = (
@@ -155,7 +157,9 @@ export const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onCl
   const addItem = () => setItems((current) => [...current, emptyItem()]);
 
   const removeItem = (key: number) => {
-    setItems((current) => (current.length > 1 ? current.filter((item) => item.key !== key) : current));
+    setItems((current) =>
+      current.length > 1 ? current.filter((item) => item.key !== key) : current
+    );
   };
 
   const validate = (): OrderItemPayload[] | null => {
@@ -280,7 +284,12 @@ export const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onCl
           </Stack>
 
           <Box>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+            <Stack
+              direction="row"
+              justifyContent="space-between"
+              alignItems="center"
+              sx={{ mb: 1.5 }}
+            >
               <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#7A5E0C' }}>
                 Garment Items
               </Typography>
@@ -307,7 +316,12 @@ export const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onCl
                         backgroundColor: '#FBF6EA',
                       }}
                     >
-                      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="center"
+                        sx={{ mb: 1.5 }}
+                      >
                         <Typography variant="body2" sx={{ fontWeight: 700, color: '#6B6B6B' }}>
                           Item {index + 1}
                         </Typography>
@@ -411,16 +425,25 @@ export const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({ open, onCl
           </Box>
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} color="inherit">
+      <DialogActions
+        sx={{
+          px: { xs: 2, sm: 3 },
+          py: 2,
+          flexDirection: { xs: 'column-reverse', sm: 'row' },
+          gap: 1,
+        }}
+      >
+        <Button onClick={onClose} color="inherit" fullWidth>
           Cancel
         </Button>
         <Button
           onClick={handleSubmit}
           variant="contained"
           disabled={createMutation.isPending || !customerId}
-          startIcon={createMutation.isPending ? <CircularProgress size={16} color="inherit" /> : undefined}
-          
+          startIcon={
+            createMutation.isPending ? <CircularProgress size={16} color="inherit" /> : undefined
+          }
+          fullWidth
         >
           Create Order
         </Button>

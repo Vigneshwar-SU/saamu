@@ -8,7 +8,12 @@ interface AppPaginationProps {
   onChange: (page: number) => void;
 }
 
-export const AppPagination: React.FC<AppPaginationProps> = ({ page, count, pageSize, onChange }) => {
+export const AppPagination: React.FC<AppPaginationProps> = ({
+  page,
+  count,
+  pageSize,
+  onChange,
+}) => {
   if (count === 0) return null;
 
   const totalPages = Math.max(1, Math.ceil(count / pageSize));
@@ -20,12 +25,15 @@ export const AppPagination: React.FC<AppPaginationProps> = ({ page, count, pageS
       sx={{
         display: 'flex',
         flexWrap: 'wrap',
-        justifyContent: 'space-between',
+        justifyContent: { xs: 'center', sm: 'space-between' },
         alignItems: 'center',
         gap: 1.5,
       }}
     >
-      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+      <Typography
+        variant="body2"
+        sx={{ color: 'text.secondary', textAlign: { xs: 'center', sm: 'left' } }}
+      >
         Showing {start}–{end} of {count}
       </Typography>
       <Pagination
@@ -34,6 +42,7 @@ export const AppPagination: React.FC<AppPaginationProps> = ({ page, count, pageS
         onChange={(_event, value) => onChange(value)}
         color="primary"
         size="small"
+        siblingCount={0}
       />
     </Box>
   );

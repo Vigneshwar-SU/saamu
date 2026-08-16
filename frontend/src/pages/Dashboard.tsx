@@ -297,7 +297,11 @@ export const Dashboard: React.FC = () => {
                   </TableHead>
                   <TableBody>
                     {data?.recent_payments.length === 0 ? (
-                      <TableStateRow colSpan={3} state="empty" emptyTitle="No customer payments yet" />
+                      <TableStateRow
+                        colSpan={3}
+                        state="empty"
+                        emptyTitle="No customer payments yet"
+                      />
                     ) : (
                       data?.recent_payments.map((payment) => {
                         const isRefund = payment.payment_type === 'REFUND';
@@ -315,7 +319,9 @@ export const Dashboard: React.FC = () => {
                                 {payment.payment_type_display}
                               </Typography>
                             </TableCell>
-                            <TableCell sx={{ fontWeight: 600, color: isRefund ? '#8F2F22' : '#1F5C3C' }}>
+                            <TableCell
+                              sx={{ fontWeight: 600, color: isRefund ? '#8F2F22' : '#1F5C3C' }}
+                            >
                               {formatCurrency(payment.net_amount)}
                             </TableCell>
                           </TableRow>
@@ -339,7 +345,11 @@ export const Dashboard: React.FC = () => {
                   </TableHead>
                   <TableBody>
                     {data?.recent_expenses.length === 0 ? (
-                      <TableStateRow colSpan={3} state="empty" emptyTitle="No expenses recorded yet" />
+                      <TableStateRow
+                        colSpan={3}
+                        state="empty"
+                        emptyTitle="No expenses recorded yet"
+                      />
                     ) : (
                       data?.recent_expenses.map((expense) => (
                         <TableRow key={expense.id}>

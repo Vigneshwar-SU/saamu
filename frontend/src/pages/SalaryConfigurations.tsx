@@ -8,11 +8,6 @@ import {
   MenuItem,
   Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   Tooltip,
   Typography,
 } from '@mui/material';
@@ -33,8 +28,7 @@ import { getApiErrorMessage } from '../utils/apiErrors';
 import { SalaryConfigurationDialog } from '../components/SalaryConfigurationDialog';
 import { PageHeader } from '../components/ui/PageHeader';
 import { FilterBar } from '../components/ui/FilterBar';
-import { TableCard } from '../components/ui/TableCard';
-import { TableStateRow } from '../components/ui/TableStateRow';
+import { ResponsiveTable } from '../components/ui/ResponsiveTable';
 import { AppPagination } from '../components/ui/AppPagination';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { SALARY_MODEL_LABELS, SALARY_MODELS } from '../types/payroll';
@@ -63,8 +57,7 @@ export const SalaryConfigurations: React.FC = () => {
     page: page > 1 ? page : undefined,
     tailor: tailorFilter || undefined,
     salary_model: modelFilter || undefined,
-    is_active:
-      activeFilter === 'true' ? true : activeFilter === 'false' ? false : undefined,
+    is_active: activeFilter === 'true' ? true : activeFilter === 'false' ? false : undefined,
   });
 
   const totalPages = data ? Math.max(1, Math.ceil(data.count / PAGE_SIZE)) : 1;
@@ -193,114 +186,107 @@ export const SalaryConfigurations: React.FC = () => {
         </Stack>
       </FilterBar>
 
-      <TableCard>
-        <Table size="medium">
-          <TableHead>
-            <TableRow>
-              <TableCell>Tailor</TableCell>
-              <TableCell>Salary Model</TableCell>
-              <TableCell>Fixed Salary</TableCell>
-              <TableCell>Effective From</TableCell>
-              <TableCell>Effective To</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Created By</TableCell>
-              {isStaff && (
-                <TableCell align="right">Actions</TableCell>
-              )}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {isLoading ? (
-              <TableStateRow colSpan={isStaff ? 8 : 7} state="loading" />
-            ) : isError ? (
-              <TableStateRow
-                colSpan={isStaff ? 8 : 7}
-                state="error"
-                errorMessage={getApiErrorMessage(error)}
-                onRetry={() => refetch()}
+      <ResponsiveTable
+        data={configurations}
+        rowKey={(config) => config.id}
+        loading={isLoading}
+        refetching={isFetching && !isLoading}
+        error={isError}
+        errorMessage={getApiErrorMessage(error)}
+        onRetry={() => refetch()}
+        emptyTitle="No salary configurations found"
+        columns={[
+          {
+            label: 'Tailor',
+            primary: true,
+            render: (config) => (
+              <Box>
+                <Typography sx={{ fontWeight: 600 }}>{config.tailor.name}</Typography>
+                <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+                  #{config.tailor.id}
+                </Typography>
+              </Box>
+            ),
+          },
+          {
+            label: 'Salary Model',
+            render: (config) => (
+              <Typography variant="body2">{config.salary_model_display}</Typography>
+            ),
+          },
+          {
+            label: 'Fixed Salary',
+            render: (config) => (
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                {config.salary_model === 'PER_GARMENT'
+                  ? '—'
+                  : formatCurrency(config.fixed_salary_amount)}
+              </Typography>
+            ),
+          },
+          {
+            label: 'Effective From',
+            render: (config) => (
+              <Typography variant="body2">{formatDate(config.effective_from)}</Typography>
+            ),
+          },
+          {
+            label: 'Effective To',
+            render: (config) => (
+              <Typography variant="body2">
+                {config.effective_to ? formatDate(config.effective_to) : 'Open-ended'}
+              </Typography>
+            ),
+          },
+          {
+            label: 'Status',
+            render: (config) => (
+              <StatusBadge
+                label={config.is_active ? 'Active' : 'Inactive'}
+                tone={config.is_active ? 'success' : 'neutral'}
               />
-            ) : configurations.length === 0 ? (
-              <TableStateRow
-                colSpan={isStaff ? 8 : 7}
-                state="empty"
-                emptyTitle="No salary configurations found"
-              />
-            ) : (
-              configurations.map((config) => (
-                <TableRow
-                  key={config.id}
-                  hover
-                  sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                >
-                  <TableCell>
-                    <Typography sx={{ fontWeight: 600 }}>{config.tailor.name}</Typography>
-                    <Typography variant="caption" sx={{ color: 'text.disabled' }}>
-                      #{config.tailor.id}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{config.salary_model_display}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {config.salary_model === 'PER_GARMENT'
-                        ? '—'
-                        : formatCurrency(config.fixed_salary_amount)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{formatDate(config.effective_from)}</Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {config.effective_to ? formatDate(config.effective_to) : 'Open-ended'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge
-                      label={config.is_active ? 'Active' : 'Inactive'}
-                      tone={config.is_active ? 'success' : 'neutral'}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">{config.created_by_name || '-'}</Typography>
-                  </TableCell>
-                  {isStaff && (
-                    <TableCell align="right">
-                      <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                        <Tooltip title="Edit configuration">
-                          <Button
-                            size="small"
-                            startIcon={<EditIcon fontSize="small" />}
-                            onClick={() => handleEdit(config)}
-                          >
-                            Edit
-                          </Button>
-                        </Tooltip>
-                        <Tooltip title={config.is_active ? 'Deactivate' : 'Activate'}>
-                          <Button
-                            size="small"
-                            startIcon={
-                              config.is_active ? (
-                                <BlockIcon fontSize="small" color="error" />
-                              ) : (
-                                <CheckCircleIcon fontSize="small" color="success" />
-                              )
-                            }
-                            onClick={() => handleToggleActive(config)}
-                          >
-                            {config.is_active ? 'Deactivate' : 'Activate'}
-                          </Button>
-                        </Tooltip>
-                      </Stack>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableCard>
+            ),
+          },
+          {
+            label: 'Created By',
+            render: (config) => (
+              <Typography variant="body2">{config.created_by_name || '-'}</Typography>
+            ),
+          },
+        ]}
+        actions={
+          isStaff
+            ? (config) => (
+                <Stack direction="row" spacing={0.5} flexWrap="wrap">
+                  <Tooltip title="Edit configuration">
+                    <Button
+                      size="small"
+                      startIcon={<EditIcon fontSize="small" />}
+                      onClick={() => handleEdit(config)}
+                    >
+                      Edit
+                    </Button>
+                  </Tooltip>
+                  <Tooltip title={config.is_active ? 'Deactivate' : 'Activate'}>
+                    <Button
+                      size="small"
+                      startIcon={
+                        config.is_active ? (
+                          <BlockIcon fontSize="small" color="error" />
+                        ) : (
+                          <CheckCircleIcon fontSize="small" color="success" />
+                        )
+                      }
+                      onClick={() => handleToggleActive(config)}
+                    >
+                      {config.is_active ? 'Deactivate' : 'Activate'}
+                    </Button>
+                  </Tooltip>
+                </Stack>
+              )
+            : undefined
+        }
+      />
 
       {data && data.count > 0 && (
         <AppPagination page={page} count={data.count} pageSize={PAGE_SIZE} onChange={setPage} />

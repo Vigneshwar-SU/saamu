@@ -127,7 +127,12 @@ export const ResetPassword: React.FC = () => {
             <Box>
               <Typography
                 variant="h4"
-                sx={{ fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.02em', lineHeight: 1.2 }}
+                sx={{
+                  fontWeight: 800,
+                  color: '#FFFFFF',
+                  letterSpacing: '-0.02em',
+                  lineHeight: 1.2,
+                }}
               >
                 Saamu Tailors
               </Typography>
@@ -144,8 +149,8 @@ export const ResetPassword: React.FC = () => {
                   Password Reset Successful
                 </Typography>
                 <Alert severity="success" sx={{ borderRadius: '10px' }}>
-                  Your password has been reset successfully. You can now sign in
-                  with your new password.
+                  Your password has been reset successfully. You can now sign in with your new
+                  password.
                 </Alert>
                 <Button
                   variant="contained"
@@ -162,8 +167,8 @@ export const ResetPassword: React.FC = () => {
                   Reset Link Invalid
                 </Typography>
                 <Alert severity="error" sx={{ borderRadius: '10px' }}>
-                  This password reset link is invalid or has expired. Please
-                  request a new password reset link.
+                  This password reset link is invalid or has expired. Please request a new password
+                  reset link.
                 </Alert>
                 <Button
                   variant="contained"

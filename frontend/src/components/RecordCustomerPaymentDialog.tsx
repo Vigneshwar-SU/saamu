@@ -191,7 +191,14 @@ export const RecordCustomerPaymentDialog: React.FC<RecordCustomerPaymentDialogPr
         <Stack spacing={2.5} sx={{ mt: 0.5 }}>
           {submitError && <Alert severity="error">{submitError}</Alert>}
 
-          <Paper sx={{ p: 2, borderRadius: '12px', border: '1px solid #E7E0D0', backgroundColor: '#FBF6EA' }}>
+          <Paper
+            sx={{
+              p: 2,
+              borderRadius: '12px',
+              border: '1px solid #E7E0D0',
+              backgroundColor: '#FBF6EA',
+            }}
+          >
             <Stack spacing={1}>
               <InvoiceRow label="Invoice Number" value={invoice.invoice_number} />
               <InvoiceRow label="Invoice Total" value={formatCurrency(invoice.total_amount)} />
@@ -208,7 +215,12 @@ export const RecordCustomerPaymentDialog: React.FC<RecordCustomerPaymentDialogPr
             name="payment_type"
             control={control}
             render={({ field }) => (
-              <FormControl fullWidth size="small" error={!!errors.payment_type} disabled={refundMode}>
+              <FormControl
+                fullWidth
+                size="small"
+                error={!!errors.payment_type}
+                disabled={refundMode}
+              >
                 <InputLabel>Payment Type *</InputLabel>
                 <Select
                   {...field}
@@ -304,11 +316,7 @@ export const RecordCustomerPaymentDialog: React.FC<RecordCustomerPaymentDialogPr
                     label="Original Payment (optional)"
                     value={field.value}
                     onChange={(event) =>
-                      field.onChange(
-                        event.target.value === ''
-                          ? ''
-                          : Number(event.target.value)
-                      )
+                      field.onChange(event.target.value === '' ? '' : Number(event.target.value))
                     }
                   >
                     <MenuItem value="">— None —</MenuItem>
@@ -370,8 +378,15 @@ export const RecordCustomerPaymentDialog: React.FC<RecordCustomerPaymentDialogPr
           )}
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} color="inherit">
+      <DialogActions
+        sx={{
+          px: { xs: 2, sm: 3 },
+          py: 2,
+          flexDirection: { xs: 'column-reverse', sm: 'row' },
+          gap: 1,
+        }}
+      >
+        <Button onClick={onClose} color="inherit" fullWidth>
           Cancel
         </Button>
         <Button
@@ -380,6 +395,7 @@ export const RecordCustomerPaymentDialog: React.FC<RecordCustomerPaymentDialogPr
           color={refundMode ? 'error' : 'primary'}
           disabled={isSubmitting}
           startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
+          fullWidth
         >
           {refundMode ? 'Record Refund' : settleInFull ? 'Settle in Full' : 'Record Payment'}
         </Button>
