@@ -298,6 +298,20 @@ def build_order_communication(order, message_type):
 # ---------------------------------------------------------------------------
 
 
+def _payment_lines(summary):
+    """Amount-paid / balance lines for a message.
+
+    A zero outstanding balance is never shown as ``Balance: ₹0.00``; the
+    customer is told the order is fully paid instead.
+    """
+    lines = [f"Amount Paid: {format_inr(summary['total_paid'])}"]
+    if summary["outstanding_balance"] <= 0:
+        lines.append("Payment Status: Fully Paid")
+    else:
+        lines.append(f"Balance: {format_inr(summary['outstanding_balance'])}")
+    return lines
+
+
 def _build_order_received(order, summary, shop):
     lines = [
         f"Hello {order.customer.full_name},",
@@ -313,8 +327,7 @@ def _build_order_received(order, summary, shop):
     if items_summary:
         lines.append(f"Items: {items_summary}")
     lines.append(f"Total: {format_inr(summary['order_total'])}")
-    lines.append(f"Amount Paid: {format_inr(summary['total_paid'])}")
-    lines.append(f"Balance: {format_inr(summary['outstanding_balance'])}")
+    lines.extend(_payment_lines(summary))
     if order.expected_delivery_date:
         lines.append(f"Expected Delivery: {_format_date(order.expected_delivery_date)}")
     lines.extend(["", "We will update you as your order progresses.", ""])
@@ -335,8 +348,7 @@ def _build_order_in_progress(order, summary, shop):
     if items_summary:
         lines.append(f"Items: {items_summary}")
     lines.append(f"Total: {format_inr(summary['order_total'])}")
-    lines.append(f"Amount Paid: {format_inr(summary['total_paid'])}")
-    lines.append(f"Balance: {format_inr(summary['outstanding_balance'])}")
+    lines.extend(_payment_lines(summary))
     if order.expected_delivery_date:
         lines.append(f"Expected Delivery: {_format_date(order.expected_delivery_date)}")
     lines.extend(["", "Your order is currently being prepared.", ""])

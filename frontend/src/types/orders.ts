@@ -129,3 +129,27 @@ export interface OrderStatusChangeResponse {
   message: string;
   order: Order;
 }
+
+export interface OrderWorkProgressItem {
+  order_item_id: number;
+  garment_type: string;
+  garment_label: string;
+  quantity: number;
+  assigned_quantity: number;
+  completed_quantity: number;
+  remaining: number;
+}
+
+export interface OrderWorkProgress {
+  total_required: number;
+  total_assigned: number;
+  total_completed: number;
+  remaining_to_complete: number;
+  all_work_completed: boolean;
+  items: OrderWorkProgressItem[];
+}
+
+export interface OrderWorkProgressResponse {
+  success: boolean;
+  data: OrderWorkProgress;
+}

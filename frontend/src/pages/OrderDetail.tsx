@@ -37,7 +37,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
 import { formatCurrency, formatDate, formatPieces } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiErrors';
-import { useChangeOrderStatus, useOrder, useUpdateOrder } from '../hooks/useOrders';
+import {
+  useChangeOrderStatus,
+  useOrder,
+  useOrderWorkProgress,
+  useUpdateOrder,
+} from '../hooks/useOrders';
 import { useCreateOrderInvoice, useInvoiceList } from '../hooks/useInvoices';
 import {
   useChangeWorkAssignmentStatus,
@@ -64,7 +69,13 @@ import {
   ORDER_STATUS_LABELS,
   TERMINAL_ORDER_STATUSES,
 } from '../types/orders';
-import type { Order, OrderItem, OrderStatus, OrderUpdatePayload } from '../types/orders';
+import type {
+  Order,
+  OrderItem,
+  OrderStatus,
+  OrderUpdatePayload,
+  OrderWorkProgress,
+} from '../types/orders';
 import { INVOICE_STATUS_LABELS } from '../types/billing';
 import type { InvoiceStatus } from '../types/billing';
 import { NEXT_ASSIGNMENT_STATUS, WORK_ASSIGNMENT_STATUS_LABELS } from '../types/tailors';
@@ -236,6 +247,7 @@ export const OrderDetail: React.FC = () => {
   const { data: order, isLoading, isError, error, refetch } = useOrder(orderId);
   const updateMutation = useUpdateOrder(orderId);
   const statusMutation = useChangeOrderStatus(orderId);
+  const workProgressMutation = useOrderWorkProgress();
 
   const validOrderId = Number.isFinite(orderId) && orderId > 0 ? orderId : 0;
   const { data: orderInvoicesData } = useInvoiceList({ order: validOrderId }, validOrderId > 0);
@@ -257,6 +269,9 @@ export const OrderDetail: React.FC = () => {
   const [selectedAssignment, setSelectedAssignment] = useState<WorkAssignment | null>(null);
   const [progressOpen, setProgressOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
+  const [readyConfirmOpen, setReadyConfirmOpen] = useState(false);
+  const [readyBlockedOpen, setReadyBlockedOpen] = useState(false);
+  const [readyProgress, setReadyProgress] = useState<OrderWorkProgress | null>(null);
 
   const assignments = useMemo(() => assignmentsData?.results ?? [], [assignmentsData]);
 
@@ -277,8 +292,33 @@ export const OrderDetail: React.FC = () => {
   const handleAdvance = async () => {
     if (!order || !nextStatus) return;
     setActionError(null);
+    if (nextStatus === 'READY') {
+      try {
+        const progress = await workProgressMutation.mutateAsync(order.id);
+        setReadyProgress(progress);
+        if (progress.all_work_completed) {
+          setReadyConfirmOpen(true);
+        } else {
+          setReadyBlockedOpen(true);
+        }
+      } catch (progressError) {
+        setActionError(getApiErrorMessage(progressError));
+      }
+      return;
+    }
     try {
       await statusMutation.mutateAsync(nextStatus);
+    } catch (transitionError) {
+      setActionError(getApiErrorMessage(transitionError));
+    }
+  };
+
+  const handleMoveToReady = async () => {
+    if (!order) return;
+    setActionError(null);
+    try {
+      await statusMutation.mutateAsync('READY');
+      setReadyConfirmOpen(false);
     } catch (transitionError) {
       setActionError(getApiErrorMessage(transitionError));
     }
@@ -336,13 +376,24 @@ export const OrderDetail: React.FC = () => {
             />
             {isStaff && !isTerminal && (
               <>
-                <Button variant="outlined" startIcon={<EditIcon />} onClick={() => setEditOpen(true)}>
+                <Button
+                  variant="outlined"
+                  startIcon={<EditIcon />}
+                  onClick={() => setEditOpen(true)}
+                >
                   Edit
                 </Button>
                 {nextStatus && (
                   <Button
                     variant="contained"
-                    startIcon={nextStatus === 'COLLECTED' ? <CheckCircleIcon /> : undefined}
+                    startIcon={
+                      nextStatus === 'READY' && workProgressMutation.isPending ? (
+                        <CircularProgress size={16} color="inherit" />
+                      ) : nextStatus === 'COLLECTED' ? (
+                        <CheckCircleIcon />
+                      ) : undefined
+                    }
+                    disabled={nextStatus === 'READY' && workProgressMutation.isPending}
                     onClick={handleAdvance}
                   >
                     Move to {ORDER_STATUS_LABELS[nextStatus]}
@@ -518,9 +569,7 @@ export const OrderDetail: React.FC = () => {
                         sx={{ fontWeight: 600 }}
                       />
                     </TableCell>
-                    <TableCell align="right">
-                      {formatCurrency(Number(item.unit_price))}
-                    </TableCell>
+                    <TableCell align="right">{formatCurrency(Number(item.unit_price))}</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 700 }}>
                       {formatCurrency(Number(item.line_total))}
                     </TableCell>
@@ -779,6 +828,79 @@ export const OrderDetail: React.FC = () => {
         onConfirm={handleCancel}
         onCancel={() => setCancelOpen(false)}
       />
+
+      <ConfirmDialog
+        open={readyConfirmOpen}
+        title="Mark order as Ready"
+        message={`All work for order ${order.order_number} is reported complete. Mark it Ready for collection?`}
+        confirmLabel="Mark Ready"
+        loading={statusMutation.isPending}
+        onConfirm={handleMoveToReady}
+        onCancel={() => setReadyConfirmOpen(false)}
+      />
+
+      <Dialog
+        open={readyBlockedOpen}
+        onClose={() => setReadyBlockedOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Work not yet completed</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ mt: 0.5 }}>
+            <Alert severity="warning">
+              All assigned work must be completed before this order can be marked ready. Report
+              completion on the Work Assignments table below, then try again.
+            </Alert>
+            {readyProgress && (
+              <TableContainer>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow sx={{ backgroundColor: '#FBF6EA' }}>
+                      <TableCell sx={{ fontWeight: 700 }}>Garment</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700 }}>
+                        Required
+                      </TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700 }}>
+                        Completed
+                      </TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700 }}>
+                        Remaining
+                      </TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {readyProgress.items.map((item) => (
+                      <TableRow key={item.order_item_id}>
+                        <TableCell sx={{ fontWeight: 600 }}>{item.garment_label}</TableCell>
+                        <TableCell align="center">{formatPieces(item.quantity)}</TableCell>
+                        <TableCell align="center">
+                          {formatPieces(item.completed_quantity)}
+                        </TableCell>
+                        <TableCell align="center">
+                          <Typography
+                            sx={{
+                              fontWeight: 600,
+                              color: item.remaining > 0 ? '#8F4A00' : '#1F5C3C',
+                            }}
+                          >
+                            {formatPieces(item.remaining)}
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={() => setReadyBlockedOpen(false)} variant="contained">
+            OK
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <EditOrderDialog
         open={editOpen}

@@ -1,5 +1,9 @@
 """Order status lifecycle tests: valid transitions, invalid transitions,
-terminal-state protection, cancellation, collected_at and status history."""
+terminal-state protection, cancellation, collected_at and status history.
+
+Since CUTTING -> STITCHING now requires every piece to be assigned to a tailor,
+the "full chain" tests assign the work before requesting STITCHING.
+"""
 
 import pytest
 
@@ -12,6 +16,8 @@ from apps.orders.tests.helpers import (
     order_item_payload,
     order_list_url,
 )
+from apps.tailors.models import WorkAssignment
+from apps.tailors.tests.helpers import create_piece_rate, create_tailor
 
 pytestmark = pytest.mark.django_db
 
@@ -55,6 +61,34 @@ def _transition(client, staff, order_id, status):
     )
 
 
+def _assign_all_work(client, staff, order_id):
+    """Assign every ordered piece to a tailor so the order is stitching-ready."""
+    order = Order.objects.get(pk=order_id)
+    tailor = create_tailor("Stitching Tailor")
+    for item in order.items.all():
+        create_piece_rate(garment_type=item.garment_type)
+        response = client.post(
+            "/api/v1/work-assignments/",
+            {
+                "tailor": tailor.id,
+                "order": order.id,
+                "order_item": item.id,
+                "assigned_quantity": item.quantity,
+            },
+            content_type="application/json",
+            **_auth(staff),
+        )
+        assert response.status_code == 201, response.json()
+
+
+def _complete_all_work(order_id):
+    """Report every assigned piece as complete so the order is ready-eligible."""
+    for assignment in WorkAssignment.objects.filter(order_item__order_id=order_id):
+        assignment.completed_quantity = assignment.assigned_quantity
+        assignment.status = WorkAssignment.Status.COMPLETED
+        assignment.save(update_fields=["completed_quantity", "status"])
+
+
 def test_create_records_initial_new_history(client, staff, customer):
     order = _create_order(client, staff, customer)
     history = OrderStatusHistory.objects.filter(order_id=order["id"])
@@ -67,7 +101,10 @@ def test_create_records_initial_new_history(client, staff, customer):
 
 def test_full_valid_chain(client, staff, customer):
     order = _create_order(client, staff, customer)
-    chain = ["CUTTING", "STITCHING", "READY", "COLLECTED"]
+    _transition(client, staff, order["id"], "CUTTING")
+    _assign_all_work(client, staff, order["id"])
+    _complete_all_work(order["id"])
+    chain = ["STITCHING", "READY", "COLLECTED"]
     for target in chain:
         response = _transition(client, staff, order["id"], target)
         assert response.status_code == 200, response.json()
@@ -82,7 +119,10 @@ def test_full_valid_chain(client, staff, customer):
 
 def test_history_records_every_transition(client, staff, customer):
     order = _create_order(client, staff, customer)
-    for target in ["CUTTING", "STITCHING", "READY", "COLLECTED"]:
+    _transition(client, staff, order["id"], "CUTTING")
+    _assign_all_work(client, staff, order["id"])
+    _complete_all_work(order["id"])
+    for target in ["STITCHING", "READY", "COLLECTED"]:
         _transition(client, staff, order["id"], target)
     history = OrderStatusHistory.objects.filter(order_id=order["id"]).order_by(
         "changed_at", "id"
@@ -123,7 +163,10 @@ def test_cancellation_from_workflow_states(client, staff, customer):
 
 def test_cannot_transition_from_collected(client, staff, customer):
     order = _create_order(client, staff, customer)
-    for target in ["CUTTING", "STITCHING", "READY", "COLLECTED"]:
+    _transition(client, staff, order["id"], "CUTTING")
+    _assign_all_work(client, staff, order["id"])
+    _complete_all_work(order["id"])
+    for target in ["STITCHING", "READY", "COLLECTED"]:
         _transition(client, staff, order["id"], target)
     response = _transition(client, staff, order["id"], "READY")
     assert response.status_code == 400

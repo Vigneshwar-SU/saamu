@@ -21,15 +21,33 @@ from rest_framework.response import Response
 
 from apps.authentication.permissions import IsOwnerOrStaff, IsStaffRole
 from apps.common.pagination import SaamuPageNumberPagination
-from apps.orders.models import Order, OrderStatus, OrderStatusHistory
+from apps.orders.models import (
+    ALLOWED_TRANSITIONS,
+    Order,
+    OrderStatus,
+    OrderStatusHistory,
+)
 from apps.orders.serializers import (
+    MoveToStitchingSerializer,
     OrderCreateSerializer,
     OrderSerializer,
     OrderStatusUpdateSerializer,
     OrderUpdateSerializer,
 )
+from apps.orders.services import (
+    assign_and_move_to_stitching,
+    order_work_progress,
+    require_all_work_completed_for_ready,
+    require_fully_assigned_for_stitching,
+)
 
-ORDER_MUTATION_ACTIONS = {"create", "partial_update", "change_status", "create_invoice"}
+ORDER_MUTATION_ACTIONS = {
+    "create",
+    "partial_update",
+    "change_status",
+    "create_invoice",
+    "move_to_stitching",
+}
 
 
 class OrderViewSet(viewsets.ModelViewSet):
@@ -128,6 +146,16 @@ class OrderViewSet(viewsets.ModelViewSet):
         Body: ``{"status": "CUTTING"}``. Backend validates the lifecycle.
         COLLECTED records ``collected_at``. COLLECTED and CANCELLED are
         terminal. A history row is appended for every transition.
+
+        CUTTING -> STITCHING additionally requires every piece to be assigned
+        to a tailor: while any work remains unassigned the transition is
+        rejected, so a direct/manual request cannot bypass the assignment
+        checkpoint. STITCHING -> READY additionally requires every ordered
+        piece to be reported complete: while any work remains incomplete the
+        transition is rejected, so a direct/manual request cannot bypass the
+        work-completion checkpoint. The order row is locked while the
+        transition is validated and written so concurrent
+        assignment/progress/transition requests serialize.
         """
         order = self.get_object()
 
@@ -148,11 +176,44 @@ class OrderViewSet(viewsets.ModelViewSet):
         new_status = serializer.validated_data["status"]
 
         with transaction.atomic():
-            previous_status = order.status
-            order.status = new_status
+            locked_order = Order.objects.select_for_update().get(pk=order.pk)
+
+            if locked_order.status in (OrderStatus.COLLECTED, OrderStatus.CANCELLED):
+                raise ValidationError(
+                    {
+                        "status": (
+                            f"This order is already "
+                            f"{locked_order.get_status_display()}. "
+                            "Terminal orders cannot change status."
+                        )
+                    }
+                )
+            if new_status not in ALLOWED_TRANSITIONS.get(locked_order.status, set()):
+                raise ValidationError(
+                    {
+                        "status": (
+                            f"Invalid status transition from "
+                            f"{locked_order.get_status_display()} to "
+                            f"{OrderStatus(new_status).label}."
+                        )
+                    }
+                )
+            if (
+                new_status == OrderStatus.STITCHING
+                and locked_order.status == OrderStatus.CUTTING
+            ):
+                require_fully_assigned_for_stitching(locked_order)
+            if (
+                new_status == OrderStatus.READY
+                and locked_order.status == OrderStatus.STITCHING
+            ):
+                require_all_work_completed_for_ready(locked_order)
+
+            previous_status = locked_order.status
+            locked_order.status = new_status
             if new_status == OrderStatus.COLLECTED:
-                order.collected_at = timezone.now()
-            order.save(
+                locked_order.collected_at = timezone.now()
+            locked_order.save(
                 update_fields=[
                     "status",
                     "collected_at",
@@ -160,7 +221,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 ]
             )
             OrderStatusHistory.objects.create(
-                order=order,
+                order=locked_order,
                 from_status=previous_status,
                 to_status=new_status,
                 changed_by=request.user,
@@ -170,11 +231,77 @@ class OrderViewSet(viewsets.ModelViewSet):
             {
                 "success": True,
                 "message": (
-                    f"Order {order.order_number} moved to "
+                    f"Order {locked_order.order_number} moved to "
                     f"{OrderStatus(new_status).label}."
                 ),
                 "order": OrderSerializer(
-                    order, context=self.get_serializer_context()
+                    locked_order, context=self.get_serializer_context()
+                ).data,
+            },
+            status=http_status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["get"], url_path="work-progress")
+    def work_progress(self, request, pk=None):
+        """Authoritative work-completion progress for an order (OWNER+STAFF).
+
+        Read-only. Reports how many of the ordered pieces are assigned and how
+        many are reported complete, so the client can decide whether "Move to
+        Ready" is available and show exactly what remains when it is not.
+        """
+        order = self.get_object()
+        return Response(
+            {"success": True, "data": order_work_progress(order)},
+            status=http_status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["post"], url_path="move-to-stitching")
+    def move_to_stitching(self, request, pk=None):
+        """Assign remaining work and move a CUTTING order to STITCHING (STAFF).
+
+        Body (optional): ``{"assignments": [{"tailor", "order_item",
+        "assigned_quantity"}, ...]}``.
+
+        Runs as one transaction: assignments are validated and saved under row
+        locks (never over-assigning), then assignment completeness is
+        recomputed from authoritative database state. If every piece is now
+        assigned the order transitions to STITCHING; otherwise it stays in
+        CUTTING and the response reports how many pieces remain unassigned so
+        the client can continue assigning. Either outcome is returned
+        atomically -- a partial success is impossible.
+        """
+        order = self.get_object()
+        serializer = MoveToStitchingSerializer(
+            data=request.data, context={"order": order}
+        )
+        serializer.is_valid(raise_exception=True)
+        assignments = serializer.validated_data.get("assignments") or []
+
+        result = assign_and_move_to_stitching(
+            order=order,
+            user=request.user,
+            assignments=assignments,
+        )
+        moved_order = self.get_queryset().get(pk=order.pk)
+        state = result["state"]
+
+        if result["transitioned"]:
+            message = "Work assigned successfully. Order moved to stitching."
+        else:
+            remaining = state["remaining_unassigned"]
+            message = (
+                f"{remaining} piece{' is' if remaining == 1 else 's are'} "
+                "still unassigned."
+            )
+
+        return Response(
+            {
+                "success": True,
+                "message": message,
+                "transitioned": result["transitioned"],
+                "assignment_summary": state,
+                "order": OrderSerializer(
+                    moved_order, context=self.get_serializer_context()
                 ).data,
             },
             status=http_status.HTTP_200_OK,

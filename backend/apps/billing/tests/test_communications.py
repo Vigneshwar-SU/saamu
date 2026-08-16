@@ -186,7 +186,9 @@ def test_auto_new_order_received_message():
     order = create_order()
     payload = build_automatic_order_communication(order)
     assert payload["message_type"] == MESSAGE_STATE_ORDER_RECEIVED
-    assert payload["message_label"] == MESSAGE_STATE_LABELS[MESSAGE_STATE_ORDER_RECEIVED]
+    assert (
+        payload["message_label"] == MESSAGE_STATE_LABELS[MESSAGE_STATE_ORDER_RECEIVED]
+    )
     message = payload["message"]
     assert "Hello Ravi Kumar," in message
     assert "Your order has been received." in message
@@ -200,9 +202,7 @@ def test_auto_new_order_received_message():
     assert "Saamu Tailors" in message
 
 
-@pytest.mark.parametrize(
-    "status", [OrderStatus.CUTTING, OrderStatus.STITCHING]
-)
+@pytest.mark.parametrize("status", [OrderStatus.CUTTING, OrderStatus.STITCHING])
 def test_auto_in_progress_message(status):
     order = create_order(status=status)
     payload = build_automatic_order_communication(order)
@@ -212,6 +212,45 @@ def test_auto_in_progress_message(status):
     assert "Your order is currently being prepared." in message
     assert "Items: 2x Shirt, 1x Pant" in message
     assert "ready for collection" not in message.lower()
+
+
+def test_auto_received_fully_paid_message():
+    order = create_order()
+    invoice = create_invoice(order=order)
+    create_payment(invoice, amount="450.50")
+    message = build_automatic_order_communication(order)["message"]
+    assert "Amount Paid: ₹450.50" in message
+    assert "Payment Status: Fully Paid" in message
+    assert "Balance:" not in message
+
+
+def test_auto_in_progress_fully_paid_message():
+    order = create_order(status=OrderStatus.STITCHING)
+    invoice = create_invoice(order=order)
+    create_payment(invoice, amount="450.50")
+    message = build_automatic_order_communication(order)["message"]
+    assert "Amount Paid: ₹450.50" in message
+    assert "Payment Status: Fully Paid" in message
+    assert "Balance:" not in message
+
+
+@pytest.mark.parametrize(
+    ("status", "expected_state"),
+    [
+        (OrderStatus.NEW, MESSAGE_STATE_ORDER_RECEIVED),
+        (OrderStatus.STITCHING, MESSAGE_STATE_ORDER_IN_PROGRESS),
+        (OrderStatus.READY, MESSAGE_STATE_READY_FOR_COLLECTION),
+        (OrderStatus.COLLECTED, MESSAGE_STATE_COLLECTED_SETTLED),
+    ],
+)
+def test_auto_message_label_matches_state(status, expected_state):
+    order = create_order(status=status)
+    if status == OrderStatus.COLLECTED:
+        invoice = create_invoice(order=order)
+        create_payment(invoice, amount="450.50")
+    payload = build_automatic_order_communication(order)
+    assert payload["message_type"] == expected_state
+    assert payload["message_label"] == MESSAGE_STATE_LABELS[expected_state]
 
 
 def test_auto_ready_for_collection_with_balance():
@@ -532,7 +571,8 @@ def test_api_auto_selects_ready_message(client, staff):
     data = response.data["data"]
     assert data["message_type"] == MESSAGE_STATE_READY_FOR_COLLECTION
     assert (
-        data["message_label"] == MESSAGE_STATE_LABELS[MESSAGE_STATE_READY_FOR_COLLECTION]
+        data["message_label"]
+        == MESSAGE_STATE_LABELS[MESSAGE_STATE_READY_FOR_COLLECTION]
     )
     assert "Outstanding Balance: ₹350.50" in data["message"]
 
@@ -575,6 +615,7 @@ def test_prepare_never_mutates_business_records(client, staff):
         order.save(update_fields=["status"])
         response = client.get(prepare_url(order.id), **_auth(staff))
         assert response.status_code == http_status.HTTP_200_OK
+        assert Order.objects.get(pk=order.pk).status == status
     assert (
         Order.objects.count(),
         Invoice.objects.count(),
@@ -583,7 +624,7 @@ def test_prepare_never_mutates_business_records(client, staff):
     ) == counts
     order_after = Order.objects.get(pk=order.pk)
     assert order_after.total_amount == order_before.total_amount
-    assert order_after.status == order_before.status
+    assert order_after.status == OrderStatus.READY
 
 
 # ---------------------------------------------------------------------------

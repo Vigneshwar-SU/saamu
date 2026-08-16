@@ -7,6 +7,8 @@ import type {
   OrderStatus,
   OrderStatusChangeResponse,
   OrderUpdatePayload,
+  OrderWorkProgress,
+  OrderWorkProgressResponse,
 } from '../types/orders';
 
 export const orderService = {
@@ -38,10 +40,14 @@ export const orderService = {
   },
 
   async changeStatus(id: number, status: OrderStatus): Promise<OrderStatusChangeResponse> {
-    const response = await apiClient.post<OrderStatusChangeResponse>(
-      `/orders/${id}/status/`,
-      { status }
-    );
+    const response = await apiClient.post<OrderStatusChangeResponse>(`/orders/${id}/status/`, {
+      status,
+    });
     return response.data;
+  },
+
+  async getWorkProgress(id: number): Promise<OrderWorkProgress> {
+    const response = await apiClient.get<OrderWorkProgressResponse>(`/orders/${id}/work-progress/`);
+    return response.data.data;
   },
 };

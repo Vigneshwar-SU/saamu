@@ -17,6 +17,14 @@ def order_status_url(order_id):
     return f"/api/v1/orders/{order_id}/status/"
 
 
+def order_move_to_stitching_url(order_id):
+    return f"/api/v1/orders/{order_id}/move-to-stitching/"
+
+
+def order_work_progress_url(order_id):
+    return f"/api/v1/orders/{order_id}/work-progress/"
+
+
 def create_measurement(
     customer,
     garment_type="SHIRT",

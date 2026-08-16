@@ -61,9 +61,16 @@ export const useChangeOrderStatus = (id: number) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['order', id] });
+      queryClient.invalidateQueries({ queryKey: ['communication', id] });
       queryClient.invalidateQueries({ queryKey: [DASHBOARD_KEY] });
       queryClient.invalidateQueries({ queryKey: [REPORTS_KEY] });
       invalidateRemindersV1(queryClient);
     },
+  });
+};
+
+export const useOrderWorkProgress = () => {
+  return useMutation({
+    mutationFn: (id: number) => orderService.getWorkProgress(id),
   });
 };

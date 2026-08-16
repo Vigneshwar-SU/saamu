@@ -1,18 +1,10 @@
 import { apiClient } from './apiClient';
-import type {
-  OrderMessageType,
-  PrepareMessageResponse,
-  PreparedMessage,
-} from '../types/communications';
+import type { PrepareMessageResponse, PreparedMessage } from '../types/communications';
 
 export const communicationsService = {
-  async prepareOrderMessage(
-    orderId: number,
-    messageType: OrderMessageType
-  ): Promise<PreparedMessage> {
+  async prepareOrderMessage(orderId: number): Promise<PreparedMessage> {
     const response = await apiClient.get<PrepareMessageResponse>(
-      `/communications/messages/prepare/order/${orderId}/`,
-      { params: { message_type: messageType } }
+      `/communications/messages/prepare/order/${orderId}/`
     );
     return response.data.data;
   },

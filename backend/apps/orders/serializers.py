@@ -27,6 +27,8 @@ from apps.orders.models import (
     OrderStatus,
     OrderStatusHistory,
 )
+from apps.orders.services import order_assignment_state
+from apps.tailors.models import Tailor
 
 MAX_NOTES_LENGTH = 4000
 MAX_ITEM_NOTES_LENGTH = 2000
@@ -167,23 +169,12 @@ class OrderSerializer(serializers.ModelSerializer):
         is True only while unassigned pieces remain AND the order is not in a
         terminal state (COLLECTED / CANCELLED), so no tailoring work can be
         assigned after those states. Returns ``None`` on list responses to keep
-        them light.
+        them light. Delegates to the shared order service so the same
+        calculation powers the status transition and move-to-stitching flows.
         """
         if not self.context.get("include_assignment_summary"):
             return None
-        total_quantity = 0
-        assigned_quantity = 0
-        for item in obj.items.all():
-            total_quantity += item.quantity
-            for assignment in item.work_assignments.all():
-                assigned_quantity += assignment.assigned_quantity
-        remaining_unassigned = max(total_quantity - assigned_quantity, 0)
-        return {
-            "total_quantity": total_quantity,
-            "assigned_quantity": assigned_quantity,
-            "remaining_unassigned": remaining_unassigned,
-            "can_assign_work": remaining_unassigned > 0 and not obj.is_terminal,
-        }
+        return order_assignment_state(obj)
 
 
 class OrderItemCreateSerializer(serializers.Serializer):
@@ -429,4 +420,56 @@ class OrderStatusUpdateSerializer(serializers.Serializer):
                     else "none (this order is in a terminal state)."
                 )
             )
+        return value
+
+
+class MoveToStitchingAssignmentSerializer(serializers.Serializer):
+    """One work assignment inside a move-to-stitching request.
+
+    Tailor/quantity basics are validated here for clean field errors; the
+    authoritative item-belonging, over-assignment and terminal checks run under
+    row locks in the shared service.
+    """
+
+    tailor = serializers.PrimaryKeyRelatedField(queryset=Tailor.objects.all())
+    order_item = serializers.PrimaryKeyRelatedField(queryset=OrderItem.objects.all())
+    assigned_quantity = serializers.IntegerField(min_value=1)
+
+    def validate_tailor(self, value):
+        if not value.is_active:
+            raise serializers.ValidationError(
+                "Assignments can only be created for active tailors."
+            )
+        return value
+
+    def validate_order_item(self, value):
+        if not value or value.order_id is None:
+            raise serializers.ValidationError("Invalid order item.")
+        return value
+
+
+class MoveToStitchingSerializer(serializers.Serializer):
+    """Validate a combined "assign remaining work + move to stitching" request.
+
+    ``assignments`` is optional: when the order is already fully assigned the
+    request carries no entries and simply transitions to STITCHING.
+    """
+
+    assignments = MoveToStitchingAssignmentSerializer(many=True, required=False)
+
+    def validate_assignments(self, value):
+        order = self.context.get("order")
+        if order is None or not value:
+            return value
+        for index, entry in enumerate(value):
+            if entry["order_item"].order_id != order.id:
+                raise serializers.ValidationError(
+                    {
+                        index: {
+                            "order_item": (
+                                "The selected order item does not belong to this order."
+                            )
+                        }
+                    }
+                )
         return value

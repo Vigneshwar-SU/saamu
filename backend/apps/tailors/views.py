@@ -16,7 +16,7 @@ Work assignment integrity:
   reopened and completed quantity can never exceed assigned quantity.
 """
 
-from django.db import models, transaction
+from django.db import models
 from rest_framework import status as http_status
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -27,7 +27,6 @@ from rest_framework.views import APIView
 from apps.authentication.permissions import IsOwnerOrStaff, IsStaffRole
 from apps.common.pagination import SaamuPageNumberPagination
 from apps.customers.models import GarmentType
-from apps.orders.models import TERMINAL_STATUSES, Order, OrderItem
 
 from .models import PieceRate, Tailor, WorkAssignment
 from .serializers import (
@@ -36,6 +35,7 @@ from .serializers import (
     WorkAssignmentCreateSerializer,
     WorkAssignmentSerializer,
 )
+from .services import create_work_assignment
 
 TAILOR_MUTATION_ACTIONS = {"create", "partial_update", "archive", "restore"}
 PIECE_RATE_MUTATION_ACTIONS = {"create", "partial_update"}
@@ -445,58 +445,12 @@ class WorkAssignmentViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        order_item = data["order_item"]
-        assigned_quantity = data["assigned_quantity"]
-
-        rate = PieceRate.objects.filter(
-            garment_type=order_item.garment_type, is_active=True
-        ).first()
-        if rate is None:
-            raise ValidationError(
-                {
-                    "order_item": (
-                        "No active piece rate is configured for this garment type. "
-                        "Configure the piece rate before assigning work."
-                    )
-                }
-            )
-
-        with transaction.atomic():
-            locked_item = OrderItem.objects.select_for_update().get(pk=order_item.pk)
-            order = Order.objects.select_for_update().get(pk=locked_item.order_id)
-            if order.status in TERMINAL_STATUSES:
-                raise ValidationError(
-                    {
-                        "order": (
-                            f"Work cannot be assigned to this order because it "
-                            f"is {order.get_status_display()}."
-                        )
-                    }
-                )
-            assigned_total = (
-                locked_item.work_assignments.aggregate(
-                    total=models.Sum("assigned_quantity")
-                )["total"]
-                or 0
-            )
-            remaining = locked_item.quantity - assigned_total
-            if assigned_quantity > remaining:
-                raise ValidationError(
-                    {
-                        "assigned_quantity": (
-                            f"Only {remaining} of this garment remain unassigned "
-                            f"(item quantity is {locked_item.quantity})."
-                        )
-                    }
-                )
-            assignment = WorkAssignment.objects.create(
-                tailor=data["tailor"],
-                order_item=locked_item,
-                assigned_quantity=assigned_quantity,
-                completed_quantity=0,
-                rate_per_piece_snapshot=rate.rate_per_piece,
-                created_by=request.user if request.user.is_authenticated else None,
-            )
+        assignment = create_work_assignment(
+            tailor=data["tailor"],
+            order_item=data["order_item"],
+            assigned_quantity=data["assigned_quantity"],
+            created_by=request.user if request.user.is_authenticated else None,
+        )
 
         return Response(
             WorkAssignmentSerializer(
