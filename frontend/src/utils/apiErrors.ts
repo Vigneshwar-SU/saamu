@@ -37,10 +37,22 @@ export function normalizeApiError(error: unknown): ApiError {
     }
 
     if (axiosError.code === 'ECONNABORTED') {
-      return new ApiError('The request timed out.', undefined, 'timeout');
+      return new ApiError(
+        'The server took too long to respond. Please try again.',
+        undefined,
+        'timeout',
+      );
     }
 
-    return new ApiError('Unable to reach the server.', undefined, 'network_error');
+    if (axiosError.code === 'ERR_NETWORK') {
+      return new ApiError(
+        'Unable to reach the server. Please check that the backend is running.',
+        undefined,
+        'network_error',
+      );
+    }
+
+    return new ApiError('A network error occurred. Please check your connection.', undefined, 'network_error');
   }
 
   if (error instanceof Error) {
