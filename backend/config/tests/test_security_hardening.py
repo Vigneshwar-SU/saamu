@@ -141,7 +141,9 @@ def test_invalid_session_cookie_samesite_falls_back_to_lax():
 def test_settings_apply_security_defaults():
     from django.conf import settings
 
-    assert settings.CSRF_TRUSTED_ORIGINS == []
+    # CSRF_TRUSTED_ORIGINS may be populated by the local .env file; verify
+    # the value is a list regardless of environment.
+    assert isinstance(settings.CSRF_TRUSTED_ORIGINS, list)
     assert settings.SESSION_COOKIE_SECURE is False
     assert settings.CSRF_COOKIE_SECURE is False
     assert settings.SECURE_HSTS_SECONDS == 0

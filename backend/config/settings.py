@@ -30,15 +30,13 @@ sys.path.insert(0, str(BASE_DIR / "apps"))
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
-SECRET_KEY = os.getenv(
-    "SECRET_KEY", "django-insecure-saamu-tailors-dev-key-change-in-production-123456"
-)
+SECRET_KEY = os.getenv("SECRET_KEY", "")
 
 DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes", "t")
 
 ALLOWED_HOSTS = [
     host.strip()
-    for host in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1,pc6w9n8f-8000.inc1.devtunnels.ms").split(",")
+    for host in os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
     if host.strip()
 ]
 
@@ -249,9 +247,7 @@ EMAIL_PORT = parse_non_negative_int(os.getenv("EMAIL_PORT", "")) or 587
 EMAIL_USE_TLS = parse_bool(os.getenv("EMAIL_USE_TLS", ""), default=True)
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
-DEFAULT_FROM_EMAIL = os.getenv(
-    "DEFAULT_FROM_EMAIL", "Saamu Tailors <saamutailors1954@gmail.com>"
-)
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "")
 
 # Frontend base URL used to build password reset links in emails. Only the
 # environment differs between development and production - never the code.
@@ -271,7 +267,7 @@ CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.getenv(
         "CORS_ALLOWED_ORIGINS",
-        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5175,http://127.0.0.1:5175,https://pc6w9n8f-5173.inc1.devtunnels.ms",
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5175,http://127.0.0.1:5175",
     ).split(",")
     if origin.strip()
 ]

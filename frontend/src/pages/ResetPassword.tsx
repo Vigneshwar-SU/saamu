@@ -329,7 +329,7 @@ export const ResetPassword: React.FC = () => {
             }}
           >
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              Saamu Tailors System | Single-PC Local Deployment
+              Saamu Tailors Enterprise Management System
             </Typography>
           </Box>
         </Box>
