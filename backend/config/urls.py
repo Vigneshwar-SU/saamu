@@ -3,9 +3,10 @@ URL configuration for Saamu Tailors project.
 """
 
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
 
 from apps.common.views import custom_404, custom_500
+from config.spa import spa_fallback
 
 handler404 = custom_404
 handler500 = custom_500
@@ -23,4 +24,10 @@ urlpatterns = [
     path("api/v1/", include("apps.payments.urls")),
     path("api/v1/", include("apps.finance.urls")),
     path("api/v1/", include("apps.billing.urls")),
+    # SPA fallback for the compiled React build (config/spa.py). Must be last:
+    # it catches only requests that no backend route matched, and returns
+    # index.html so React Router client routes (/customers, /orders, ...) work
+    # on refresh/direct open. Backend-owned prefixes (api/admin/static/media)
+    # are re-raised as Http404 and still produce the JSON error contract.
+    re_path(r"^(?P<path>.*)$", spa_fallback),
 ]

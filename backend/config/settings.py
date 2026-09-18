@@ -76,6 +76,11 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # WhiteNoise serves Django static files (STATIC_ROOT) and the compiled
+    # frontend build (WHITENOISE_ROOT) without a separate web server.
+    # Placed after SecurityMiddleware so security headers also apply to static
+    # responses.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -182,6 +187,26 @@ STATIC_ROOT = Path(os.getenv("STATIC_ROOT", str(BASE_DIR / "static")))
 
 MEDIA_URL = os.getenv("MEDIA_URL", "media/")
 MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", str(BASE_DIR / "media")))
+
+# Frontend production build directory (the compiled React app). WhiteNoise
+# serves this directory from the site root, so the Django/Waitress process also
+# hosts the frontend and the SPA fallback view (config/spa.py) returns
+# index.html for client-side routes. Overridable per environment for CI/cloud
+# builds where the bundle lives elsewhere.
+FRONTEND_DIST = Path(os.getenv("FRONTEND_DIST", str(BASE_DIR.parent / "frontend" / "dist")))
+
+# WhiteNoise site-root static files: everything under frontend/dist (index.html,
+# assets/..., favicon.svg) is served from "/" with the same cached/compressed
+# headers as the Django static files.
+WHITENOISE_ROOT = str(FRONTEND_DIST)
+
+# WhiteNoise pre-compresses static files during collectstatic so the WSGI
+# server can serve .gz / .br copies directly without on-the-fly compression.
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+    },
+}
 
 
 # Default primary key field type
