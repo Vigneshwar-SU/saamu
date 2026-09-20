@@ -224,8 +224,6 @@ export const CustomerFormDialog: React.FC<CustomerFormDialogProps> = ({
                 label="Book Order No"
                 fullWidth
                 variant="outlined"
-                multiline
-                minRows={2}
                 error={!!errors.address}
                 helperText={errors.address?.message}
               />
