@@ -53,6 +53,9 @@ export const SHIRT_MEASUREMENT_FIELDS = [
   'sleeve_circumference',
   'cuff_circumference',
   'shirt_length',
+  'body_loose',
+  'chest_loose',
+  'armfold_loose',
 ] as const;
 
 export const PANT_MEASUREMENT_FIELDS = [
@@ -62,6 +65,7 @@ export const PANT_MEASUREMENT_FIELDS = [
   'knee_circumference',
   'bottom_circumference',
   'length',
+  'half_length',
 ] as const;
 
 export const ALL_MEASUREMENT_FIELDS = [
@@ -96,11 +100,15 @@ export const MEASUREMENT_FIELD_LABELS: Record<MeasurementFieldName, string> = {
   sleeve_circumference: 'Sleeve Round (Bicep)',
   cuff_circumference: 'Cuff Round',
   shirt_length: 'Shirt Length',
+  body_loose: 'Body Loose',
+  chest_loose: 'Chest Loose',
+  armfold_loose: 'Armfold Loose',
   hip_circumference: 'Hip / Seat Round',
   thigh_circumference: 'Thigh Round',
   knee_circumference: 'Knee Round',
   bottom_circumference: 'Bottom Round',
   length: 'Pant Length',
+  half_length: 'Half Length',
 };
 
 export interface Measurement {
@@ -120,11 +128,15 @@ export interface Measurement {
   sleeve_circumference: number | null;
   cuff_circumference: number | null;
   shirt_length: number | null;
+  body_loose: number | null;
+  chest_loose: number | null;
+  armfold_loose: number | null;
   hip_circumference: number | null;
   thigh_circumference: number | null;
   knee_circumference: number | null;
   bottom_circumference: number | null;
   length: number | null;
+  half_length: number | null;
 }
 
 export type MeasurementFormValues = Partial<Record<MeasurementFieldName, number | null>>;

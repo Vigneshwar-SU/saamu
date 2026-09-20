@@ -148,3 +148,63 @@ def test_optional_pant_fields_may_be_omitted(client, staff, customer):
     del payload["bottom_circumference"]
     response = _create(client, staff, customer, payload)
     assert response.status_code == 201
+
+
+def test_new_shirt_fields_are_accepted(client, staff, customer):
+    payload = valid_shirt_payload()
+    payload["body_loose"] = 3.0
+    payload["chest_loose"] = 4.0
+    payload["armfold_loose"] = 2.5
+    response = _create(client, staff, customer, payload)
+    assert response.status_code == 201
+    data = response.json()
+    assert data["body_loose"] == 3.0
+    assert data["chest_loose"] == 4.0
+    assert data["armfold_loose"] == 2.5
+
+
+def test_new_shirt_fields_may_be_omitted(client, staff, customer):
+    response = _create(client, staff, customer, valid_shirt_payload())
+    assert response.status_code == 201
+    data = response.json()
+    assert data["body_loose"] is None
+    assert data["chest_loose"] is None
+    assert data["armfold_loose"] is None
+
+
+def test_half_length_is_accepted_for_pant(client, staff, customer):
+    payload = valid_pant_payload()
+    payload["half_length"] = 20.5
+    response = _create(client, staff, customer, payload)
+    assert response.status_code == 201
+    assert response.json()["half_length"] == 20.5
+
+
+def test_half_length_may_be_omitted_for_pant(client, staff, customer):
+    response = _create(client, staff, customer, valid_pant_payload())
+    assert response.status_code == 201
+    assert response.json()["half_length"] is None
+
+
+def test_new_shirt_field_rejected_on_pant(client, staff, customer):
+    payload = valid_pant_payload()
+    payload["body_loose"] = 3.0
+    response = _create(client, staff, customer, payload)
+    assert response.status_code == 400
+    assert "body_loose" in response.json()["error"]["details"]
+
+
+def test_half_length_rejected_on_shirt(client, staff, customer):
+    payload = valid_shirt_payload()
+    payload["half_length"] = 20.5
+    response = _create(client, staff, customer, payload)
+    assert response.status_code == 400
+    assert "half_length" in response.json()["error"]["details"]
+
+
+def test_new_shirt_field_range_is_validated(client, staff, customer):
+    payload = valid_shirt_payload()
+    payload["chest_loose"] = 301.0
+    response = _create(client, staff, customer, payload)
+    assert response.status_code == 400
+    assert "chest_loose" in response.json()["error"]["details"]

@@ -47,11 +47,15 @@ const measurementSchema = z
     sleeve_circumference: numericFieldSchema.nullish(),
     cuff_circumference: numericFieldSchema.nullish(),
     shirt_length: numericFieldSchema.nullish(),
+    body_loose: numericFieldSchema.nullish(),
+    chest_loose: numericFieldSchema.nullish(),
+    armfold_loose: numericFieldSchema.nullish(),
     hip_circumference: numericFieldSchema.nullish(),
     thigh_circumference: numericFieldSchema.nullish(),
     knee_circumference: numericFieldSchema.nullish(),
     bottom_circumference: numericFieldSchema.nullish(),
     length: numericFieldSchema.nullish(),
+    half_length: numericFieldSchema.nullish(),
   })
   .superRefine((data, ctx) => {
     for (const field of MEASUREMENT_REQUIRED_FIELDS[data.garment_type]) {
@@ -81,11 +85,15 @@ const buildDefaultValues = (
   sleeve_circumference: measurement?.sleeve_circumference ?? null,
   cuff_circumference: measurement?.cuff_circumference ?? null,
   shirt_length: measurement?.shirt_length ?? null,
+  body_loose: measurement?.body_loose ?? null,
+  chest_loose: measurement?.chest_loose ?? null,
+  armfold_loose: measurement?.armfold_loose ?? null,
   hip_circumference: measurement?.hip_circumference ?? null,
   thigh_circumference: measurement?.thigh_circumference ?? null,
   knee_circumference: measurement?.knee_circumference ?? null,
   bottom_circumference: measurement?.bottom_circumference ?? null,
   length: measurement?.length ?? null,
+  half_length: measurement?.half_length ?? null,
 });
 
 interface MeasurementFormDialogProps {

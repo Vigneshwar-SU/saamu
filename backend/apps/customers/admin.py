@@ -12,10 +12,14 @@ ALL_MEASUREMENT_FIELDS = (
     "sleeve_circumference",
     "cuff_circumference",
     "shirt_length",
+    "body_loose",
+    "chest_loose",
+    "armfold_loose",
     "thigh_circumference",
     "knee_circumference",
     "bottom_circumference",
     "length",
+    "half_length",
 )
 
 
