@@ -104,6 +104,14 @@ def test_mobile_too_long_is_rejected(client, staff):
     assert "mobile_number" in response.json()["error"]["details"]
 
 
+def test_country_prefix_mobile_is_rejected(client, staff):
+    payload = valid_customer_payload()
+    payload["mobile_number"] = "+919876543210"
+    response = _create(client, staff, payload)
+    assert response.status_code == 400
+    assert "mobile_number" in response.json()["error"]["details"]
+
+
 def test_address_too_long_is_rejected(client, staff):
     payload = valid_customer_payload()
     payload["address"] = "A" * 1001
@@ -134,18 +142,58 @@ def test_valid_customer_is_accepted(client, staff):
 def test_valid_customer_with_only_required_fields(client, staff):
     payload = {
         "full_name": "Sita Sharma",
-        "mobile_number": "+919876543210",
+        "mobile_number": "9876543210",
     }
     response = _create(client, staff, payload)
     assert response.status_code == 201
     assert response.json()["alternate_mobile_number"] == ""
 
 
-def test_international_mobile_prefix_is_accepted(client, staff):
+@pytest.mark.parametrize(
+    "mobile",
+    [
+        "987654321",
+        "98765432101",
+        "abcdefghij",
+        "98765abc10",
+        "+919876543210",
+        "98765 43210",
+    ],
+)
+def test_create_rejects_mobile_that_is_not_exactly_ten_digits(client, staff, mobile):
     payload = valid_customer_payload()
-    payload["mobile_number"] = "+919876543210"
+    payload["mobile_number"] = mobile
     response = _create(client, staff, payload)
-    assert response.status_code == 201
+    assert response.status_code == 400
+    assert "mobile_number" in response.json()["error"]["details"]
+
+
+@pytest.mark.parametrize(
+    "alternate",
+    [
+        "987654321",
+        "98765432101",
+        "abcdefghij",
+        "98765abc10",
+        "+919876543210",
+        "98765 43210",
+    ],
+)
+def test_create_rejects_alternate_mobile_that_is_not_exactly_ten_digits(
+    client, staff, alternate
+):
+    payload = valid_customer_payload()
+    payload["alternate_mobile_number"] = alternate
+    response = _create(client, staff, payload)
+    assert response.status_code == 400
+    assert "alternate_mobile_number" in response.json()["error"]["details"]
+
+
+def test_patch_rejects_mobile_that_is_not_exactly_ten_digits(client, staff):
+    customer = create_customer()
+    response = _patch(client, staff, customer.id, {"mobile_number": "98765 43210"})
+    assert response.status_code == 400
+    assert "mobile_number" in response.json()["error"]["details"]
 
 
 def test_patch_rejects_invalid_mobile(client, staff):
@@ -153,6 +201,49 @@ def test_patch_rejects_invalid_mobile(client, staff):
     response = _patch(client, staff, customer.id, {"mobile_number": "12"})
     assert response.status_code == 400
     assert "mobile_number" in response.json()["error"]["details"]
+
+
+def test_patch_allows_unchanged_legacy_mobile(client, staff):
+    customer = create_customer(mobile_number="+919876543210")
+    response = _patch(
+        client,
+        staff,
+        customer.id,
+        {"full_name": "Renamed", "mobile_number": "+919876543210"},
+    )
+    assert response.status_code == 200
+    customer.refresh_from_db()
+    assert customer.mobile_number == "+919876543210"
+
+
+def test_patch_changed_mobile_must_be_exactly_ten_digits(client, staff):
+    customer = create_customer(mobile_number="+919876543210")
+    response = _patch(client, staff, customer.id, {"mobile_number": "+919876543211"})
+    assert response.status_code == 400
+    assert "mobile_number" in response.json()["error"]["details"]
+
+
+def test_patch_allows_moving_legacy_mobile_to_ten_digit_format(client, staff):
+    customer = create_customer(mobile_number="+919876543210")
+    response = _patch(client, staff, customer.id, {"mobile_number": "9876543210"})
+    assert response.status_code == 200
+    customer.refresh_from_db()
+    assert customer.mobile_number == "9876543210"
+
+
+def test_patch_allows_unchanged_legacy_alternate_mobile(client, staff):
+    customer = create_customer(
+        mobile_number="9000000001", alternate_mobile_number="+919876543210"
+    )
+    response = _patch(
+        client,
+        staff,
+        customer.id,
+        {"alternate_mobile_number": "+919876543210"},
+    )
+    assert response.status_code == 200
+    customer.refresh_from_db()
+    assert customer.alternate_mobile_number == "+919876543210"
 
 
 def test_patch_updates_fields(client, staff):
@@ -187,20 +278,17 @@ def test_duplicate_mobile_is_rejected(client, staff):
     assert "mobile_number" in error["details"]
 
 
-def test_duplicate_mobile_with_different_format_is_rejected(client, staff):
+def test_duplicate_mobile_with_legacy_country_prefix_format_is_rejected(client, staff):
     create_customer()
-    payload = valid_customer_payload()
-    payload["mobile_number"] = "+919876543210"
-    response = _create(client, staff, payload)
+    create_customer(full_name="Legacy", mobile_number="+919876543210")
+    response = _create(client, staff, valid_customer_payload())
     assert response.status_code == 400
     assert "mobile_number" in response.json()["error"]["details"]
 
 
-def test_duplicate_mobile_with_trunk_prefix_is_rejected(client, staff):
-    create_customer()
-    payload = valid_customer_payload()
-    payload["mobile_number"] = "0 98765 43210"
-    response = _create(client, staff, payload)
+def test_duplicate_mobile_with_legacy_spaced_format_is_rejected(client, staff):
+    create_customer(full_name="Legacy", mobile_number="0 98765 43210")
+    response = _create(client, staff, valid_customer_payload())
     assert response.status_code == 400
     assert "mobile_number" in response.json()["error"]["details"]
 
@@ -221,7 +309,7 @@ def test_new_customer_matching_alternate_of_another_is_rejected(client, staff):
     assert "mobile_number" in response.json()["error"]["details"]
 
 
-def test_alternate_mobile_equal_to_primary_different_format_is_rejected(client, staff):
+def test_alternate_mobile_with_country_prefix_is_rejected(client, staff):
     payload = valid_customer_payload()
     payload["mobile_number"] = "9876543210"
     payload["alternate_mobile_number"] = "+919876543210"

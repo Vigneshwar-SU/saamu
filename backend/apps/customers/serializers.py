@@ -21,7 +21,13 @@ from apps.customers.models import (
     Measurement,
 )
 
-MOBILE_REGEX = re.compile(r"^\+?[0-9]{10,15}$")
+# Customer mobile numbers must be exactly 10 numerical digits (no country
+# code, separators or letters). Legacy rows may hold older formats; those are
+# preserved by the unchanged-value escape hatch in the field validators below
+# instead of being rewritten or deleted.
+CUSTOMER_MOBILE_REGEX = re.compile(r"^[0-9]{10}$")
+MOBILE_VALIDATION_MESSAGE = "Mobile number must contain exactly 10 digits."
+
 _PHONE_FORMATTING_RE = re.compile(r"[\s\-()./]+")
 _INDIA_COUNTRY_CODE = "91"
 _INDIA_MOBILE_PREFIXES = ("6", "7", "8", "9")
@@ -114,21 +120,25 @@ class CustomerSerializer(serializers.ModelSerializer):
 
     def validate_mobile_number(self, value):
         value = (value or "").strip()
-        if not MOBILE_REGEX.match(value):
-            raise serializers.ValidationError(
-                "Enter a valid mobile number (10-15 digits, optional leading +)."
-            )
-        return value
+        if value and CUSTOMER_MOBILE_REGEX.match(value):
+            return value
+        # Backward compatibility: a pre-existing value predating the 10-digit
+        # rule is accepted unchanged on update so legacy customers stay
+        # editable (and their stored value is never rewritten). Any new or
+        # changed value must satisfy the strict rule.
+        if self.instance and value == (self.instance.mobile_number or "").strip():
+            return value
+        raise serializers.ValidationError(MOBILE_VALIDATION_MESSAGE)
 
     def validate_alternate_mobile_number(self, value):
+        value = (value or "").strip()
         if not value:
             return value
-        value = value.strip()
-        if not MOBILE_REGEX.match(value):
-            raise serializers.ValidationError(
-                "Enter a valid mobile number (10-15 digits, optional leading +)."
-            )
-        return value
+        if CUSTOMER_MOBILE_REGEX.match(value):
+            return value
+        if self.instance and value == (self.instance.alternate_mobile_number or "").strip():
+            return value
+        raise serializers.ValidationError(MOBILE_VALIDATION_MESSAGE)
 
     def validate(self, attrs):
         primary = attrs.get("mobile_number")

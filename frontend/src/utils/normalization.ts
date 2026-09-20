@@ -16,11 +16,5 @@ export function normalizeMobileNumber(value: string): string {
     const digits = cleaned.slice(1);
     return /^[0-9]{7,15}$/.test(digits) ? `+${digits}` : cleaned;
   }
-  if (/^[6-9][0-9]{9}$/.test(cleaned)) {
-    return `+91${cleaned}`;
-  }
-  if (/^0[6-9][0-9]{9}$/.test(cleaned)) {
-    return `+91${cleaned.slice(1)}`;
-  }
   return cleaned;
 }

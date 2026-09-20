@@ -252,7 +252,7 @@ export const CustomerDetail: React.FC = () => {
           />
           <InfoField label="Primary Mobile" value={displayPrimaryMobile} />
           <InfoField label="Alternate Mobile" value={displayAlternateMobile} />
-          <InfoField label="Address" value={customer.address || '-'} />
+          <InfoField label="Book Order No" value={customer.address || '-'} />
           <InfoField label="Notes" value={customer.notes || '-'} />
           <InfoField label="Created" value={formatDate(customer.created_at)} />
           <InfoField label="Last Updated" value={formatDate(customer.updated_at)} />

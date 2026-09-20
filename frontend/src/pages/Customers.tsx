@@ -41,6 +41,28 @@ import type { Customer, CustomerPayload, CustomerStatus } from '../types/custome
 
 const PAGE_SIZE = 6;
 
+const formatNameWithNotes = (fullName: string, notes: string): React.ReactNode => {
+  const trimmedNotes = (notes ?? '').trim();
+  return (
+    <Typography
+      sx={{
+        fontWeight: 600,
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+        maxWidth: { xs: '100%', md: 360 },
+      }}
+    >
+      {fullName}
+      {trimmedNotes && (
+        <Typography component="span" sx={{ color: 'text.secondary', fontWeight: 400 }}>
+          {' '}({trimmedNotes})
+        </Typography>
+      )}
+    </Typography>
+  );
+};
+
 export const Customers: React.FC = () => {
   const navigate = useNavigate();
   const { role } = useAuth();
@@ -189,7 +211,7 @@ export const Customers: React.FC = () => {
             primary: true,
             render: (customer) => (
               <Box>
-                <Typography sx={{ fontWeight: 600 }}>{customer.full_name}</Typography>
+                {formatNameWithNotes(customer.full_name, customer.notes)}
                 <Typography variant="caption" sx={{ color: 'text.disabled' }}>
                   #{customer.id}
                 </Typography>
@@ -210,8 +232,7 @@ export const Customers: React.FC = () => {
             ),
           },
           {
-            label: 'Address',
-            hideOnMobile: true,
+            label: 'Book Order No',
             render: (customer) => (
               <Typography
                 variant="body2"

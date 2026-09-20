@@ -1,9 +1,7 @@
 """Customer search, pagination, and status-filter tests."""
 
 import pytest
-from django.utils import timezone
 
-from apps.customers.models import Customer
 from apps.customers.tests.helpers import (
     create_customer,
     customer_list_url,
@@ -154,57 +152,89 @@ def test_pagination_exactly_six_per_page(client, staff):
     assert len(page_ids) == 9
 
 
-def test_newest_customer_appears_first(client, staff):
+def test_default_customer_order_is_alphabetical(client, staff):
     for name, mobile in [
-        ("A", "9000000001"),
-        ("B", "9000000002"),
-        ("C", "9000000003"),
-        ("D", "9000000004"),
-        ("E", "9000000005"),
-        ("F", "9000000006"),
-        ("G", "9000000007"),
+        ("Zahir", "9000000001"),
+        ("Arun", "9000000002"),
+        ("Manoj", "9000000003"),
+        ("Bala", "9000000004"),
+        ("Chetan", "9000000005"),
     ]:
         create_customer(full_name=name, mobile_number=mobile)
-    create_customer(full_name="H", mobile_number="9000000008")
+
+    response = _list(client, staff, "")
+    assert response.status_code == 200
+    names = [item["full_name"] for item in response.json()["results"]]
+    assert names == ["Arun", "Bala", "Chetan", "Manoj", "Zahir"]
+
+
+def test_default_customer_order_is_case_insensitive(client, staff):
+    for name, mobile in [
+        ("arun", "9000000001"),
+        ("Bala", "9000000002"),
+        ("AMIT", "9000000003"),
+    ]:
+        create_customer(full_name=name, mobile_number=mobile)
+
+    response = _list(client, staff, "")
+    assert response.status_code == 200
+    names = [item["full_name"] for item in response.json()["results"]]
+    assert names == ["AMIT", "arun", "Bala"]
+
+
+def test_identical_names_tie_break_by_id_ascending(client, staff):
+    first = create_customer(full_name="Same Name", mobile_number="9000000001")
+    second = create_customer(full_name="Same Name", mobile_number="9000000002")
+
+    response = _list(client, staff, "")
+    assert response.status_code == 200
+    results = response.json()["results"]
+    assert [item["id"] for item in results] == [first.id, second.id]
+
+
+def test_pagination_keeps_alphabetical_order_across_pages(client, staff):
+    names = [
+        "Zahir",
+        "Arun",
+        "Manoj",
+        "Bala",
+        "Chetan",
+        "Deepa",
+        "Priya",
+        "Suresh",
+        "Kavin",
+    ]
+    for index, name in enumerate(names):
+        create_customer(full_name=name, mobile_number=f"900000{index:04d}")
 
     first = _list(client, staff, "").json()
-    assert first["count"] == 8
+    assert first["count"] == 9
     assert [item["full_name"] for item in first["results"]] == [
-        "H",
-        "G",
-        "F",
-        "E",
-        "D",
-        "C",
+        "Arun",
+        "Bala",
+        "Chetan",
+        "Deepa",
+        "Kavin",
+        "Manoj",
     ]
     assert first["next"] is not None
     assert first["previous"] is None
 
     second = _list(client, staff, "page=2").json()
-    assert [item["full_name"] for item in second["results"]] == ["B", "A"]
+    assert [item["full_name"] for item in second["results"]] == [
+        "Priya",
+        "Suresh",
+        "Zahir",
+    ]
     assert second["next"] is None
     assert second["previous"] is not None
 
 
-def test_identical_created_at_falls_back_to_id_desc(client, staff):
-    older = create_customer(full_name="Older", mobile_number="9000000001")
-    newer = create_customer(full_name="Newer", mobile_number="9000000002")
-
-    Customer.objects.update(created_at=timezone.now())
-
-    response = _list(client, staff, "")
-    assert response.status_code == 200
-    results = response.json()["results"]
-    assert [item["full_name"] for item in results] == ["Newer", "Older"]
-    assert results[0]["id"] == newer.id
-    assert results[1]["id"] == older.id
-
-
-def test_search_results_are_newest_first(client, staff):
+def test_search_results_are_alphabetical(client, staff):
     create_customer(full_name="Ravi Kumar", mobile_number="9000000001")
     create_customer(full_name="Ravi Kumar", mobile_number="9000000002")
 
     response = _list(client, staff, "search=ravi")
     assert response.status_code == 200
     mobiles = [item["mobile_number"] for item in response.json()["results"]]
-    assert mobiles == ["9000000002", "9000000001"]
+    assert mobiles == ["9000000001", "9000000002"]

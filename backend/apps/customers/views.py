@@ -12,6 +12,7 @@ operate on the full set so archived customers remain viewable and restorable.
 """
 
 from django.db import models
+from django.db.models.functions import Lower
 from django.shortcuts import get_object_or_404
 from rest_framework import status as http_status
 from rest_framework import viewsets
@@ -58,8 +59,12 @@ class CustomerViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = Customer.objects.all()
         if self.action == "list":
-            qs = qs.order_by("-created_at", "-id")
             qs = self._apply_list_filters(qs)
+            # Default display order: alphabetical by full name (case-insensitive,
+            # via PostgreSQL's LOWER()), with a stable id tie-breaker. Search and
+            # pagination operate on this same ordering so every page stays
+            # A -> Z.
+            qs = qs.order_by(Lower("full_name"), "id")
         return qs
 
     def _apply_list_filters(self, qs):

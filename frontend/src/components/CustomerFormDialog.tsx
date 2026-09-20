@@ -14,18 +14,43 @@ import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { normalizeApiError } from '../utils/apiErrors';
-import { normalizeFullName, normalizeMobileNumber } from '../utils/normalization';
+import { normalizeFullName } from '../utils/normalization';
 import type { Customer, CustomerPayload } from '../types/customers';
 
-const MOBILE_REGEX = /^\+?[0-9]{10,15}$/;
+const TEN_DIGITS_REGEX = /^[0-9]{10}$/;
+const MOBILE_VALIDATION_MESSAGE = 'Mobile number must contain exactly 10 digits.';
+
+// Backward compatibility: a customer whose stored mobile predates the 10-digit
+// rule (e.g. "+919876543210") stays editable as long as the value is left
+// unchanged. Any typed or edited value must be exactly 10 digits.
+let editingLegacyMobile: { primary: string; alternate: string } = {
+  primary: '',
+  alternate: '',
+};
+
+const digitsOnly = (value: string): string => value.replace(/\D/g, '');
 
 const mobileField = z
   .string()
   .trim()
   .min(1, 'Mobile number is required')
-  .transform((value) => normalizeMobileNumber(value))
-  .refine((value) => MOBILE_REGEX.test(value), {
-    message: 'Enter a valid mobile number (10-15 digits, optional leading +).',
+  .superRefine((value, ctx) => {
+    if (!value) return;
+    if (editingLegacyMobile.primary && value === editingLegacyMobile.primary) return;
+    if (!TEN_DIGITS_REGEX.test(value)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: MOBILE_VALIDATION_MESSAGE });
+    }
+  });
+
+const alternateMobileField = z
+  .string()
+  .trim()
+  .superRefine((value, ctx) => {
+    if (!value) return;
+    if (editingLegacyMobile.alternate && value === editingLegacyMobile.alternate) return;
+    if (!TEN_DIGITS_REGEX.test(value)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: MOBILE_VALIDATION_MESSAGE });
+    }
   });
 
 const customerSchema = z
@@ -40,18 +65,12 @@ const customerSchema = z
         message: 'Full name must contain at least one letter.',
       }),
     mobile_number: mobileField,
-    alternate_mobile_number: z
-      .string()
-      .trim()
-      .transform((value) => (value ? normalizeMobileNumber(value) : ''))
-      .refine((value) => !value || MOBILE_REGEX.test(value), {
-        message: 'Enter a valid mobile number (10-15 digits, optional leading +).',
-      }),
-    address: z.string().max(1000, 'Address must be 1000 characters or fewer'),
+    alternate_mobile_number: alternateMobileField,
+    address: z.string().max(1000, 'Book Order No must be 1000 characters or fewer'),
     notes: z.string().max(2000, 'Notes must be 2000 characters or fewer'),
   })
   .refine(
-    (data) => !data.alternate_mobile_number || data.alternate_mobile_number !== data.mobile_number,
+    (data) => !data.alternate_mobile_number || digitsOnly(data.alternate_mobile_number) !== digitsOnly(data.mobile_number),
     {
       message: 'Alternate mobile must differ from the primary mobile.',
       path: ['alternate_mobile_number'],
@@ -102,12 +121,14 @@ export const CustomerFormDialog: React.FC<CustomerFormDialogProps> = ({
 
   useEffect(() => {
     if (open) {
+      editingLegacyMobile = {
+        primary: initial?.mobile_number.trim() ?? '',
+        alternate: initial?.alternate_mobile_number.trim() ?? '',
+      };
       reset({
         full_name: initial ? normalizeFullName(initial.full_name) : '',
-        mobile_number: initial ? normalizeMobileNumber(initial.mobile_number) : '',
-        alternate_mobile_number: initial?.alternate_mobile_number
-          ? normalizeMobileNumber(initial.alternate_mobile_number)
-          : '',
+        mobile_number: initial?.mobile_number ?? '',
+        alternate_mobile_number: initial?.alternate_mobile_number ?? '',
         address: initial?.address ?? '',
         notes: initial?.notes ?? '',
       });
@@ -173,6 +194,7 @@ export const CustomerFormDialog: React.FC<CustomerFormDialogProps> = ({
                 variant="outlined"
                 error={!!errors.mobile_number}
                 helperText={errors.mobile_number?.message}
+                inputProps={{ maxLength: 10, inputMode: 'numeric', autoComplete: 'tel' }}
               />
             )}
           />
@@ -188,6 +210,7 @@ export const CustomerFormDialog: React.FC<CustomerFormDialogProps> = ({
                 variant="outlined"
                 error={!!errors.alternate_mobile_number}
                 helperText={errors.alternate_mobile_number?.message}
+                inputProps={{ maxLength: 10, inputMode: 'numeric', autoComplete: 'tel' }}
               />
             )}
           />
@@ -198,7 +221,7 @@ export const CustomerFormDialog: React.FC<CustomerFormDialogProps> = ({
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Address"
+                label="Book Order No"
                 fullWidth
                 variant="outlined"
                 multiline
