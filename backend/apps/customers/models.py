@@ -36,6 +36,9 @@ SHIRT_MEASUREMENT_FIELDS = (
     "sleeve_circumference",
     "cuff_circumference",
     "shirt_length",
+    "body_loose",
+    "chest_loose",
+    "armfold_loose",
 )
 
 PANT_MEASUREMENT_FIELDS = (
@@ -45,6 +48,7 @@ PANT_MEASUREMENT_FIELDS = (
     "knee_circumference",
     "bottom_circumference",
     "length",
+    "half_length",
 )
 
 # Required values per garment type. Optional fields may be omitted.
@@ -149,6 +153,9 @@ class Measurement(models.Model):
     sleeve_circumference = inch_field()
     cuff_circumference = inch_field()
     shirt_length = inch_field()
+    body_loose = inch_field()
+    chest_loose = inch_field()
+    armfold_loose = inch_field()
 
     # Pant measurements (inches)
     hip_circumference = inch_field()
@@ -156,6 +163,7 @@ class Measurement(models.Model):
     knee_circumference = inch_field()
     bottom_circumference = inch_field()
     length = inch_field()
+    half_length = inch_field()
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
