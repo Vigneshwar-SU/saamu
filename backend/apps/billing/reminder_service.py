@@ -138,9 +138,16 @@ def _order_payload(order):
 
 
 def _customer_payload(customer):
+    """Customer context summary for a reminder card.
+
+    ``notes`` rides along (already loaded with the customer row, so this costs
+    no extra query) so the staff-facing reminders list can render the same
+    "Name (Notes)" label used everywhere else in the ERP.
+    """
     return {
         "id": customer.id,
         "full_name": customer.full_name,
+        "notes": customer.notes,
     }
 
 
@@ -348,7 +355,7 @@ def _measurement_missing_candidates():
         candidate["date"] = None
         candidate["title"] = f"Missing measurements on {order.order_number}"
         candidate["description"] = (
-            f"{item.get_garment_type_display()} item is missing "
+            f"{item.garment_label} item is missing "
             f"measurement data: {missing_label or 'incomplete snapshot'}."
         )
         candidate["action"] = _action("order", order.id, "View Order")

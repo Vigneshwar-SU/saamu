@@ -2,6 +2,86 @@ export const GARMENT_TYPES = ['SHIRT', 'PANT'] as const;
 
 export type GarmentType = (typeof GARMENT_TYPES)[number];
 
+/**
+ * Shirt variants. A SHIRT line is always one of these; PANT lines never have
+ * one. `null` only ever occurs on historical rows created before variants
+ * existed, which the UI still labels as a plain "Shirt".
+ */
+export const SHIRT_TYPES = ['FULL', 'HALF'] as const;
+
+export type ShirtType = (typeof SHIRT_TYPES)[number];
+
+export const SHIRT_TYPE_LABELS: Record<ShirtType, string> = {
+  FULL: 'Full Shirt',
+  HALF: 'Half Shirt',
+};
+
+export const GARMENT_TYPE_LABELS: Record<GarmentType, string> = {
+  SHIRT: 'Shirt',
+  PANT: 'Pant',
+};
+
+/**
+ * Configurable piece-rate keys. Full and Half Shirt are priced and paid
+ * separately, so each has its own rate; pants use the plain key.
+ */
+export const PIECE_RATE_KEYS = ['SHIRT_FULL', 'SHIRT_HALF', 'PANT'] as const;
+
+export type PieceRateKey = (typeof PIECE_RATE_KEYS)[number];
+
+export const PIECE_RATE_LABELS: Record<PieceRateKey, string> = {
+  SHIRT_FULL: 'Full Shirt',
+  SHIRT_HALF: 'Half Shirt',
+  PANT: 'Pant',
+};
+
+/** Historical rate key for pre-variant shirt lines; still resolvable. */
+export const LEGACY_SHIRT_RATE_KEY = 'SHIRT';
+
+/**
+ * Resolves the configurable piece-rate key an order line is paid by.
+ * Mirrors the backend `piece_rate_key` helper so the UI can show the exact
+ * rate the backend will snapshot, without a second guess at the mapping.
+ * A historical shirt line with no recorded variant keeps the legacy `SHIRT`
+ * key rather than being assumed to be a Full Shirt.
+ */
+export const resolvePieceRateKey = (
+  garmentType: string,
+  shirtType?: string | null,
+): string => {
+  if (garmentType === 'SHIRT') {
+    if (shirtType === 'FULL') return 'SHIRT_FULL';
+    if (shirtType === 'HALF') return 'SHIRT_HALF';
+    return LEGACY_SHIRT_RATE_KEY;
+  }
+  if (garmentType === 'PANT') return 'PANT';
+  return garmentType;
+};
+
+/** Display label for a stored rate key, including historical ones. */
+export const formatPieceRateKey = (key: string): string =>
+  (PIECE_RATE_LABELS as Record<string, string>)[key] ??
+  (key === LEGACY_SHIRT_RATE_KEY ? GARMENT_TYPE_LABELS.SHIRT : key);
+
+/**
+ * Single source of truth for how a garment line is labelled everywhere.
+ * Mirrors the backend `garment_label` helper so list, detail, invoice and
+ * communication output can never disagree. A legacy SHIRT line with no
+ * recorded variant stays "Shirt" rather than being assumed to be a Full Shirt.
+ */
+export const formatGarmentLabel = (
+  garmentType: string,
+  shirtType?: string | null,
+): string => {
+  if (garmentType === 'SHIRT') {
+    if (shirtType === 'FULL') return SHIRT_TYPE_LABELS.FULL;
+    if (shirtType === 'HALF') return SHIRT_TYPE_LABELS.HALF;
+    return GARMENT_TYPE_LABELS.SHIRT;
+  }
+  if (garmentType === 'PANT') return GARMENT_TYPE_LABELS.PANT;
+  return garmentType;
+};
+
 export type CustomerStatus = 'active' | 'archived' | 'all';
 
 export interface Customer {

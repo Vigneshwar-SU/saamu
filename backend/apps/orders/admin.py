@@ -51,11 +51,12 @@ class OrderItemAdmin(admin.ModelAdmin):
         "id",
         "order",
         "garment_type",
+        "shirt_type",
         "quantity",
         "unit_price",
         "measurement_version",
     )
-    list_filter = ("garment_type",)
+    list_filter = ("garment_type", "shirt_type")
     search_fields = ("order__order_number", "order__customer__full_name")
     readonly_fields = (
         "order",

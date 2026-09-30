@@ -3,6 +3,12 @@
 from apps.customers.models import Customer, Measurement
 from apps.customers.tests.helpers import create_customer as _create_customer
 from apps.customers.tests.helpers import make_owner, make_staff  # noqa: F401
+from apps.orders.models import ShirtType
+
+# Sentinel meaning "derive the shirt variant from the garment type". Passing an
+# explicit ``shirt_type`` (including ``None``) overrides it, which is what the
+# validation tests need in order to omit or null out the variant deliberately.
+AUTO_SHIRT_TYPE = object()
 
 
 def order_list_url():
@@ -53,12 +59,28 @@ def create_measurement(
     )
 
 
-def order_item_payload(garment_type="SHIRT", quantity=1, unit_price="100.00", **extra):
+def order_item_payload(
+    garment_type="SHIRT",
+    quantity=1,
+    unit_price="100.00",
+    shirt_type=AUTO_SHIRT_TYPE,
+    **extra,
+):
+    """Build one order line payload.
+
+    SHIRT lines get a ``shirt_type`` automatically (Full Shirt) because the API
+    requires the variant; pass ``shirt_type=None`` to omit it, or
+    ``shirt_type="HALF"`` to exercise the other variant.
+    """
     payload = {
         "garment_type": garment_type,
         "quantity": quantity,
         "unit_price": unit_price,
     }
+    if shirt_type is not AUTO_SHIRT_TYPE:
+        payload["shirt_type"] = shirt_type
+    elif garment_type == "SHIRT":
+        payload["shirt_type"] = ShirtType.FULL
     payload.update(extra)
     return payload
 

@@ -357,6 +357,7 @@ class ManualReminderSerializer(serializers.ModelSerializer):
         return {
             "id": obj.customer.id,
             "full_name": obj.customer.full_name,
+            "notes": obj.customer.notes,
         }
 
     def get_order(self, obj):

@@ -182,8 +182,11 @@ export interface PayrollCalculateResponse extends PayrollActionResponse {
 export interface PayrollAssignment {
   id: number;
   order_number: string;
+  /** Configurable rate key the assignment was paid by. */
   garment_type: string;
   garment_code: string;
+  /** Display label for the garment variant (Full Shirt / Half Shirt / Pant). */
+  garment_label: string;
   assigned_quantity: number;
   completed_quantity: number;
   remaining_quantity: number;

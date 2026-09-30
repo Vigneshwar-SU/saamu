@@ -16,7 +16,7 @@ import AddCardIcon from '@mui/icons-material/AddCard';
 import CurrencyExchangeIcon from '@mui/icons-material/CurrencyExchange';
 import { Link as RouterLink } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
-import { formatCurrency, formatDate } from '../utils/formatters';
+import { formatCurrency, formatDate, formatNameWithNotes } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { useIncomeList, useIncomeSummary } from '../hooks/useFinance';
 import { useCreatePayment, useInvoicePayments } from '../hooks/useInvoices';
@@ -269,7 +269,7 @@ export const Payments: React.FC = () => {
                 sx={{ fontWeight: 500, fontSize: '0.875rem' }}
                 onClick={(event) => event.stopPropagation()}
               >
-                {payment.customer_name}
+                {formatNameWithNotes(payment.customer_name, payment.customer_notes)}
               </Link>
             ),
           },

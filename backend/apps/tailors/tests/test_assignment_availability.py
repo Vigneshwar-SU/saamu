@@ -67,7 +67,7 @@ def test_three_shirts_availability_progress(
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 3})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
     item = get_order_item(order, "SHIRT")
 
     for quantity in assigned:
@@ -85,7 +85,7 @@ def test_multiple_tailors_assignments_sum_together(client, staff):
     order = create_order_with_items(customer, {"SHIRT": 3})
     tailor_a = create_tailor("Tailor A")
     tailor_b = create_tailor("Tailor B")
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
     item = get_order_item(order, "SHIRT")
 
     _assign(client, staff, tailor_a, order, item, 1)
@@ -102,7 +102,7 @@ def test_remaining_ignores_completed_quantity(client, staff):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 3})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
     item = get_order_item(order, "SHIRT")
 
     # 2 assigned and fully completed: availability still reflects the unassigned
@@ -119,7 +119,7 @@ def test_mixed_garments_partial_assignment_keeps_assign_work(client, staff):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 2, "PANT": 3})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
     create_piece_rate(garment_type="PANT")
 
     _assign(client, staff, tailor, order, get_order_item(order, "SHIRT"), 2)
@@ -135,7 +135,7 @@ def test_mixed_garments_all_assigned_disables_assign_work(client, staff):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 2, "PANT": 3})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
     create_piece_rate(garment_type="PANT")
 
     _assign(client, staff, tailor, order, get_order_item(order, "SHIRT"), 2)
@@ -157,7 +157,7 @@ def test_terminal_order_cannot_receive_new_assignment(client, staff, status):
     order.status = status
     order.save(update_fields=["status"])
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
     item = get_order_item(order, "SHIRT")
 
     response = client.post(

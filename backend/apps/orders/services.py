@@ -137,7 +137,8 @@ def order_work_progress(order):
             {
                 "order_item_id": item.id,
                 "garment_type": item.garment_type,
-                "garment_label": item.get_garment_type_display(),
+                "garment_label": item.garment_label,
+                "shirt_type": item.shirt_type,
                 "quantity": item.quantity,
                 "assigned_quantity": item_assigned,
                 "completed_quantity": item_completed,

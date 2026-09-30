@@ -64,7 +64,7 @@ def _order_ids(body):
 def test_completely_unassigned_order_included(client, staff):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 3})
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
 
     body = _assignable_ids(client, staff)
     assert body["count"] == 1
@@ -75,7 +75,7 @@ def test_fully_assigned_order_excluded(client, staff):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 3})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
     item = get_order_item(order, "SHIRT")
     _create_assignments(client, staff, [(tailor, order, item, 3)])
 
@@ -88,7 +88,7 @@ def test_partially_assigned_order_included(client, staff):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 3})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
     item = get_order_item(order, "SHIRT")
     _create_assignments(client, staff, [(tailor, order, item, 1)])
 
@@ -101,7 +101,7 @@ def test_partially_assigned_item_keeps_remaining(client, staff):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 3})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
     item = get_order_item(order, "SHIRT")
     _create_assignments(client, staff, [(tailor, order, item, 1)])
 
@@ -118,7 +118,7 @@ def test_terminal_order_excluded_even_with_remaining(client, staff, status):
     order = create_order_with_items(customer, {"SHIRT": 3})
     order.status = status
     order.save(update_fields=["status"])
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
 
     body = _assignable_ids(client, staff)
     assert body["count"] == 0
@@ -142,7 +142,7 @@ def test_multiple_garments_partial_assignment_stays_assignable(client, staff):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 2, "PANT": 3})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
     create_piece_rate(garment_type="PANT")
     _create_assignments(
         client, staff, [(tailor, order, get_order_item(order, "SHIRT"), 2)]
@@ -157,7 +157,7 @@ def test_multiple_garments_all_assigned_excluded(client, staff):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 2, "PANT": 3})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
     create_piece_rate(garment_type="PANT")
     _create_assignments(
         client,
@@ -177,7 +177,7 @@ def test_final_assignment_removes_order(client, staff):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 3})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
     item = get_order_item(order, "SHIRT")
 
     _create_assignments(client, staff, [(tailor, order, item, 2)])
@@ -192,7 +192,7 @@ def test_final_assignment_removes_order(client, staff):
 def test_filtering_happens_before_pagination(client, staff):
     customer = create_customer()
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
 
     fully_assigned = []
     assignable = []
@@ -215,7 +215,7 @@ def test_filtering_happens_before_pagination(client, staff):
 def test_owner_can_read_assignable_orders(client, staff):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 2})
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
 
     owner = make_owner()
     body = _assignable_ids(client, owner)
@@ -247,7 +247,7 @@ def test_over_assignment_still_rejected_after_filtering(client, staff):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 3})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
     item = get_order_item(order, "SHIRT")
 
     _create_assignments(client, staff, [(tailor, order, item, 2)])

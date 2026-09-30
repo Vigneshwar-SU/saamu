@@ -20,7 +20,8 @@ import {
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { useCreateWorkAssignment, usePieceRates, useTailorList } from '../hooks/useTailors';
 import { useOrder, useOrderList } from '../hooks/useOrders';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, formatCustomerNameWithNotes } from '../utils/formatters';
+import { resolvePieceRateKey } from '../types/customers';
 import type { OrderItem } from '../types/orders';
 
 interface AssignWorkDialogProps {
@@ -83,7 +84,11 @@ const AssignWorkDialog: React.FC<AssignWorkDialogProps> = ({
   const applicableRate = useMemo(() => {
     if (!selectedItem) return undefined;
     const rates = pieceRatesData?.results ?? [];
-    return rates.find((rate) => rate.garment_type === selectedItem.garment_code && rate.is_active);
+    // Match on the variant's rate key, not the raw garment code: a Full Shirt
+    // and a Half Shirt are priced separately, and a legacy shirt line still
+    // resolves to the historical SHIRT rate.
+    const rateKey = resolvePieceRateKey(selectedItem.garment_code, selectedItem.shirt_type);
+    return rates.find((rate) => rate.garment_type === rateKey && rate.is_active);
   }, [selectedItem, pieceRatesData]);
 
   const maxQuantity = selectedItem?.remaining_quantity ?? 0;
@@ -179,7 +184,7 @@ const AssignWorkDialog: React.FC<AssignWorkDialogProps> = ({
                   ) : (
                     orders.map((entry) => (
                       <MenuItem key={entry.id} value={entry.id}>
-                        {entry.order_number} · {entry.customer.full_name}
+                        {entry.order_number} · {formatCustomerNameWithNotes(entry.customer)}
                       </MenuItem>
                     ))
                   )}
@@ -191,7 +196,7 @@ const AssignWorkDialog: React.FC<AssignWorkDialogProps> = ({
           {defaultOrderId && order && (
             <TextField
               label="Order *"
-              value={`${order.order_number} · ${order.customer.full_name}`}
+              value={`${order.order_number} · ${formatCustomerNameWithNotes(order.customer)}`}
               size="small"
               fullWidth
               disabled
@@ -214,7 +219,8 @@ const AssignWorkDialog: React.FC<AssignWorkDialogProps> = ({
                   ) : (
                     eligibleItems.map((item: OrderItem) => (
                       <MenuItem key={item.id} value={item.id}>
-                        {item.garment_type} · remaining {item.remaining_quantity} of {item.quantity}
+                        {item.garment_label} · remaining {item.remaining_quantity} of{' '}
+                        {item.quantity}
                       </MenuItem>
                     ))
                   )}
@@ -227,7 +233,7 @@ const AssignWorkDialog: React.FC<AssignWorkDialogProps> = ({
                   sx={{ p: 2, borderRadius: '10px', backgroundColor: '#FBF6EA' }}
                 >
                   <Typography variant="caption" sx={{ color: '#6B6B6B', display: 'block', mb: 1 }}>
-                    {selectedItem.garment_type} · {selectedItem.quantity} ordered ·{' '}
+                    {selectedItem.garment_label} · {selectedItem.quantity} ordered ·{' '}
                     {selectedItem.remaining_quantity} remaining
                   </Typography>
                   <TextField

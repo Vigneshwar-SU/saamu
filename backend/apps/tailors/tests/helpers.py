@@ -82,6 +82,21 @@ def create_piece_rate(garment_type="SHIRT", rate_per_piece="150.00", is_active=T
     )
 
 
+def create_piece_rates_for_order(order, rate_per_piece="150.00"):
+    """Configure a piece rate for every garment variant present on the order.
+
+    Shirt variants carry their own rate key (``SHIRT_FULL`` / ``SHIRT_HALF``),
+    so a Full Shirt line needs a Full Shirt rate before work can be assigned.
+    Tests that are about assignment mechanics rather than about a specific
+    variant use this so they do not have to care which key applies.
+    """
+    for item in order.items.all():
+        create_piece_rate(
+            garment_type=item.piece_rate_key, rate_per_piece=rate_per_piece
+        )
+    return order
+
+
 def create_measurement(customer, garment_type="SHIRT"):
     from apps.orders.tests.helpers import create_measurement as _cm
 
@@ -111,16 +126,18 @@ def create_order_with_items(customer, garment_quantities):
 
     ``garment_quantities`` is a dict like ``{"SHIRT": 5, "PANT": 3}``.
     """
+    from apps.orders.tests.helpers import order_item_payload
+
     items = []
     for garment, quantity in garment_quantities.items():
         measurement = create_measurement(customer, garment_type=garment)
         items.append(
-            {
-                "garment_type": garment,
-                "quantity": quantity,
-                "unit_price": "100.00",
-                "measurement_id": measurement.id,
-            }
+            order_item_payload(
+                garment,
+                quantity=quantity,
+                unit_price="100.00",
+                measurement_id=measurement.id,
+            )
         )
     return create_order(customer, items=items)
 

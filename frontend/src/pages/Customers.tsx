@@ -41,7 +41,7 @@ import type { Customer, CustomerPayload, CustomerStatus } from '../types/custome
 
 const PAGE_SIZE = 6;
 
-const formatNameWithNotes = (fullName: string, notes: string): React.ReactNode => {
+const formatNameWithNotesCell = (fullName: string, notes: string): React.ReactNode => {
   const trimmedNotes = (notes ?? '').trim();
   return (
     <Typography
@@ -211,7 +211,7 @@ export const Customers: React.FC = () => {
             primary: true,
             render: (customer) => (
               <Box>
-                {formatNameWithNotes(customer.full_name, customer.notes)}
+                {formatNameWithNotesCell(customer.full_name, customer.notes)}
                 <Typography variant="caption" sx={{ color: 'text.disabled' }}>
                   #{customer.id}
                 </Typography>

@@ -26,6 +26,7 @@ from apps.orders.models import (
     OrderItem,
     OrderStatus,
     OrderStatusHistory,
+    ShirtType,
 )
 from apps.orders.services import order_assignment_state
 from apps.tailors.models import Tailor
@@ -34,14 +35,29 @@ MAX_NOTES_LENGTH = 4000
 MAX_ITEM_NOTES_LENGTH = 2000
 MIN_PRICE = Decimal("0.00")
 
+SHIRT_TYPE_REQUIRED_MESSAGE = (
+    "Select Full Shirt or Half Shirt for a Shirt item. Both variants use the "
+    "customer's existing Shirt measurements."
+)
+SHIRT_TYPE_NOT_APPLICABLE_MESSAGE = "Shirt Type is not applicable to a Pant."
+
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    """Read representation of an order line item."""
+    """Read representation of an order line item.
+
+    ``garment_type`` stays the measurement garment ("Shirt" / "Pant") because it
+    is what selects the measurement chart. ``garment_label`` is the
+    staff-facing display label that distinguishes Full Shirt / Half Shirt /
+    Pant, and ``shirt_type`` / ``shirt_type_label`` carry the raw variant.
+    """
 
     garment_type = serializers.CharField(
         source="get_garment_type_display", read_only=True
     )
     garment_code = serializers.CharField(source="garment_type", read_only=True)
+    garment_label = serializers.CharField(read_only=True)
+    shirt_type = serializers.CharField(allow_null=True, read_only=True)
+    shirt_type_label = serializers.SerializerMethodField()
     measurement_id = serializers.IntegerField(read_only=True)
     line_total = serializers.SerializerMethodField()
     assigned_quantity = serializers.SerializerMethodField()
@@ -53,6 +69,9 @@ class OrderItemSerializer(serializers.ModelSerializer):
             "id",
             "garment_type",
             "garment_code",
+            "garment_label",
+            "shirt_type",
+            "shirt_type_label",
             "quantity",
             "assigned_quantity",
             "remaining_quantity",
@@ -66,6 +85,9 @@ class OrderItemSerializer(serializers.ModelSerializer):
             "updated_at",
         )
         read_only_fields = fields
+
+    def get_shirt_type_label(self, obj):
+        return ShirtType(obj.shirt_type).label if obj.shirt_type else None
 
     def get_line_total(self, obj):
         return obj.amount
@@ -138,11 +160,19 @@ class OrderSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_garment_summary(self, obj):
+        """Compact per-line garment summary for list views.
+
+        ``garment_label`` is what staff read (Full Shirt / Half Shirt / Pant);
+        ``garment_type`` remains the raw measurement garment code so existing
+        consumers keep working.
+        """
         summary = []
         for item in obj.items.all():
             summary.append(
                 {
                     "garment_type": item.garment_type,
+                    "garment_label": item.garment_label,
+                    "shirt_type": item.shirt_type,
                     "quantity": item.quantity,
                 }
             )
@@ -178,9 +208,17 @@ class OrderSerializer(serializers.ModelSerializer):
 
 
 class OrderItemCreateSerializer(serializers.Serializer):
-    """Validated input for a single garment line on a new order."""
+    """Validated input for a single garment line on a new order.
+
+    ``shirt_type`` is required for SHIRT lines and forbidden for PANT lines.
+    Both shirt variants resolve to the customer's single SHIRT measurement, so
+    the measurement rule below is unchanged by the variant.
+    """
 
     garment_type = serializers.ChoiceField(choices=GarmentType.choices)
+    shirt_type = serializers.ChoiceField(
+        choices=ShirtType.choices, required=False, allow_null=True
+    )
     quantity = serializers.IntegerField(min_value=1)
     unit_price = serializers.DecimalField(
         max_digits=10, decimal_places=2, min_value=MIN_PRICE
@@ -190,6 +228,20 @@ class OrderItemCreateSerializer(serializers.Serializer):
         required=False, allow_blank=True, max_length=MAX_ITEM_NOTES_LENGTH
     )
 
+    def validate(self, attrs):
+        garment = attrs.get("garment_type")
+        shirt_type = attrs.get("shirt_type")
+        if garment == GarmentType.SHIRT:
+            if not shirt_type:
+                raise serializers.ValidationError(
+                    {"shirt_type": SHIRT_TYPE_REQUIRED_MESSAGE}
+                )
+        elif shirt_type:
+            raise serializers.ValidationError(
+                {"shirt_type": SHIRT_TYPE_NOT_APPLICABLE_MESSAGE}
+            )
+        return attrs
+
 
 class OrderCreateSerializer(serializers.Serializer):
     """Create an order with one or more garment items and valid measurements.
@@ -197,6 +249,11 @@ class OrderCreateSerializer(serializers.Serializer):
     The customer must exist and be active. Each item must reference an existing
     measurement row belonging to that customer and matching the item garment,
     and that measurement must contain all values required for the garment.
+
+    Shirt items additionally declare ``shirt_type`` (Full / Half). The variant
+    only affects pricing and tailor work: the measurement is still matched on
+    the plain SHIRT garment, so both variants deliberately share one Shirt
+    measurement chart.
     """
 
     customer = serializers.PrimaryKeyRelatedField(queryset=Customer.objects.all())

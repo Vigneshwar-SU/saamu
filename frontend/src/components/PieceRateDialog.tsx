@@ -9,8 +9,12 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
   IconButton,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   Table,
   TableBody,
@@ -29,6 +33,8 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { useCreatePieceRate, usePieceRates, useUpdatePieceRate } from '../hooks/useTailors';
 import { formatCurrency } from '../utils/formatters';
+import { PIECE_RATE_KEYS, PIECE_RATE_LABELS } from '../types/customers';
+import type { PieceRateKey } from '../types/customers';
 import type { PieceRate } from '../types/tailors';
 
 interface PieceRateDialogProps {
@@ -36,12 +42,22 @@ interface PieceRateDialogProps {
   onClose: () => void;
 }
 
+/**
+ * Full Shirt and Half Shirt are paid separately, so each variant gets its own
+ * rate. The key is a fixed, closed set: it is the join key an order line
+ * resolves to, so it must never be typed freely.
+ */
+const RATE_OPTIONS: Array<{ key: PieceRateKey; label: string }> = PIECE_RATE_KEYS.map((key) => ({
+  key,
+  label: PIECE_RATE_LABELS[key],
+}));
+
 export const PieceRateDialog: React.FC<PieceRateDialogProps> = ({ open, onClose }) => {
   const { data, isLoading, isError, error, refetch } = usePieceRates();
   const createMutation = useCreatePieceRate();
   const updateMutation = useUpdatePieceRate();
 
-  const [garment, setGarment] = useState('');
+  const [garment, setGarment] = useState<PieceRateKey | ''>('');
   const [rate, setRate] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editRate, setEditRate] = useState('');
@@ -59,10 +75,9 @@ export const PieceRateDialog: React.FC<PieceRateDialogProps> = ({ open, onClose 
 
   const handleAdd = async () => {
     setActionError(null);
-    const garmentValue = garment.trim().toUpperCase();
     const rateValue = Number(rate);
-    if (!garmentValue) {
-      setActionError('Garment type is required.');
+    if (!garment) {
+      setActionError('Select a garment type.');
       return;
     }
     if (!Number.isFinite(rateValue) || rateValue < 0) {
@@ -72,7 +87,7 @@ export const PieceRateDialog: React.FC<PieceRateDialogProps> = ({ open, onClose 
     setActionLoading(true);
     try {
       await createMutation.mutateAsync({
-        garment_type: garmentValue,
+        garment_type: garment,
         rate_per_piece: rateValue,
       });
       setGarment('');
@@ -135,18 +150,27 @@ export const PieceRateDialog: React.FC<PieceRateDialogProps> = ({ open, onClose 
           {actionError && <Alert severity="error">{actionError}</Alert>}
 
           <Paper variant="outlined" sx={{ p: 2, borderRadius: '10px', backgroundColor: '#FBF6EA' }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1.5 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 0.5 }}>
               Configure rate per garment type
             </Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1.5 }}>
+              Full Shirt and Half Shirt are paid separately, so each needs its own rate.
+            </Typography>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-              <TextField
-                label="Garment Type"
-                placeholder="e.g. SHIRT"
-                value={garment}
-                onChange={(event) => setGarment(event.target.value)}
-                size="small"
-                fullWidth
-              />
+              <FormControl size="small" fullWidth>
+                <InputLabel>Garment Type</InputLabel>
+                <Select
+                  value={garment}
+                  label="Garment Type"
+                  onChange={(event) => setGarment(event.target.value as PieceRateKey | '')}
+                >
+                  {RATE_OPTIONS.map((option) => (
+                    <MenuItem key={option.key} value={option.key}>
+                      {option.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
               <TextField
                 label="Rate per piece (INR)"
                 placeholder="e.g. 150"
@@ -201,7 +225,9 @@ export const PieceRateDialog: React.FC<PieceRateDialogProps> = ({ open, onClose 
                 <TableBody>
                   {rates.map((pieceRate) => (
                     <TableRow key={pieceRate.id} hover>
-                      <TableCell sx={{ fontWeight: 600 }}>{pieceRate.garment_type}</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>
+                        {pieceRate.garment_label || pieceRate.garment_type}
+                      </TableCell>
                       <TableCell>
                         {editingId === pieceRate.id ? (
                           <TextField

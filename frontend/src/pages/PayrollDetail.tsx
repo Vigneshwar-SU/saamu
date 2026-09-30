@@ -418,7 +418,9 @@ const TailorAssignmentBreakdown: React.FC<{
     assignments: Array<{
       id: number;
       order_number: string;
+      /** Display label for the garment variant at the time of payment. */
       garment_type: string;
+      garment_label: string;
       assigned_quantity: number;
       completed_quantity: number;
       remaining_quantity: number;
@@ -469,7 +471,7 @@ const TailorAssignmentBreakdown: React.FC<{
           {
             label: 'Garment',
             render: (assignment) => (
-              <Typography variant="body2">{assignment.garment_type}</Typography>
+              <Typography variant="body2">{assignment.garment_label}</Typography>
             ),
           },
           {

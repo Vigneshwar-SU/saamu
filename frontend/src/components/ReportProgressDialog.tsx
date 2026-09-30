@@ -67,7 +67,7 @@ const ReportProgressDialog: React.FC<ReportProgressDialogProps> = ({
         <Stack spacing={2.5} sx={{ mt: 0.5 }}>
           {submitError && <Alert severity="error">{submitError}</Alert>}
           <Typography variant="body2" sx={{ color: '#6B6B6B' }}>
-            {assignment.order_item.garment_type} · assigned {assignment.assigned_quantity} pcs
+            {assignment.order_item.garment_label} · assigned {assignment.assigned_quantity} pcs
           </Typography>
           <TextField
             label="Completed quantity"

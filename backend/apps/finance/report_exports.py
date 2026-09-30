@@ -104,12 +104,8 @@ def build_csv_report(summary):
     writer.writerow([])
     writer.writerow(["Garment Quantities"])
     writer.writerow(["Garment Type", "Quantity"])
-    garment_quantities = summary["orders"]["garment_quantities"]
-    if garment_quantities:
-        for garment_type in sorted(garment_quantities):
-            writer.writerow([garment_type, str(garment_quantities[garment_type])])
-    else:
-        writer.writerow(["-", "-"])
+    for entry in summary["orders"]["garment_breakdown"]:
+        writer.writerow([entry["garment_label"], str(entry["quantity"])])
     writer.writerow([])
 
     # Customers
@@ -256,11 +252,8 @@ def build_pdf_report(summary):
         draw_line(f"Orders - {status.label}", str(distribution[status]))
     draw_line("Orders - Total", str(distribution["total"]))
     draw_line("Order revenue", money_label(summary["orders"]["revenue"]))
-    for garment_type in sorted(summary["orders"]["garment_quantities"]):
-        draw_line(
-            f"Garments - {garment_type}",
-            str(summary["orders"]["garment_quantities"][garment_type]),
-        )
+    for entry in summary["orders"]["garment_breakdown"]:
+        draw_line(f"Garments - {entry['garment_label']}", str(entry["quantity"]))
 
     draw_section("Customers")
     for label, key in _CUSTOMER_METRICS:

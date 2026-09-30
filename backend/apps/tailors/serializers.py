@@ -9,11 +9,23 @@ from apps.customers.serializers import (
     MAX_NAME_LENGTH,
     MAX_NOTES_LENGTH,
 )
-from apps.orders.models import Order, OrderItem
+from apps.orders.models import (
+    PIECE_RATE_KEY_FULL_SHIRT,
+    PIECE_RATE_KEY_HALF_SHIRT,
+    Order,
+    OrderItem,
+)
 
 from .models import PieceRate, Tailor, WorkAssignment
 
 MOBILE_REGEX = re.compile(r"^\+?[0-9]{10,15}$")
+
+# Friendly labels for the configurable tailor piece-rate keys.
+PIECE_RATE_LABELS = {
+    PIECE_RATE_KEY_FULL_SHIRT: "Full Shirt",
+    PIECE_RATE_KEY_HALF_SHIRT: "Half Shirt",
+    "PANT": "Pant",
+}
 
 
 class TailorSerializer(serializers.ModelSerializer):
@@ -55,11 +67,22 @@ class TailorSerializer(serializers.ModelSerializer):
 
 
 class PieceRateSerializer(serializers.ModelSerializer):
+    """Per-piece tailor rate for one garment.
+
+    ``garment_type`` is the configurable rate key. Pants use ``PANT``; the two
+    shirt variants use ``SHIRT_FULL`` and ``SHIRT_HALF`` so a Full Shirt and a
+    Half Shirt can be paid differently. ``garment_label`` renders that key as the
+    label staff recognise.
+    """
+
+    garment_label = serializers.SerializerMethodField()
+
     class Meta:
         model = PieceRate
         fields = [
             "id",
             "garment_type",
+            "garment_label",
             "rate_per_piece",
             "is_active",
             "created_at",
@@ -69,6 +92,9 @@ class PieceRateSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             "rate_per_piece": {"max_digits": 12, "decimal_places": 2},
         }
+
+    def get_garment_label(self, obj):
+        return PIECE_RATE_LABELS.get(obj.garment_type) or obj.garment_type
 
     def validate_garment_type(self, value):
         value = (value or "").strip()
@@ -152,12 +178,15 @@ class WorkAssignmentSerializer(serializers.ModelSerializer):
             "id": order_item.pk,
             "garment_type": order_item.get_garment_type_display(),
             "garment_code": order_item.garment_type,
+            "garment_label": order_item.garment_label,
+            "shirt_type": order_item.shirt_type,
             "quantity": order_item.quantity,
             "order": order_item.order_id,
             "order_number": order_item.order.order_number,
             "order_status": order_item.order.status,
             "customer": order_item.order.customer_id,
             "customer_name": order_item.order.customer.full_name,
+            "customer_notes": order_item.order.customer.notes,
         }
 
 

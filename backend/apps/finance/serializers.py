@@ -41,6 +41,9 @@ class IncomeSerializer(serializers.ModelSerializer):
     customer_name = serializers.CharField(
         source="invoice.order.customer.full_name", read_only=True
     )
+    customer_notes = serializers.CharField(
+        source="invoice.order.customer.notes", read_only=True
+    )
     recorded_by = serializers.PrimaryKeyRelatedField(read_only=True)
     recorded_by_name = serializers.SerializerMethodField()
     net_amount = serializers.SerializerMethodField()
@@ -62,6 +65,7 @@ class IncomeSerializer(serializers.ModelSerializer):
             "order_number",
             "customer_id",
             "customer_name",
+            "customer_notes",
             "reference",
             "notes",
             "recorded_by",

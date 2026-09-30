@@ -36,6 +36,13 @@ export interface ReportOrders {
   status_distribution: ReportOrderCounts;
   revenue: number;
   garment_quantities: Record<string, number>;
+  /** Variant-aware breakdown (Full Shirt / Half Shirt / Pant). */
+  garment_breakdown: Array<{
+    garment_type: string;
+    garment_label: string;
+    shirt_type: string | null;
+    quantity: number;
+  }>;
 }
 
 export interface ReportCustomers {

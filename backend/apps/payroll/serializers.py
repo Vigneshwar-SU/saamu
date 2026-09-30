@@ -229,7 +229,13 @@ class PayrollEntrySerializer(serializers.ModelSerializer):
 
 
 class PayrollAssignmentSerializer(serializers.ModelSerializer):
-    """Light assignment row used for tailor-level payroll breakdowns."""
+    """Light assignment row used for tailor-level payroll breakdowns.
+
+    Earnings come from the immutable ``rate_per_piece_snapshot``, so a Full
+    Shirt and a Half Shirt stay priced at the rate agreed when the work was
+    assigned. ``garment_label`` distinguishes the two shirt variants for the
+    staff reading the payroll detail.
+    """
 
     order_number = serializers.CharField(
         source="order_item.order.order_number", read_only=True
@@ -239,6 +245,12 @@ class PayrollAssignmentSerializer(serializers.ModelSerializer):
     )
     garment_code = serializers.CharField(
         source="order_item.garment_type", read_only=True
+    )
+    garment_label = serializers.CharField(
+        source="order_item.garment_label", read_only=True
+    )
+    shirt_type = serializers.CharField(
+        source="order_item.shirt_type", read_only=True
     )
     earned_amount = serializers.DecimalField(
         max_digits=12, decimal_places=2, read_only=True
@@ -252,6 +264,8 @@ class PayrollAssignmentSerializer(serializers.ModelSerializer):
             "order_number",
             "garment_type",
             "garment_code",
+            "garment_label",
+            "shirt_type",
             "assigned_quantity",
             "completed_quantity",
             "remaining_quantity",

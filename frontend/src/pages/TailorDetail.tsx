@@ -21,7 +21,7 @@ import StraightenIcon from '@mui/icons-material/Straighten';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
-import { formatCurrency, formatDate, formatPieces } from '../utils/formatters';
+import { formatCurrency, formatDate, formatNameWithNotes, formatPieces } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { TailorFormDialog } from '../components/TailorFormDialog';
 import AssignWorkDialog from '../components/AssignWorkDialog';
@@ -258,7 +258,7 @@ export const TailorDetail: React.FC = () => {
                     }}
                   >
                     <Typography sx={{ fontWeight: 600, color: 'text.primary' }}>
-                      {entry.garment_type}
+                      {entry.garment_label}
                     </Typography>
                     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                       {formatPieces(entry.completed_quantity)} ·{' '}
@@ -322,10 +322,13 @@ export const TailorDetail: React.FC = () => {
               render: (assignment) => (
                 <Box>
                   <Typography sx={{ fontWeight: 600 }}>
-                    {assignment.order_item.garment_type}
+                    {assignment.order_item.garment_label}
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'text.disabled' }}>
-                    {assignment.order_item.customer_name}
+                    {formatNameWithNotes(
+                      assignment.order_item.customer_name,
+                      assignment.order_item.customer_notes
+                    )}
                   </Typography>
                 </Box>
               ),

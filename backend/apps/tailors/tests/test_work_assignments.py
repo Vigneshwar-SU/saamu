@@ -34,7 +34,7 @@ def test_staff_can_create_assignment(client, staff):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 5})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT", rate_per_piece="150.00")
+    create_piece_rate(garment_type="SHIRT_FULL", rate_per_piece="150.00")
 
     response = client.post(
         work_assignments_url(),
@@ -59,7 +59,7 @@ def test_assignment_to_inactive_tailor_rejected(client, staff):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 5})
     tailor = create_tailor(is_active=False)
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
 
     response = client.post(
         work_assignments_url(),
@@ -77,7 +77,7 @@ def test_invalid_order_item_rejected(client, staff):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 5})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
 
     response = client.post(
         work_assignments_url(),
@@ -99,7 +99,7 @@ def test_order_item_mismatch_rejected(client, staff):
     order_a = create_order_with_items(customer, {"SHIRT": 2})
     order_b = create_order_with_items(customer, {"PANT": 2})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
     create_piece_rate(garment_type="PANT")
 
     item_a = get_order_item(order_a, "SHIRT")
@@ -117,7 +117,7 @@ def test_assignment_quantity_must_be_positive(client, staff):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 5})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
 
     response = client.post(
         work_assignments_url(),
@@ -134,7 +134,7 @@ def test_assignment_quantity_above_remaining_rejected(client, staff):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 3})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
     item = get_order_item(order, "SHIRT")
 
     first = client.post(
@@ -160,7 +160,7 @@ def test_multiple_assignments_consume_remaining(client, staff):
     order = create_order_with_items(customer, {"SHIRT": 5})
     tailor_a = create_tailor("Tailor A")
     tailor_b = create_tailor("Tailor B")
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
     item = get_order_item(order, "SHIRT")
 
     r1 = client.post(
@@ -192,7 +192,7 @@ def test_full_quantity_can_be_assigned(client, staff):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 4})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
 
     response = client.post(
         work_assignments_url(),
@@ -209,7 +209,7 @@ def test_remaining_quantity_exposed_on_order_items(client, staff):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 5})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
     item = get_order_item(order, "SHIRT")
 
     order_response = client.get(f"/api/v1/orders/{order.id}/", **_auth(staff))
@@ -235,7 +235,7 @@ def test_list_filters_by_tailor(client, staff):
     order = create_order_with_items(customer, {"SHIRT": 4})
     tailor_a = create_tailor("Tailor A")
     tailor_b = create_tailor("Tailor B")
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
     item = get_order_item(order, "SHIRT")
 
     create_assignment(tailor_a, item, assigned_quantity=2)
@@ -253,7 +253,7 @@ def test_list_filters_by_status(client, staff):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 4})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
     item = get_order_item(order, "SHIRT")
 
     create_assignment(tailor, item, assigned_quantity=2)
@@ -274,7 +274,7 @@ def test_list_filters_by_order(client, staff):
     order_a = create_order_with_items(customer, {"SHIRT": 4})
     order_b = create_order_with_items(customer, {"PANT": 4})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
     create_piece_rate(garment_type="PANT")
     item_a = get_order_item(order_a, "SHIRT")
     item_b = get_order_item(order_b, "PANT")
@@ -307,7 +307,7 @@ def test_assignment_can_be_retrieved(client, staff):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 2})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
     item = get_order_item(order, "SHIRT")
     assignment = create_assignment(tailor, item, assigned_quantity=2)
 
@@ -320,7 +320,7 @@ def test_historical_assignments_visible_after_tailor_archived(client, staff):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 2})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
     item = get_order_item(order, "SHIRT")
     assignment = create_assignment(tailor, item, assigned_quantity=2)
 

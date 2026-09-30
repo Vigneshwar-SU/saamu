@@ -7,7 +7,9 @@ safety rules live here:
 
 - Assignments require an active tailor and an active piece rate for the
   garment; the rate is snapshotted at assignment time so later rate edits
-  never rewrite history.
+  never rewrite history. The rate is looked up through
+  ``order_item.piece_rate_key``, so a Full Shirt and a Half Shirt can be paid
+  different per-piece rates while both keep using one Shirt measurement.
 - The order row is locked before the item row so every assignment writer
   acquires locks in the same order (order -> item). Concurrent assignments
   serialize on those rows and can never over-allocate a garment.
@@ -47,13 +49,14 @@ def create_work_assignment(*, tailor, order_item, assigned_quantity, created_by=
         )
 
     rate = PieceRate.objects.filter(
-        garment_type=order_item.garment_type, is_active=True
+        garment_type=order_item.piece_rate_key, is_active=True
     ).first()
     if rate is None:
         raise ValidationError(
             {
                 "order_item": (
-                    "No active piece rate is configured for this garment type. "
+                    f"No active piece rate is configured for "
+                    f"{order_item.garment_label}. "
                     "Configure the piece rate before assigning work."
                 )
             }

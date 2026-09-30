@@ -40,7 +40,13 @@ export const PAYMENT_TYPE_LABELS: Record<PaymentType, string> = {
 
 export interface InvoiceItem {
   id: number;
+  /**
+   * Display snapshot taken from the order line when the invoice was created:
+   * "Full Shirt" / "Half Shirt" / "Pant". Historical invoices keep the older
+   * "Shirt" / "Pant" wording and are never rewritten.
+   */
   garment_type: string;
+  /** Raw measurement garment code, always SHIRT or PANT. */
   garment_code: string;
   quantity: number;
   unit_price: number;
@@ -196,7 +202,9 @@ export interface BillOrder {
 }
 
 export interface BillGarment {
+  /** Display snapshot of the garment variant (Full Shirt / Half Shirt / Pant). */
   garment_type: string;
+  /** Raw measurement garment code, always SHIRT or PANT. */
   garment_code: string;
   quantity: number;
   unit_price: number;

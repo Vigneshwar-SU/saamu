@@ -34,7 +34,13 @@ from django.db.models import Case, Count, DecimalField, F, Q, Sum, When
 
 from apps.billing.models import CustomerPayment
 from apps.customers.models import Customer, GarmentType
-from apps.orders.models import Order, OrderItem, OrderStatus
+from apps.orders.models import (
+    Order,
+    OrderItem,
+    OrderStatus,
+    garment_label,
+    piece_rate_key,
+)
 from apps.payments.models import PayrollPayment, SalaryAdvance
 from apps.tailors.models import Tailor, WorkAssignment
 
@@ -81,6 +87,47 @@ def _workload_totals():
     return totals
 
 
+def _garment_quantities(orders):
+    """Garment quantities for a set of orders, split by shirt variant.
+
+    Returns ``(by_garment, breakdown)``:
+
+    - ``by_garment`` keeps the existing ``{garment_code: quantity}`` shape used
+      by the dashboard tiles, so its totals are unchanged.
+    - ``breakdown`` is the variant-aware list the reports page and the CSV/PDF
+      exports render, so a Full Shirt is never collapsed into "Shirt".
+
+    Both are derived from the same single aggregation pass, so the two views can
+    never disagree.
+    """
+    by_garment = {code: 0 for code in GarmentType.values}
+    by_variant = {}
+    rows = (
+        OrderItem.objects.filter(order__in=orders.values("id"))
+        .values("garment_type", "shirt_type")
+        .annotate(total=Sum("quantity"))
+    )
+    for row in rows:
+        garment_type = row["garment_type"]
+        total = int(row["total"] or 0)
+        if garment_type in by_garment:
+            by_garment[garment_type] += total
+        key = piece_rate_key(garment_type, row["shirt_type"])
+        entry = by_variant.setdefault(
+            key,
+            {
+                "piece_rate_key": key,
+                "garment_type": garment_type,
+                "garment_label": garment_label(garment_type, row["shirt_type"]),
+                "shirt_type": row["shirt_type"],
+                "quantity": 0,
+            },
+        )
+        entry["quantity"] += total
+    breakdown = sorted(by_variant.values(), key=lambda e: e["piece_rate_key"])
+    return by_garment, breakdown
+
+
 def build_dashboard_summary(date_from=None, date_to=None, request=None):
     """Build the full dashboard summary for an inclusive date range.
 
@@ -110,14 +157,7 @@ def build_dashboard_summary(date_from=None, date_to=None, request=None):
     for row in orders.values("status").annotate(count=Count("id")):
         order_counts[row["status"]] = row["count"]
 
-    garment_quantities = {code: 0 for code in GarmentType.values}
-    item_rows = (
-        OrderItem.objects.filter(order__in=orders.values("id"))
-        .values("garment_type")
-        .annotate(total=Sum("quantity"))
-    )
-    for row in item_rows:
-        garment_quantities[row["garment_type"]] = int(row["total"] or 0)
+    garment_quantities, garment_breakdown = _garment_quantities(orders)
 
     recent_payments_qs = (
         CustomerPayment.objects.select_related(
@@ -145,6 +185,7 @@ def build_dashboard_summary(date_from=None, date_to=None, request=None):
         "operational": {
             "order_counts": order_counts,
             "garment_quantities": garment_quantities,
+            "garment_breakdown": garment_breakdown,
             "workload": _workload_totals(),
             "active_customers": Customer.objects.filter(is_active=True).count(),
             "active_tailors": Tailor.objects.filter(is_active=True).count(),
@@ -347,14 +388,7 @@ def build_reports_summary(date_from=None, date_to=None):
 
     order_revenue = _decimal_sum(orders, "total_amount")
 
-    garment_quantities = {code: 0 for code in GarmentType.values}
-    item_rows = (
-        OrderItem.objects.filter(order__in=orders.values("id"))
-        .values("garment_type")
-        .annotate(total=Sum("quantity"))
-    )
-    for row in item_rows:
-        garment_quantities[row["garment_type"]] = int(row["total"] or 0)
+    garment_quantities, garment_breakdown = _garment_quantities(orders)
 
     customer_created_filters = _range_kwargs(date_from, date_to, "created_at__date")
 
@@ -369,6 +403,7 @@ def build_reports_summary(date_from=None, date_to=None):
             "status_distribution": order_counts,
             "revenue": round(order_revenue, 2),
             "garment_quantities": garment_quantities,
+            "garment_breakdown": garment_breakdown,
         },
         "customers": {
             "active_customers": Customer.objects.filter(is_active=True).count(),

@@ -17,6 +17,7 @@ import type { StatusTone } from '../components/ui/StatusBadge';
 import { ORDER_STATUS_LABELS } from '../types/orders';
 import type { OrderStatus } from '../types/orders';
 import type { ReminderCandidate } from '../types/reminders';
+import { formatCustomerNameWithNotes } from '../utils/formatters';
 const PAGE_SIZE = 6;
 
 const ORDER_STATUS_TONES: Record<OrderStatus, StatusTone> = {
@@ -65,7 +66,8 @@ const ReminderCard: React.FC<{ reminder: ReminderCandidate }> = ({ reminder }) =
               />
             </Stack>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              {reminder.order.order_number} · {reminder.customer.full_name}
+              {reminder.order.order_number} ·{' '}
+              {formatCustomerNameWithNotes(reminder.customer)}
             </Typography>
           </Box>
         </Stack>

@@ -17,7 +17,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useInvoiceList } from '../hooks/useInvoices';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, formatCustomerNameWithNotes } from '../utils/formatters';
 import { INVOICE_STATUS_LABELS } from '../types/billing';
 import type { Invoice, InvoiceStatus } from '../types/billing';
 
@@ -115,7 +115,7 @@ export const SelectInvoiceForPaymentDialog: React.FC<SelectInvoiceForPaymentDial
               ) : (
                 invoices.map((invoice) => (
                   <MenuItem key={invoice.id} value={invoice.id}>
-                    {invoice.invoice_number} · {invoice.customer.full_name} ·{' '}
+                    {invoice.invoice_number} · {formatCustomerNameWithNotes(invoice.customer)} ·{' '}
                     {INVOICE_STATUS_LABELS[invoice.status]}
                   </MenuItem>
                 ))

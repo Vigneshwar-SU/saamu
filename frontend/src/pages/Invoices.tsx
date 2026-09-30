@@ -14,7 +14,7 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import AddCardIcon from '@mui/icons-material/AddCard';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
-import { formatCurrency, formatDate } from '../utils/formatters';
+import { formatCurrency, formatCustomerNameWithNotes, formatDate } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { CreateInvoiceDialog } from '../components/CreateInvoiceDialog';
 import { useCreateInvoice, useInvoiceList } from '../hooks/useInvoices';
@@ -148,7 +148,7 @@ export const Invoices: React.FC = () => {
           {
             label: 'Customer',
             render: (invoice) => (
-              <Typography variant="body2">{invoice.customer.full_name}</Typography>
+                <Typography variant="body2">{formatCustomerNameWithNotes(invoice.customer)}</Typography>
             ),
           },
           {

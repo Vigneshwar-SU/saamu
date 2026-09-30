@@ -24,9 +24,10 @@ import { useCustomerList } from '../hooks/useCustomers';
 import { useMeasurements } from '../hooks/useMeasurements';
 import { useCreateOrder } from '../hooks/useOrders';
 import { getApiErrorMessage } from '../utils/apiErrors';
-import { MEASUREMENT_REQUIRED_FIELDS } from '../types/customers';
+import { formatCustomerNameWithNotes } from '../utils/formatters';
+import { GARMENT_TYPE_LABELS, MEASUREMENT_REQUIRED_FIELDS, SHIRT_TYPE_LABELS } from '../types/customers';
 import type { AutocompleteInputChangeReason } from '@mui/material/Autocomplete';
-import type { Customer, GarmentType, Measurement } from '../types/customers';
+import type { Customer, GarmentType, Measurement, ShirtType } from '../types/customers';
 import type { Order, OrderCreatePayload, OrderItemPayload } from '../types/orders';
 
 const GARMENT_OPTIONS: Array<{ code: GarmentType; label: string }> = [
@@ -34,14 +35,18 @@ const GARMENT_OPTIONS: Array<{ code: GarmentType; label: string }> = [
   { code: 'PANT', label: 'Pant' },
 ];
 
-const GARMENT_LABELS: Record<GarmentType, string> = {
-  SHIRT: 'Shirt',
-  PANT: 'Pant',
-};
+const SHIRT_TYPE_OPTIONS: Array<{ code: ShirtType; label: string }> = (
+  ['FULL', 'HALF'] as const
+).map((code) => ({ code, label: SHIRT_TYPE_LABELS[code] }));
 
 interface ItemDraft {
   key: number;
   garment_type: GarmentType;
+  /**
+   * Deliberately `null` until staff choose. A shirt line is never silently
+   * defaulted to a variant: the backend rejects a SHIRT without one.
+   */
+  shirt_type: ShirtType | null;
   quantity: number;
   unit_price: string;
   measurement_id: number | null;
@@ -59,6 +64,7 @@ let nextItemKey = 1;
 const emptyItem = (): ItemDraft => ({
   key: nextItemKey++,
   garment_type: 'SHIRT',
+  shirt_type: null,
   quantity: 1,
   unit_price: '',
   measurement_id: null,
@@ -145,7 +151,15 @@ export const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({
   const handleGarmentChange = (key: number, garment: GarmentType) => {
     setItems((current) =>
       current.map((item) =>
-        item.key === key ? { ...item, garment_type: garment, measurement_id: null } : item
+        item.key === key
+          ? {
+              ...item,
+              garment_type: garment,
+              // Shirt type is a shirt-only concept; switching to a pant clears it.
+              shirt_type: garment === 'SHIRT' ? item.shirt_type : null,
+              measurement_id: null,
+            }
+          : item
       )
     );
   };
@@ -172,7 +186,13 @@ export const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({
       return null;
     }
     const payloadItems: OrderItemPayload[] = [];
-    for (const item of items) {
+    for (const [index, item] of items.entries()) {
+      if (item.garment_type === 'SHIRT' && !item.shirt_type) {
+        setClientErrors(
+          `Item ${index + 1}: select Full Shirt or Half Shirt for every shirt.`
+        );
+        return null;
+      }
       if (!Number.isInteger(item.quantity) || item.quantity < 1) {
         setClientErrors('Each item must have a quantity of at least 1.');
         return null;
@@ -184,12 +204,16 @@ export const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({
       }
       if (item.measurement_id == null) {
         setClientErrors(
-          `Select a ${GARMENT_LABELS[item.garment_type]} measurement for every item.`
+          `Select a ${GARMENT_TYPE_LABELS[item.garment_type]} measurement for every item.`
         );
         return null;
       }
       payloadItems.push({
         garment_type: item.garment_type,
+        // Both variants intentionally share the single SHIRT measurement.
+        ...(item.garment_type === 'SHIRT' && item.shirt_type
+          ? { shirt_type: item.shirt_type }
+          : {}),
         quantity: item.quantity,
         unit_price: price.toFixed(2),
         measurement_id: item.measurement_id,
@@ -243,7 +267,9 @@ export const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({
               inputValue={customerInput}
               onInputChange={handleCustomerInputChange}
               options={options}
-              getOptionLabel={(customer) => `${customer.full_name} · ${customer.mobile_number}`}
+              getOptionLabel={(customer) =>
+                `${formatCustomerNameWithNotes(customer)} · ${customer.mobile_number}`
+              }
               isOptionEqualToValue={(option, value) => option.id === value.id}
               loading={customersFetching}
               renderInput={(params) => (
@@ -352,6 +378,26 @@ export const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({
                             ))}
                           </Select>
                         </FormControl>
+                        {item.garment_type === 'SHIRT' && (
+                          <FormControl size="small" fullWidth required>
+                            <InputLabel>Shirt Type</InputLabel>
+                            <Select
+                              value={item.shirt_type ?? ''}
+                              label="Shirt Type"
+                              onChange={(event) =>
+                                updateItem(item.key, {
+                                  shirt_type: (event.target.value || null) as ShirtType | null,
+                                })
+                              }
+                            >
+                              {SHIRT_TYPE_OPTIONS.map((shirtType) => (
+                                <MenuItem key={shirtType.code} value={shirtType.code}>
+                                  {shirtType.label}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        )}
                         <FormControl size="small" fullWidth>
                           <InputLabel>Measurement Version</InputLabel>
                           <Select
@@ -366,7 +412,7 @@ export const CreateOrderDialog: React.FC<CreateOrderDialogProps> = ({
                           >
                             {measurementOptions.length === 0 ? (
                               <MenuItem value="" disabled>
-                                No {GARMENT_LABELS[item.garment_type]} measurements recorded
+                                No {GARMENT_TYPE_LABELS[item.garment_type]} measurements recorded
                               </MenuItem>
                             ) : (
                               measurementOptions.map((measurement) => {

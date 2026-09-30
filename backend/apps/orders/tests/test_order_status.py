@@ -66,7 +66,7 @@ def _assign_all_work(client, staff, order_id):
     order = Order.objects.get(pk=order_id)
     tailor = create_tailor("Stitching Tailor")
     for item in order.items.all():
-        create_piece_rate(garment_type=item.garment_type)
+        create_piece_rate(garment_type=item.piece_rate_key)
         response = client.post(
             "/api/v1/work-assignments/",
             {

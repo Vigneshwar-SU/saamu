@@ -20,7 +20,10 @@ Safety rules honoured:
 - WhatsApp URLs use a fixed handoff base and a URL-encoded message; arbitrary
   URL input is never accepted.
 - Messages never include internal notes, audit metadata or unrelated data and
-  never claim a message was sent or delivered.
+  never claim a message was sent or delivered. (Customer ``notes`` are an
+  internal staff field, so they are deliberately never placed in a
+  customer-facing message; the garment label shown is order data the customer
+  is entitled to see.)
 - Every financial value is taken verbatim from the backend services; the
   frontend never reconstructs totals or balances.
 """
@@ -153,13 +156,15 @@ def _format_date(value):
 
 
 def _order_items_summary(order):
-    """Concise, deterministic garment summary, e.g. ``2x Shirt, 1x Pant``."""
+    """Concise, deterministic garment summary.
+
+    Uses the variant-aware label so a customer can tell a Full Shirt from a
+    Half Shirt, e.g. ``2x Full Shirt, 1x Pant``.
+    """
     items = list(order.items.order_by("id"))
     if not items:
         return None
-    return ", ".join(
-        f"{item.quantity}x {item.get_garment_type_display()}" for item in items
-    )
+    return ", ".join(f"{item.quantity}x {item.garment_label}" for item in items)
 
 
 def _next_step_label(status):

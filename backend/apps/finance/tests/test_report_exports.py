@@ -251,8 +251,10 @@ def test_csv_renders_exact_money_and_counts(client, staff):
     assert ["Net position", "249.50"] in rows
     assert ["Order revenue", "500.00"] in rows
 
-    assert ["SHIRT", "3"] in rows
-    assert ["PANT", "2"] in rows
+    # The seeded SHIRT line is a Full Shirt, so the export shows variant labels
+    # rather than the raw garment keys.
+    assert ["Full Shirt", "3"] in rows
+    assert ["Pant", "2"] in rows
     assert ["New", "1"] in rows
 
 

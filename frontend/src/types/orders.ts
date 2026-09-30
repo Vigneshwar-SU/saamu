@@ -1,4 +1,4 @@
-import type { Customer, GarmentType, MeasurementFieldName } from './customers';
+import type { Customer, GarmentType, MeasurementFieldName, ShirtType } from './customers';
 import type { OrderPaymentSummary } from './billing';
 
 export const ORDER_STATUSES = [
@@ -48,6 +48,11 @@ export interface OrderItem {
   id: number;
   garment_type: string;
   garment_code: GarmentType;
+  /** Display label distinguishing Full Shirt / Half Shirt / Pant. */
+  garment_label: string;
+  /** `null` only on historical shirt lines created before variants existed. */
+  shirt_type: ShirtType | null;
+  shirt_type_label: string | null;
   quantity: number;
   assigned_quantity: number;
   remaining_quantity: number;
@@ -59,6 +64,14 @@ export interface OrderItem {
   notes: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface GarmentSummaryEntry {
+  garment_type: GarmentType;
+  /** Display label distinguishing Full Shirt / Half Shirt / Pant. */
+  garment_label: string;
+  shirt_type: ShirtType | null;
+  quantity: number;
 }
 
 export interface OrderStatusHistoryEntry {
@@ -87,7 +100,7 @@ export interface Order {
   notes: string;
   total_amount: string;
   collected_at: string | null;
-  garment_summary: Array<{ garment_type: GarmentType; quantity: number }>;
+  garment_summary: GarmentSummaryEntry[];
   payment_summary: OrderPaymentSummary | null;
   assignment_summary: AssignmentSummary | null;
   items: OrderItem[];
@@ -115,6 +128,8 @@ export interface OrderListParams {
 
 export interface OrderItemPayload {
   garment_type: GarmentType;
+  /** Required for SHIRT lines (Full / Half) and must be omitted for PANT. */
+  shirt_type?: ShirtType;
   quantity: number;
   unit_price: string;
   measurement_id: number;

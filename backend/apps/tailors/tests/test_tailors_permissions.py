@@ -67,7 +67,7 @@ def test_owner_can_view_earnings(client, owner):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 2})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
     item = get_order_item(order, "SHIRT")
     response = client.post(
         work_assignments_url(),
@@ -114,7 +114,7 @@ def test_owner_cannot_create_assignment(client, owner):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 1})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT")
+    create_piece_rate(garment_type="SHIRT_FULL")
     response = client.post(
         work_assignments_url(),
         assign_payload(

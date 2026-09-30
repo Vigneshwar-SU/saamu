@@ -107,7 +107,7 @@ def test_assignment_snapshots_rate_at_creation(client, staff):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 3})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT", rate_per_piece="150.00")
+    create_piece_rate(garment_type="SHIRT_FULL", rate_per_piece="150.00")
 
     response = client.post(
         work_assignments_url(),
@@ -121,7 +121,7 @@ def test_assignment_snapshots_rate_at_creation(client, staff):
     assignment = response.json()
     assert assignment["rate_per_piece_snapshot"] == 150.0
 
-    rate = PieceRate.objects.get(garment_type="SHIRT")
+    rate = PieceRate.objects.get(garment_type="SHIRT_FULL")
     rate.rate_per_piece = "200.00"
     rate.save()
 
@@ -135,7 +135,9 @@ def test_no_active_rate_blocks_assignment(client, staff):
     customer = create_customer()
     order = create_order_with_items(customer, {"SHIRT": 3})
     tailor = create_tailor()
-    create_piece_rate(garment_type="SHIRT", rate_per_piece="150.00", is_active=False)
+    create_piece_rate(
+        garment_type="SHIRT_FULL", rate_per_piece="150.00", is_active=False
+    )
 
     response = client.post(
         work_assignments_url(),

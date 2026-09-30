@@ -18,7 +18,7 @@ import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import AddBoxIcon from '@mui/icons-material/AddBox';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
-import { formatCurrency, formatDate } from '../utils/formatters';
+import { formatCurrency, formatCustomerNameWithNotes, formatDate } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { useOrderList } from '../hooks/useOrders';
 import { CreateOrderDialog } from '../components/CreateOrderDialog';
@@ -153,7 +153,7 @@ export const Orders: React.FC = () => {
             render: (order) => (
               <Box>
                 <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                  {order.customer.full_name}
+                  {formatCustomerNameWithNotes(order.customer)}
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'text.disabled' }}>
                   {order.customer.mobile_number}
@@ -166,7 +166,7 @@ export const Orders: React.FC = () => {
             render: (order) => (
               <Typography variant="body2">
                 {order.garment_summary
-                  .map((summary) => `${summary.quantity}x ${summary.garment_type.toLowerCase()}`)
+                  .map((summary) => `${summary.quantity}x ${summary.garment_label}`)
                   .join(', ')}
               </Typography>
             ),

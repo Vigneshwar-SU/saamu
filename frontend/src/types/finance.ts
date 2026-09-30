@@ -54,6 +54,8 @@ export interface Income {
   order_number: string;
   customer_id: number;
   customer_name: string;
+  /** Internal staff note for this customer; never customer-facing. */
+  customer_notes: string;
   reference: string;
   notes: string;
   recorded_by: number | null;

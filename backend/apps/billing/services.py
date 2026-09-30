@@ -225,7 +225,7 @@ def create_invoice_for_order(*, order, invoice_date=None, notes="", created_by=N
         subtotal += line_total
         item_snapshots.append(
             InvoiceItem(
-                garment_type=item.get_garment_type_display(),
+                garment_type=item.garment_label,
                 garment_code=item.garment_type,
                 quantity=item.quantity,
                 unit_price=item.unit_price,

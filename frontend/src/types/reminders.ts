@@ -23,7 +23,7 @@ export interface ReminderCandidate {
   reminder_type: ReminderType;
   reminder_type_label: string;
   order: { id: number; order_number: string; status: OrderStatus };
-  customer: { id: number; full_name: string };
+  customer: { id: number; full_name: string; notes: string };
   eligibility: ReminderEligibility;
   message: string;
   phone_number: string | null;

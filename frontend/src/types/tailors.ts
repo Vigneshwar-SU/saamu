@@ -1,4 +1,4 @@
-import type { GarmentType } from './customers';
+import type { GarmentType, ShirtType } from './customers';
 
 export interface Tailor {
   id: number;
@@ -42,7 +42,10 @@ export interface TailorActionResponse {
 
 export interface PieceRate {
   id: number;
+  /** Configurable rate key, e.g. SHIRT_FULL / SHIRT_HALF / PANT. */
   garment_type: string;
+  /** Human label for the rate key (Full Shirt / Half Shirt / Pant). */
+  garment_label: string;
   rate_per_piece: number;
   is_active: boolean;
   created_at: string;
@@ -90,12 +93,17 @@ export interface WorkAssignmentOrderItem {
   id: number;
   garment_type: string;
   garment_code: GarmentType;
+  /** Display label distinguishing Full Shirt / Half Shirt / Pant. */
+  garment_label: string;
+  shirt_type: ShirtType | null;
   quantity: number;
   order: number;
   order_number: string;
   order_status: string;
   customer: number;
   customer_name: string;
+  /** Internal staff note; never shown to the customer. */
+  customer_notes: string;
 }
 
 export interface WorkAssignment {
@@ -147,7 +155,12 @@ export interface WorkAssignmentStatusResponse {
 }
 
 export interface TailorEarningsBreakdownEntry {
+  /** Configurable rate key the earnings were grouped by. */
   garment_type: string;
+  garment_code: GarmentType;
+  /** Human label for the variant (Full Shirt / Half Shirt / Pant). */
+  garment_label: string;
+  shirt_type: ShirtType | null;
   completed_quantity: number;
   earned_amount: number;
 }

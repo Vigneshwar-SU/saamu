@@ -54,6 +54,7 @@ const emptySummary: ReportsSummary = {
     },
     revenue: 0,
     garment_quantities: {},
+    garment_breakdown: [],
   },
   customers: { active_customers: 0, new_customers: 0, customers_with_orders: 0 },
   tailors: {
@@ -302,15 +303,25 @@ export const Reports: React.FC = () => {
                     Garment quantities
                   </Typography>
                   <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                    {Object.entries(summary.orders.garment_quantities).map(([type, quantity]) => (
-                      <Chip
-                        key={type}
-                        label={`${type}: ${quantity}`}
-                        size="small"
-                        variant="outlined"
-                        sx={{ fontWeight: 600 }}
-                      />
-                    ))}
+                    {summary.orders.garment_breakdown.length === 0
+                      ? Object.entries(summary.orders.garment_quantities).map(([type, quantity]) => (
+                          <Chip
+                            key={type}
+                            label={`${type}: ${quantity}`}
+                            size="small"
+                            variant="outlined"
+                            sx={{ fontWeight: 600 }}
+                          />
+                        ))
+                      : summary.orders.garment_breakdown.map((entry) => (
+                          <Chip
+                            key={entry.garment_label}
+                            label={`${entry.garment_label}: ${entry.quantity}`}
+                            size="small"
+                            variant="outlined"
+                            sx={{ fontWeight: 600 }}
+                          />
+                        ))}
                   </Stack>
                 </Box>
               </Stack>

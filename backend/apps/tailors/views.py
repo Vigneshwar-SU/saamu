@@ -27,6 +27,11 @@ from rest_framework.views import APIView
 from apps.authentication.permissions import IsOwnerOrStaff, IsStaffRole
 from apps.common.pagination import SaamuPageNumberPagination
 from apps.customers.models import GarmentType
+from apps.orders.models import (
+    PIECE_RATE_KEY_FULL_SHIRT,
+    PIECE_RATE_KEY_HALF_SHIRT,
+    ShirtType,
+)
 
 from .models import PieceRate, Tailor, WorkAssignment
 from .serializers import (
@@ -45,8 +50,11 @@ WORK_ASSIGNMENT_MUTATION_ACTIONS = {"create", "partial_update", "change_status"}
 def _earnings_for_queryset(qs):
     """Aggregate completed quantity and earnings for a queryset.
 
-    Returns a dict with totals plus a per-garment breakdown keyed by the raw
-    garment type code. Assignments that were never completed contribute zero.
+    Returns a dict with totals plus a per-garment-variant breakdown. The
+    breakdown is keyed by ``piece_rate_key`` so a Full Shirt and a Half Shirt
+    report as separate lines (they carry different piece rates), while each
+    entry also carries the human ``garment_label`` staff actually read.
+    Assignments that were never completed contribute zero.
     """
     completed = qs.filter(status=WorkAssignment.Status.COMPLETED)
     totals = {"total_completed_quantity": 0, "total_earned": 0}
@@ -55,9 +63,18 @@ def _earnings_for_queryset(qs):
         amount = assignment.completed_quantity * assignment.rate_per_piece_snapshot
         totals["total_completed_quantity"] += assignment.completed_quantity
         totals["total_earned"] += amount
-        code = assignment.order_item.garment_type
+        order_item = assignment.order_item
+        code = order_item.piece_rate_key
         entry = breakdown.setdefault(
-            code, {"garment_type": code, "completed_quantity": 0, "earned_amount": 0}
+            code,
+            {
+                "garment_type": order_item.garment_type,
+                "garment_label": order_item.garment_label,
+                "piece_rate_key": code,
+                "shirt_type": order_item.shirt_type,
+                "completed_quantity": 0,
+                "earned_amount": 0,
+            },
         )
         entry["completed_quantity"] += assignment.completed_quantity
         entry["earned_amount"] += amount
@@ -66,7 +83,7 @@ def _earnings_for_queryset(qs):
     for entry in breakdown.values():
         entry["earned_amount"] = round(entry["earned_amount"], 2)
         entry["completed_quantity"] = int(entry["completed_quantity"])
-    return totals, sorted(breakdown.values(), key=lambda e: e["garment_type"])
+    return totals, sorted(breakdown.values(), key=lambda e: e["piece_rate_key"])
 
 
 def _workload_for_queryset(qs):
@@ -234,10 +251,32 @@ class TailorViewSet(viewsets.ModelViewSet):
             qs = qs.filter(completed_at__date__lte=date_to)
         garment = (self.request.query_params.get("garment_type") or "").strip()
         if garment:
-            if garment not in GarmentType.values:
-                raise ValidationError({"garment_type": "Invalid garment type filter."})
-            qs = qs.filter(order_item__garment_type=garment)
+            qs = _filter_by_garment(qs, garment)
         return qs
+
+
+def _filter_by_garment(qs, value):
+    """Filter assignments by garment, accepting a plain garment code or a
+    specific rate key such as ``SHIRT_FULL`` / ``SHIRT_HALF``.
+
+    Both shirt variants stay under the plain ``SHIRT`` code so selecting "Shirt"
+    still returns every shirt line, exactly as before.
+    """
+    if value in GarmentType.values:
+        return qs.filter(order_item__garment_type=value)
+    if value in {
+        PIECE_RATE_KEY_FULL_SHIRT,
+        PIECE_RATE_KEY_HALF_SHIRT,
+    }:
+        return qs.filter(
+            order_item__garment_type=GarmentType.SHIRT,
+            order_item__shirt_type=(
+                ShirtType.FULL
+                if value == PIECE_RATE_KEY_FULL_SHIRT
+                else ShirtType.HALF
+            ),
+        )
+    raise ValidationError({"garment_type": "Invalid garment type filter."})
 
 
 class TailorEarningsSummaryView(APIView):
@@ -423,9 +462,7 @@ class WorkAssignmentViewSet(viewsets.ModelViewSet):
 
         garment = (self.request.query_params.get("garment_type") or "").strip()
         if garment:
-            if garment not in GarmentType.values:
-                raise ValidationError({"garment_type": "Invalid garment type filter."})
-            qs = qs.filter(order_item__garment_type=garment)
+            qs = _filter_by_garment(qs, garment)
 
         status_filter = (self.request.query_params.get("status") or "").strip()
         if status_filter:

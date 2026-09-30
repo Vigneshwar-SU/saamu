@@ -24,7 +24,7 @@ import dayjs from 'dayjs';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { useOrder } from '../hooks/useOrders';
 import { useInvoiceEligibleOrders } from '../hooks/useInvoices';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, formatCustomerNameWithNotes } from '../utils/formatters';
 import type { InvoiceCreatePayload } from '../types/billing';
 
 const createInvoiceSchema = z.object({
@@ -135,7 +135,7 @@ export const CreateInvoiceDialog: React.FC<CreateInvoiceDialogProps> = ({
               ) : (
                 orders.map((entry) => (
                   <MenuItem key={entry.id} value={entry.id}>
-                    {entry.order_number} · {entry.customer.full_name}
+                    {entry.order_number} · {formatCustomerNameWithNotes(entry.customer)}
                   </MenuItem>
                 ))
               )}

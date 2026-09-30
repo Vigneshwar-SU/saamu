@@ -15,7 +15,7 @@ import {
   Typography,
 } from '@mui/material';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
-import { formatCurrency, formatDate } from '../utils/formatters';
+import { formatCurrency, formatDate, formatNameWithNotes } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import { useIncomeList, useIncomeSummary } from '../hooks/useFinance';
 import {
@@ -198,7 +198,11 @@ export const Income: React.FC = () => {
           },
           {
             label: 'Customer',
-            render: (income) => <Typography variant="body2">{income.customer_name}</Typography>,
+            render: (income) => (
+              <Typography variant="body2">
+                {formatNameWithNotes(income.customer_name, income.customer_notes)}
+              </Typography>
+            ),
           },
           {
             label: 'Invoice',

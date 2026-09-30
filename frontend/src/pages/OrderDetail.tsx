@@ -38,7 +38,7 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
-import { formatCurrency, formatDate, formatPieces } from '../utils/formatters';
+import { formatCurrency, formatCustomerNameWithNotes, formatDate, formatPieces } from '../utils/formatters';
 import { getApiErrorMessage } from '../utils/apiErrors';
 import {
   useChangeOrderStatus,
@@ -286,7 +286,7 @@ const OrderItemsMobile: React.FC<{ items: OrderItem[]; totalAmount: number }> = 
               }}
             >
               <Box sx={{ minWidth: 0 }}>
-                <Typography sx={{ fontWeight: 600 }}>{item.garment_type}</Typography>
+                <Typography sx={{ fontWeight: 600 }}>{item.garment_label}</Typography>
                 <Chip
                   label={`V${item.measurement_version ?? '-'}`}
                   size="small"
@@ -541,7 +541,7 @@ export const OrderDetail: React.FC = () => {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       <PageHeader
         title={order.order_number}
-        subtitle={`${order.customer.full_name} · ${order.customer.mobile_number}`}
+        subtitle={`${formatCustomerNameWithNotes(order.customer)} · ${order.customer.mobile_number}`}
         icon={<ShoppingBagIcon />}
         crumbs={[
           { label: 'Dashboard', to: '/dashboard' },
@@ -743,7 +743,7 @@ export const OrderDetail: React.FC = () => {
                 {order.items.map((item) => (
                   <React.Fragment key={item.id}>
                     <TableRow sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                      <TableCell sx={{ fontWeight: 600 }}>{item.garment_type}</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>{item.garment_label}</TableCell>
                       <TableCell align="center">{item.quantity}</TableCell>
                       <TableCell>
                         <Chip
@@ -835,7 +835,7 @@ export const OrderDetail: React.FC = () => {
               label: 'Garment',
               render: (assignment) => (
                 <Typography sx={{ fontWeight: 600 }}>
-                  {assignment.order_item.garment_type}
+                  {assignment.order_item.garment_label}
                 </Typography>
               ),
             },
